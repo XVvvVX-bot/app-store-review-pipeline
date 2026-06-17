@@ -4,6 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
+from app_store_source_probe.apple_rss import run_apple_rss_probe
 from app_store_source_probe.probe import run_storefront_probe
 from app_store_source_probe.targets import active_targets, load_targets
 
@@ -26,6 +27,16 @@ def main() -> int:
     smoke.add_argument("--timeout-seconds", type=float, default=20)
     smoke.add_argument("--delay-seconds", type=float, default=1)
     smoke.set_defaults(func=command_storefront_smoke)
+
+    apple_rss = subparsers.add_parser("apple-rss-probe", help="Fetch public Apple iTunes customer review RSS pages.")
+    apple_rss.add_argument("--targets", type=Path, default=DEFAULT_TARGETS)
+    apple_rss.add_argument("--output", type=Path, required=True)
+    apple_rss.add_argument("--limit", type=int, default=None)
+    apple_rss.add_argument("--country", default="us")
+    apple_rss.add_argument("--max-pages", type=int, default=10)
+    apple_rss.add_argument("--timeout-seconds", type=float, default=20)
+    apple_rss.add_argument("--delay-seconds", type=float, default=1)
+    apple_rss.set_defaults(func=command_apple_rss_probe)
 
     args = parser.parse_args()
     return args.func(args)
@@ -61,3 +72,16 @@ def command_storefront_smoke(args: argparse.Namespace) -> int:
     print(json.dumps({"output": str(args.output), "summary": report["summary"]}, indent=2, sort_keys=True))
     return 0
 
+
+def command_apple_rss_probe(args: argparse.Namespace) -> int:
+    report = run_apple_rss_probe(
+        args.targets,
+        args.output,
+        limit=args.limit,
+        country=args.country,
+        max_pages=args.max_pages,
+        timeout_seconds=args.timeout_seconds,
+        delay_seconds=args.delay_seconds,
+    )
+    print(json.dumps({"output": str(args.output), "summary": report["summary"]}, indent=2, sort_keys=True))
+    return 0

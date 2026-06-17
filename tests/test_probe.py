@@ -3,6 +3,12 @@ from pathlib import Path
 
 import pytest
 
+from app_store_source_probe.apple_rss import (
+    apple_rss_url,
+    build_apple_rss_report,
+    normalize_entries,
+    parse_apple_review,
+)
 from app_store_source_probe.probe import build_probe_report, extract_possible_review_count, scan_storefront_html
 from app_store_source_probe.targets import active_targets, load_targets
 
@@ -106,3 +112,57 @@ def test_build_probe_report_empty(tmp_path):
     assert "hidden endpoints" in report["ethical_boundary"]
     assert "do not prove" in report["interpretation"]
 
+
+def test_apple_rss_url_and_entry_parsing(tmp_path):
+    path = tmp_path / "targets.csv"
+    write_targets(path)
+    target = load_targets(path)[0]
+    entry = {
+        "author": {"name": {"label": "Reviewer"}},
+        "updated": {"label": "2026-06-17T01:02:03-07:00"},
+        "im:rating": {"label": "4"},
+        "im:version": {"label": "1.2.3"},
+        "id": {"label": "12345"},
+        "title": {"label": "Good app"},
+        "content": {"label": "Useful review text"},
+        "im:voteSum": {"label": "3"},
+        "im:voteCount": {"label": "5"},
+    }
+
+    review = parse_apple_review(entry, target, country="us", page=1)
+
+    assert apple_rss_url("6448311069", country="us", page=2).endswith("/page=2/id=6448311069/sortby=mostrecent/json")
+    assert review.review_id == "12345"
+    assert review.rating == 4
+    assert review.version == "1.2.3"
+    assert review.content == "Useful review text"
+    assert review.vote_count == 5
+
+
+def test_normalize_entries_accepts_single_or_list():
+    assert normalize_entries({"a": 1}) == [{"a": 1}]
+    assert normalize_entries([{"a": 1}, "bad"]) == [{"a": 1}]
+    assert normalize_entries(None) == []
+
+
+def test_build_apple_rss_report_summarizes_reviews(tmp_path):
+    path = tmp_path / "targets.csv"
+    write_targets(path)
+    target = load_targets(path)[0]
+    review = parse_apple_review(
+        {
+            "updated": {"label": "2026-06-17T01:02:03-07:00"},
+            "im:rating": {"label": "4"},
+            "id": {"label": "12345"},
+            "content": {"label": "Useful review text"},
+        },
+        target,
+        country="us",
+        page=1,
+    )
+
+    report = build_apple_rss_report(path, [], [review])
+
+    assert report["source"] == "apple_itunes_customerreviews_rss"
+    assert report["summary"]["review_rows"] == 1
+    assert report["summary"]["unique_review_rows"] == 1

@@ -34,6 +34,15 @@ Run a conservative public storefront smoke test:
   --output data/reports/storefront_smoke.json
 ```
 
+Run the public Apple iTunes customer reviews RSS probe:
+
+```bash
+.venv/bin/python -m app_store_source_probe apple-rss-probe \
+  --limit 5 \
+  --max-pages 10 \
+  --output data/reports/apple_rss_limit5_pages10_us.json
+```
+
 Run tests:
 
 ```bash
@@ -53,5 +62,6 @@ A future source should pass only if it supports:
 
 ## Current Hypothesis
 
-Official Google Play and Apple APIs are strong for owned or authorized apps, but they are probably not enough for public third-party app review collection. If public storefront pages cannot provide clean full-review pagination, the likely next serious path is a licensed app-intelligence provider.
+Official Google Play and Apple APIs are strong for owned or authorized apps, but they are not enough for public third-party app review collection. Apple also exposes a public iTunes customer reviews RSS feed that can return structured recent review rows for public apps, but early evidence shows a practical cap of 10 pages x 50 reviews per app per country. Google Play public pages are reachable but have not proven a clean public review-row API.
 
+See `docs/feasibility_report.md` for the current full recommendation.
