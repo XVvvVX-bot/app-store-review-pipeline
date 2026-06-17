@@ -1,0 +1,22 @@
+app_name,category,google_play_package,apple_app_id,apple_slug,active,notes
+Amazon Shopping,shopping,com.amazon.mShop.android.shopping,297606951,amazon-shopping,true,Mainstream retail benchmark
+Walmart,shopping,com.walmart.android,338137227,walmart-shopping-grocery,true,Mainstream retail and grocery benchmark
+Target,shopping,com.target.ui,297430070,target,true,Mainstream retail benchmark
+Uber,travel,com.ubercab,368677368,uber-request-a-ride,true,Rideshare and local services benchmark
+Lyft,travel,me.lyft.android,529379082,lyft,true,Rideshare benchmark
+DoorDash,food_delivery,com.dd.doordash,719972451,doordash-food-delivery,true,Food delivery benchmark
+Uber Eats,food_delivery,com.ubercab.eats,1058959277,uber-eats-food-delivery,true,Food delivery benchmark
+Airbnb,travel,com.airbnb.android,401626263,airbnb,true,Travel marketplace benchmark
+Booking.com,travel,com.booking,367003839,booking-com-hotels-travel,true,Travel booking benchmark
+Expedia,travel,com.expedia.bookings,427916203,expedia-hotels-flights-car,true,Travel booking benchmark
+PayPal,finance,com.paypal.android.p2pmobile,283646709,paypal-send-shop-manage,true,Payments benchmark
+Venmo,finance,com.venmo,351727428,venmo,true,Peer payments benchmark
+Cash App,finance,com.squareup.cash,711923939,cash-app,true,Consumer finance benchmark
+Spotify,entertainment,com.spotify.music,324684580,spotify-music-and-podcasts,true,Audio streaming benchmark
+Netflix,entertainment,com.netflix.mediaclient,363590051,netflix,true,Video streaming benchmark
+TikTok,social,com.zhiliaoapp.musically,835599320,tiktok,true,Social media benchmark
+Instagram,social,com.instagram.android,389801252,instagram,true,Social media benchmark
+ChatGPT,ai_tools,com.openai.chatgpt,6448311069,chatgpt,true,AI assistant benchmark
+Duolingo,education,com.duolingo,570060128,duolingo-language-lessons,true,Education benchmark
+MyFitnessPal,health,com.myfitnesspal.android,341232718,myfitnesspal-calorie-counter,true,Health and fitness benchmark
+
