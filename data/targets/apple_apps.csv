@@ -1,0 +1,21 @@
+app_name,category,apple_app_id,apple_slug,countries,active,notes
+Amazon Shopping,shopping,297606951,amazon-shopping,us,true,Mainstream retail benchmark
+Walmart,shopping,338137227,walmart-shopping-grocery,us,true,Mainstream retail and grocery benchmark
+Target,shopping,297430070,target,us,true,Mainstream retail benchmark
+Uber,travel,368677368,uber-request-a-ride,us,true,Rideshare and local services benchmark
+Lyft,travel,529379082,lyft,us,true,Rideshare benchmark
+DoorDash,food_delivery,719972451,doordash-food-delivery,us,true,Food delivery benchmark
+Uber Eats,food_delivery,1058959277,uber-eats-food-delivery,us,true,Food delivery benchmark
+Airbnb,travel,401626263,airbnb,us,true,Travel marketplace benchmark
+Booking.com,travel,367003839,booking-com-hotels-travel,us,true,Travel booking benchmark
+Expedia,travel,427916203,expedia-hotels-flights-car,us,true,Travel booking benchmark
+PayPal,finance,283646709,paypal-send-shop-manage,us,true,Payments benchmark
+Venmo,finance,351727428,venmo,us,true,Peer payments benchmark
+Cash App,finance,711923939,cash-app,us,true,Consumer finance benchmark
+Spotify,entertainment,324684580,spotify-music-and-podcasts,us,true,Audio streaming benchmark
+Netflix,entertainment,363590051,netflix,us,true,Video streaming benchmark
+TikTok,social,835599320,tiktok,us,true,Social media benchmark
+Instagram,social,389801252,instagram,us,true,Social media benchmark
+ChatGPT,ai_tools,6448311069,chatgpt,us,true,AI assistant benchmark
+Duolingo,education,570060128,duolingo-language-lessons,us,true,Education benchmark
+MyFitnessPal,health,341232718,myfitnesspal-calorie-counter,us,true,Health and fitness benchmark

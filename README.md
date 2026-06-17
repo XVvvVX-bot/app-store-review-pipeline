@@ -1,15 +1,38 @@
-# App Store Review Source Test
+# App Store Review Pipeline
 
-Local feasibility repo for testing whether public Google Play or Apple App Store review data can support a future live review pipeline.
+Apple App Store public-review ingestion pipeline for mainstream app-review analytics.
 
-This repo is intentionally separate from the main Steam pipeline. It is for source evaluation only.
+The pipeline uses Apple's public iTunes customer reviews RSS JSON feed, stores cumulative review data in Postgres, and keeps each daily run incremental by stopping when already-known review IDs appear in the recent-review window.
 
 ## Boundaries
 
-- Use public app detail pages only for no-login smoke tests.
-- Do not use login state, personal cookies, CAPTCHA solving, proxy rotation, hidden endpoints, or anti-bot bypass behavior.
-- Do not build a production ingestion pipeline until a source passes the feasibility gate.
-- Do not treat visible ratings/review snippets as proof of complete review-row access.
+- Apple App Store only.
+- Public iTunes customer reviews RSS only.
+- No login, cookies, CAPTCHA solving, proxy rotation, hidden endpoints, or App Store Connect credentials.
+- No routine CSV export; Postgres is the cumulative store.
+- The RSS feed is a recent-review source, not a guaranteed all-history source.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    A["data/targets/apple_apps.csv"] --> B["Fetch Apple RSS pages"]
+    B --> C["Raw JSON under data/raw/apple_rss/{run_id}"]
+    C --> D["Normalize review rows"]
+    D --> E["Postgres upsert"]
+    E --> F["Validation + daily_report.json"]
+    F --> G["GitHub Actions artifact"]
+```
+
+Daily automation checks each active `app_id` and country in `data/targets/apple_apps.csv`.
+
+For each app-country scope it requests pages `1..10` from:
+
+```text
+https://itunes.apple.com/{country}/rss/customerreviews/page={page}/id={app_id}/sortby=mostrecent/json
+```
+
+The default 10-page cap reflects the observed Apple RSS limit of about 500 recent reviews per app-country scope. On incremental runs, the fetcher stops earlier when a page contains review IDs that are already in Postgres.
 
 ## Install
 
@@ -18,50 +41,96 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
+## Local Postgres
+
+Create a local database once:
+
+```bash
+createdb app_store_reviews
+```
+
+Initialize or migrate the schema:
+
+```bash
+.venv/bin/python app_store_pipeline.py init-postgres \
+  --database-url postgresql:///app_store_reviews
+```
+
 ## Commands
 
-Summarize the local target list:
+Summarize targets:
 
 ```bash
-.venv/bin/python -m app_store_source_probe targets
+.venv/bin/python app_store_pipeline.py targets
 ```
 
-Run a conservative public storefront smoke test:
+Fetch raw RSS pages only:
 
 ```bash
-.venv/bin/python -m app_store_source_probe storefront-smoke \
-  --limit 3 \
-  --output data/reports/storefront_smoke.json
+.venv/bin/python app_store_pipeline.py fetch \
+  --max-pages-per-app-country 2 \
+  --request-delay-seconds 0.5
 ```
 
-Run the public Apple iTunes customer reviews RSS probe:
+Run the full daily pipeline:
 
 ```bash
-.venv/bin/python -m app_store_source_probe apple-rss-probe \
-  --limit 5 \
-  --max-pages 10 \
-  --output data/reports/apple_rss_limit5_pages10_us.json
+.venv/bin/python app_store_pipeline.py daily \
+  --database-url postgresql:///app_store_reviews \
+  --max-pages-per-app-country 10 \
+  --request-delay-seconds 1
+```
+
+Validate the cumulative database:
+
+```bash
+.venv/bin/python app_store_pipeline.py validate \
+  --database-url postgresql:///app_store_reviews
 ```
 
 Run tests:
 
 ```bash
 .venv/bin/python -m pytest -q
+git diff --check
 ```
 
-## What A Passing Source Must Prove
+## Data Model
 
-A future source should pass only if it supports:
+The main Postgres tables are:
 
-- Public third-party apps, not only apps we own.
-- Full written review text, rating, date, app identity, platform, country or locale where available, and stable review identity or a reliable dedupe key.
-- Enough depth for downstream analytics: at least thousands of reviews for popular apps, not just top-visible snippets.
-- Daily incremental refresh without repeatedly re-ingesting full history.
-- Clean operation with clear access terms.
-- Practical Postgres-backed production path.
+- `app_store_targets`: active app metadata from the target list.
+- `app_store_runs`: one row per pipeline run.
+- `app_store_review_pages`: one row per fetched RSS page.
+- `app_store_reviews`: cumulative deduplicated reviews keyed by Apple RSS review ID plus app/country/source.
+- `app_store_review_changes`: inserted or updated review audit log.
+- `app_store_sync_state`: app-country incremental state and backlog warnings.
 
-## Current Hypothesis
+## Incremental Logic
 
-Official Google Play and Apple APIs are strong for owned or authorized apps, but they are not enough for public third-party app review collection. Apple also exposes a public iTunes customer reviews RSS feed that can return structured recent review rows for public apps, but early evidence shows a practical cap of 10 pages x 50 reviews per app per country. Google Play public pages are reachable but have not proven a clean public review-row API.
+The pipeline stores every review by a deterministic key:
 
-See `docs/feasibility_report.md` for the current full recommendation.
+```text
+apple_app_store:apple_itunes_customerreviews_rss:{country}:{app_id}:{review_id}
+```
+
+On the next run it loads known review IDs for each app-country scope. Because the feed is sorted by recent reviews, once a fetched page overlaps known IDs, later pages should be older, so the run stops for that scope.
+
+If the pipeline reaches page 10 without overlap, the scope is marked `backlogged`. That means the source window may be moving faster than the current schedule can cover, and the fix is to run more frequently or split countries/apps more carefully.
+
+## GitHub Actions
+
+Two workflows are included:
+
+- `CI`: runs unit tests on GitHub-hosted Ubuntu.
+- `App Store Review Pipeline`: runs the real daily ingestion on a self-hosted macOS ARM64 runner so it can reach the local Postgres database on this Mac.
+
+The daily workflow defaults to:
+
+- schedule: every 6 hours
+- database: `postgresql:///app_store_reviews`
+- secret override: `APP_STORE_DATABASE_URL`
+- max pages per app-country: `10`
+- overlap stop: enabled
+
+Before relying on automation, register a self-hosted runner for this GitHub repository and make sure local Postgres is running.
