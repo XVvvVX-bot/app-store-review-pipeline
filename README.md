@@ -24,7 +24,7 @@ flowchart LR
     F --> G["GitHub Actions artifact"]
 ```
 
-Daily automation checks each active `app_id` and country in `data/targets/apple_apps.csv`.
+Daily automation checks each active `app_id` and country in `data/targets/apple_apps.csv`. The current seed list contains 200 US App Store apps: the original benchmark set plus Apple US top free, top grossing, and top paid chart entries.
 
 For each app-country scope it requests pages `1..10` from:
 
