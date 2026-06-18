@@ -232,6 +232,7 @@ def probe_web_reviews(
     web_429_retries: int = 0,
     web_429_retry_seconds: float = 30.0,
     web_429_backoff_multiplier: float = 1.0,
+    include_html: bool = True,
     sleep_fn: Callable[[float], None] = time.sleep,
     session: requests.Session | None = None,
 ) -> dict[str, Any]:
@@ -259,6 +260,7 @@ def probe_web_reviews(
                         web_429_retries=web_429_retries,
                         web_429_retry_seconds=web_429_retry_seconds,
                         web_429_backoff_multiplier=web_429_backoff_multiplier,
+                        include_html=include_html,
                         sleep_fn=sleep_fn,
                     )
                 )
@@ -278,6 +280,7 @@ def probe_web_reviews(
         "web_429_retries": web_429_retries,
         "web_429_retry_seconds": web_429_retry_seconds,
         "web_429_backoff_multiplier": web_429_backoff_multiplier,
+        "include_html": include_html,
         "summary": summarize_web_probe(rows),
         "results": rows,
     }
@@ -299,18 +302,26 @@ def probe_web_reviews_for_scope(
     web_429_retries: int,
     web_429_retry_seconds: float,
     web_429_backoff_multiplier: float,
+    include_html: bool,
     sleep_fn: Callable[[float], None],
 ) -> dict[str, Any]:
     country = country.lower()
     page_url = app_store_reviews_page_url(target, country)
     catalog_url = app_store_web_reviews_url(target.apple_app_id, country, sort=web_sort, limit=review_limit)
-    headers = {"User-Agent": WEB_USER_AGENT, "Accept": "text/html,application/xhtml+xml"}
-
-    page_response = session.get(page_url, headers=headers, timeout=timeout_seconds)
-    page_text = page_response.text if page_response.text else ""
-    aggregate = parse_json_ld_aggregate_rating(page_text)
-    html_review_ids = parse_html_review_ids(page_text)
-    serialized_next_href = parse_serialized_next_href(page_text)
+    page_status_code = None
+    page_response_bytes = 0
+    aggregate = {}
+    html_review_ids: list[str] = []
+    serialized_next_href = None
+    if include_html:
+        headers = {"User-Agent": WEB_USER_AGENT, "Accept": "text/html,application/xhtml+xml"}
+        page_response = session.get(page_url, headers=headers, timeout=timeout_seconds)
+        page_status_code = page_response.status_code
+        page_response_bytes = len(page_response.content or b"")
+        page_text = page_response.text if page_response.text else ""
+        aggregate = parse_json_ld_aggregate_rating(page_text)
+        html_review_ids = parse_html_review_ids(page_text)
+        serialized_next_href = parse_serialized_next_href(page_text)
 
     catalog_headers = {
         "User-Agent": WEB_USER_AGENT,
@@ -429,8 +440,9 @@ def probe_web_reviews_for_scope(
         "app_name": target.app_name,
         "country": country,
         "html_page_url": page_url,
-        "html_status_code": page_response.status_code,
-        "html_response_bytes": len(page_response.content or b""),
+        "html_probe_enabled": include_html,
+        "html_status_code": page_status_code,
+        "html_response_bytes": page_response_bytes,
         "html_review_card_count": len(html_review_ids),
         "html_review_ids": html_review_ids,
         "html_aggregate_rating": aggregate,

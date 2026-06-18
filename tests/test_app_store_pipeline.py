@@ -17,6 +17,7 @@ from app_store_review_pipeline.apple_web import (
     parse_serialized_next_href,
     parse_web_catalog_review_page,
     parse_web_catalog_reviews,
+    probe_web_reviews_for_scope,
 )
 from app_store_review_pipeline.fetcher import fetch_targets, terminal_reason_for_page
 from app_store_review_pipeline.models import AppTarget, ReviewPage
@@ -149,8 +150,10 @@ class FakeWebResponse:
 class FakeWebSession:
     def __init__(self, responses: list[FakeWebResponse]):
         self.responses = list(responses)
+        self.calls = []
 
-    def get(self, *args, **kwargs):
+    def get(self, url, *args, **kwargs):
+        self.calls.append(url)
         if not self.responses:
             raise AssertionError("No fake web responses remaining")
         return self.responses.pop(0)
@@ -526,6 +529,32 @@ def test_web_429_retry_uses_backoff_and_retry_after():
     assert sleeps == [10, 7.0]
     assert parse_retry_after_seconds("3") == 3.0
     assert parse_retry_after_seconds("bad") is None
+
+
+def test_web_probe_can_skip_html_request():
+    session = FakeWebSession([FakeWebResponse(200)])
+
+    report = probe_web_reviews_for_scope(
+        fixture_target(),
+        "us",
+        session=session,
+        timeout_seconds=1,
+        review_limit=20,
+        web_sort="recent",
+        attempt_pagination=False,
+        max_web_pages=1,
+        request_delay_seconds=0,
+        web_429_retries=0,
+        web_429_retry_seconds=0,
+        web_429_backoff_multiplier=1,
+        include_html=False,
+        sleep_fn=lambda _seconds: None,
+    )
+
+    assert session.calls == ["https://apps.apple.com/api/apps/v1/catalog/us/apps/123456789/reviews?l=en-US&offset=0&platform=iphone&sort=recent&limit=20"]
+    assert report["html_probe_enabled"] is False
+    assert report["html_status_code"] is None
+    assert report["web_catalog_status_code"] == 200
 
 
 def test_source_comparison_summary_gate():

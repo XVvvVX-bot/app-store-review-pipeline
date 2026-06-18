@@ -101,12 +101,14 @@ Probe public App Store HTML and web JSON review surfaces:
   --web-sort recent \
   --attempt-pagination \
   --max-web-pages 2 \
+  --review-limit 20 \
   --request-delay-seconds 1 \
   --web-429-retries 1 \
-  --web-429-retry-seconds 30
+  --web-429-retry-seconds 30 \
+  --skip-html
 ```
 
-`probe-web` is a source-health and feasibility diagnostic. It records visible HTML review cards, aggregate rating metadata, the public web catalog reviews endpoint with `sort=recent`, and optional next-page review counts. It does not load Postgres and is not the production ingestion source.
+`probe-web` is a source-health and feasibility diagnostic. By default it can record visible HTML review cards, aggregate rating metadata, the public web catalog reviews endpoint with `sort=recent`, and optional next-page review counts. Use `--skip-html` when the question is web catalog stability or volume; this avoids the extra HTML page request and tests only the structured JSON review path. It does not load Postgres and is not the production ingestion source.
 
 Compare RSS and web catalog on the same target window:
 
@@ -119,10 +121,11 @@ Compare RSS and web catalog on the same target window:
   --web-429-retries 3 \
   --web-429-retry-seconds 45 \
   --web-429-backoff-multiplier 1 \
+  --web-skip-html \
   --rss-request-delay-seconds 0.5
 ```
 
-`compare-sources` writes `source_comparison_report.json` with RSS volume, web catalog volume, 429 recovery counts, capacity/parity metrics, a same-order stability gate, and the stricter RSS-replacement gate. The web catalog retry path honors `Retry-After` when Apple provides it; otherwise it uses `--web-429-retry-seconds` with the optional `--web-429-backoff-multiplier` for conservative depth tests.
+`compare-sources` writes `source_comparison_report.json` with RSS volume, web catalog volume, 429 recovery counts, capacity/parity metrics, a same-order stability gate, and the stricter RSS-replacement gate. Use `--web-skip-html` for canary and replacement-source testing so the result measures the JSON review endpoint without an extra HTML request. The web catalog retry path honors `Retry-After` when Apple provides it; otherwise it uses `--web-429-retry-seconds` with the optional `--web-429-backoff-multiplier` for conservative depth tests.
 
 Probe rendered App Store HTML with Playwright:
 
@@ -255,6 +258,7 @@ The web catalog canary defaults to:
 - HTTP 429 retries: `3`
 - HTTP 429 retry delay: `45` seconds
 - HTTP 429 backoff multiplier: `1`
+- HTML page probe: skipped by default
 - RSS pages per app-country: `10`
 
 Its artifact contains `data/reports/source_compare/{run_id}/source_comparison_report.json`, plus the raw RSS comparison files under `data/raw/source_compare/{run_id}/rss/`. Compare several runs before promoting web catalog reviews into the production ingestion path. The canary is intentionally a capacity-and-stability comparison, not a tiny liveness probe: RSS can return up to 50 reviews on one page while web catalog currently accepts `limit=20` per page, so web catalog must prove it can add enough value at predictable runtime. Use manual runs with higher `max_web_pages` only for deeper stress tests. The comparison section includes `web_configured_review_ceiling`, `web_pages_per_scope_needed_for_rss_parity`, `web_volume_gap_likely_configuration_limited`, and `web_unrecovered_429_page_count` to show whether a lower web count is caused by the configured page cap or deep-pagination instability.
