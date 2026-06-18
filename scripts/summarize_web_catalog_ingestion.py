@@ -99,6 +99,7 @@ def summarize_report(path: Path, report: dict[str, Any]) -> dict[str, Any]:
         and review_limit >= 20,
         "is_clean": all_pages_ok and final_non_200 == 0 and fetch_errors == 0 and missing_text == 0 and missing_rating == 0,
         "reached_configured_ceiling": configured_ceiling > 0 and reviews >= configured_ceiling,
+        "reached_target_review_count": int_or_zero(terminal_reasons.get("target_review_count_reached")) > 0,
         "loaded_any_rows": (inserted + updated + duplicates) > 0,
     }
 
@@ -217,6 +218,10 @@ def summarize_history_from_reports(
     clean_records = [record for record in records if record.get("is_clean")]
     volume_records = [record for record in records if int_or_zero(record.get("reviews")) >= min_reviews_per_run]
     full_ceiling_records = [record for record in records if record.get("reached_configured_ceiling")]
+    target_reached_records = [record for record in records if record.get("reached_target_review_count")]
+    successful_completion_records = [
+        record for record in records if record.get("reached_configured_ceiling") or record.get("reached_target_review_count")
+    ]
     failed_records = [record for record in records if not record.get("is_clean")]
 
     blocking_reasons: list[str] = []
@@ -228,8 +233,8 @@ def summarize_history_from_reports(
         blocking_reasons.append("one_or_more_runs_not_clean")
     if len(volume_records) != len(records):
         blocking_reasons.append(f"one_or_more_runs_below_{min_reviews_per_run}_reviews")
-    if len(full_ceiling_records) != len(records):
-        blocking_reasons.append("one_or_more_runs_did_not_reach_configured_review_ceiling")
+    if len(successful_completion_records) != len(records):
+        blocking_reasons.append("one_or_more_runs_did_not_reach_configured_ceiling_or_target")
 
     ready = bool(records) and not blocking_reasons
     if not records:
@@ -257,6 +262,8 @@ def summarize_history_from_reports(
             "failed_or_partial_runs": len(failed_records),
             "runs_at_or_above_min_reviews": len(volume_records),
             "runs_reaching_configured_ceiling": len(full_ceiling_records),
+            "runs_reaching_target_review_count": len(target_reached_records),
+            "runs_with_successful_completion": len(successful_completion_records),
             "reviews_total": sum(int_or_zero(record.get("reviews")) for record in records),
             "inserted_total": sum(int_or_zero(record.get("inserted")) for record in records),
             "updated_total": sum(int_or_zero(record.get("updated")) for record in records),
@@ -459,6 +466,8 @@ def render_markdown_summary(summary: dict[str, Any]) -> str:
         f"- Clean runs: `{aggregate.get('clean_runs', 0)}`",
         f"- Runs at or above review floor: `{aggregate.get('runs_at_or_above_min_reviews', 0)}`",
         f"- Runs reaching configured ceiling: `{aggregate.get('runs_reaching_configured_ceiling', 0)}`",
+        f"- Runs reaching target review count: `{aggregate.get('runs_reaching_target_review_count', 0)}`",
+        f"- Runs with successful completion: `{aggregate.get('runs_with_successful_completion', 0)}`",
         f"- Reviews fetched: `{aggregate.get('reviews_total', 0)}`",
         f"- Rows inserted: `{aggregate.get('inserted_total', 0)}`",
         f"- Rows updated: `{aggregate.get('updated_total', 0)}`",
@@ -565,7 +574,7 @@ def render_markdown_summary(summary: dict[str, Any]) -> str:
         [
             "## Runs",
             "",
-            "| Run | Offset | Start | Requested Start | Max Page | Targets | Pages | Reviews | Inserted | Updated | Duplicates | Status Codes | Attempts | Final Non-200 | Clean | Ceiling |",
+            "| Run | Offset | Start | Requested Start | Max Page | Targets | Pages | Reviews | Inserted | Updated | Duplicates | Status Codes | Attempts | Final Non-200 | Clean | Completion |",
             "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | ---: | --- | --- |",
         ]
     )
@@ -589,7 +598,7 @@ def render_markdown_summary(summary: dict[str, Any]) -> str:
                     markdown_escape(str(record.get("attempt_counts") or {})),
                     str(record.get("final_non_200_pages") or 0),
                     bool_label(record.get("is_clean")),
-                    bool_label(record.get("reached_configured_ceiling")),
+                    bool_label(record.get("reached_configured_ceiling") or record.get("reached_target_review_count")),
                 ]
             )
             + " |"

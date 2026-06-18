@@ -1633,6 +1633,50 @@ def test_web_catalog_ingestion_history_gate_requires_repeated_clean_full_runs(tm
     assert summary["aggregate"]["final_non_200_pages_total"] == 0
 
 
+def test_web_catalog_ingestion_history_accepts_parity_stop_before_ceiling(tmp_path):
+    path = tmp_path / "parity" / "daily_report.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "run_id": "parity-stop",
+                "source": WEB_CATALOG_SOURCE,
+                "target_count": 1,
+                "scope_count": 1,
+                "target_offset": 4,
+                "max_pages_per_app_country": 35,
+                "review_limit": 20,
+                "fetch_summary": {
+                    "pages": 27,
+                    "reviews": 540,
+                    "unique_reviews": 540,
+                    "fetch_errors": 0,
+                    "status_code_counts": {"200": 27},
+                    "attempt_counts": {"1": 27},
+                    "retried_pages": 0,
+                    "successful_after_retry_pages": 0,
+                    "final_non_200_pages": 0,
+                    "terminal_reasons": {"target_review_count_reached": 1},
+                    "missing_text": 0,
+                    "missing_rating": 0,
+                    "all_pages_ok_after_retry": True,
+                },
+                "load_summary": {"inserted": 540, "updated": 0, "duplicates_skipped": 0},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    summary = summarize_web_ingestion_history_from_reports([path], min_runs=1, full_single_app_only=True)
+
+    assert summary["promotion_gate"]["status"] == "ready_for_controlled_promotion"
+    assert summary["aggregate"]["runs_reaching_configured_ceiling"] == 0
+    assert summary["aggregate"]["runs_reaching_target_review_count"] == 1
+    assert summary["aggregate"]["runs_with_successful_completion"] == 1
+    assert summary["runs"][0]["reached_configured_ceiling"] is False
+    assert summary["runs"][0]["reached_target_review_count"] is True
+
+
 def test_web_catalog_ingestion_history_blocks_partial_runs(tmp_path):
     good_path = tmp_path / "good" / "daily_report.json"
     bad_path = tmp_path / "bad" / "daily_report.json"
