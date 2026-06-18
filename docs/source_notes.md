@@ -57,6 +57,7 @@ However, HTML pages are not a better primary bulk review source:
 - The same `target_offset=5` window became stable when reduced to a single app. A DoorDash-only canary with 5-second page delay, 60-second 429 retry delay, and 1,200-second budget reached 500 RSS reviews vs 500 web catalog reviews, 25/25 final `200` pages, 0 retries, and stop reason `target_review_count_reached`.
 - The canary schedule now uses a rotating single-app profile by default: one active target per run, auto-computed target offset, 25 max web pages, `limit=20`, 5-second page delay, 60-second 429 retry delay, 1.5x backoff, RSS-parity stopping, and a 1,200-second web budget. Manual workflow dispatch can still run larger fixed windows as stress tests.
 - A manual full-profile `target_offset=auto` canary verified the scheduled-style rotation path: it selected American Airlines at offset 90 and reached 500 RSS reviews vs 500 web catalog reviews, 25/25 final `200` pages, 2 recovered `429` pages, and stop reason `target_review_count_reached` in about 3m23s.
+- A source-comparison history summarizer now aggregates `source_comparison_report.json` artifacts across runs. On the six downloaded GitHub web canary reports from June 18, 2026, the all-run summary was still `not_ready`: four replacement-candidate runs were offset by one `web_catalog_time_budget_exceeded` run, one shallow `needs_deeper_web_catalog_run` smoke, 26 recovered `429` pages, and 2 unrecovered `429` pages. Filtering to the full single-app profile (`--single-app-only --min-web-max-pages 25`) produced `needs_more_evidence`: 2/2 full single-app runs were replacement candidates, 1,000 RSS reviews vs 1,000 web catalog reviews, 2 recovered `429` pages, and 0 unrecovered `429` pages.
 - A repeat local Playwright rendered-HTML probe on Amazon Shopping on June 18, 2026 found 6 rendered review title IDs before scrolling and 6 after scrolling. Scrolling triggered 0 review-related requests and 0 review API requests, so Playwright-rendered HTML still did not expose deeper review rows than the initial visible cards.
 - The HTML shape is less stable than the RSS JSON structure.
 - The aggregate rating count proves review presence, but does not provide a complete review-row feed.
@@ -72,6 +73,26 @@ Run a bounded web probe with:
 For conservative deep-pagination tests, raise `--web-429-backoff-multiplier` above `1`. The retry helper honors `Retry-After` if Apple returns it; otherwise each additional 429 retry waits `web_429_retry_seconds * web_429_backoff_multiplier^(attempt-1)`.
 
 Add `--web-time-budget-seconds <seconds>` to manual depth tests so a throttled run can stop cleanly and upload a partial but interpretable report. A budget-exceeded report is evidence that the profile is too heavy for routine automation, even if some earlier apps reached parity.
+
+Summarize downloaded canary artifacts with:
+
+```bash
+.venv/bin/python scripts/summarize_source_comparisons.py \
+  --root /path/to/downloaded/canary/artifacts \
+  --output-json /tmp/web_catalog_history.json \
+  --output-markdown /tmp/web_catalog_history.md \
+  --min-runs 5
+```
+
+For the scheduled-style conservative profile, filter to full single-app parity runs:
+
+```bash
+.venv/bin/python scripts/summarize_source_comparisons.py \
+  --root /path/to/downloaded/canary/artifacts \
+  --single-app-only \
+  --min-web-max-pages 25 \
+  --min-runs 5
+```
 
 Run a rendered HTML probe with Playwright when we need browser-level evidence:
 

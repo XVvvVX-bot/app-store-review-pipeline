@@ -56,6 +56,10 @@ from app_store_review_pipeline.source_compare import (
 )
 from app_store_review_pipeline.targets import active_targets, load_targets, parse_countries
 from scripts.run_provider_matrix import build_source_decision, render_markdown_report
+from scripts.summarize_source_comparisons import (
+    render_markdown_summary,
+    summarize_history_from_reports,
+)
 
 
 def write_targets(path: Path):
@@ -241,6 +245,113 @@ def test_select_target_window_supports_offset_and_limit():
     assert [target.apple_app_id for target in select_target_window(targets, limit=2, offset=3)] == ["3", "4"]
     assert [target.apple_app_id for target in select_target_window(targets, limit=0, offset=4)] == ["4", "5"]
     assert [target.apple_app_id for target in select_target_window(targets, limit=2, offset=-5)] == ["0", "1"]
+
+
+def write_source_comparison_report(
+    path: Path,
+    *,
+    run_id: str,
+    status: str,
+    app_name: str = "Fixture",
+    target_count: int = 1,
+    rss_reviews: int = 500,
+    web_reviews: int = 500,
+    final_non_200: int = 0,
+    recovered_429: int = 0,
+    unrecovered_429: int = 0,
+    time_budget_exceeded: bool = False,
+) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    report = {
+        "run_id": run_id,
+        "started_at": "2026-06-18T00:00:00+00:00",
+        "completed_at": "2026-06-18T00:05:00+00:00",
+        "target_count": target_count,
+        "scope_count": target_count,
+        "settings": {
+            "target_offset": 0,
+            "web_max_pages": 25,
+            "web_review_limit": 20,
+            "web_request_delay_seconds": 5,
+            "web_429_retries": 5,
+            "web_429_retry_seconds": 60,
+            "web_429_backoff_multiplier": 1.5,
+            "web_stop_at_rss_parity": True,
+            "web_time_budget_seconds": 1200,
+        },
+        "rss": {"unique_reviews_seen": rss_reviews},
+        "web_catalog": {
+            "web_catalog_page_reviews_total": web_reviews,
+            "web_catalog_page_status_counts": {"200": 25},
+            "web_catalog_stop_reasons": {"target_review_count_reached": target_count},
+        },
+        "comparison": {
+            "rss_unique_reviews_seen": rss_reviews,
+            "web_catalog_page_reviews_total": web_reviews,
+            "web_to_rss_review_ratio": web_reviews / rss_reviews,
+            "web_non_200_page_count_after_retry": final_non_200,
+            "web_unrecovered_429_page_count": unrecovered_429,
+            "web_recovered_429_page_count": recovered_429,
+            "web_retried_page_count": recovered_429 + unrecovered_429,
+            "web_all_pages_ok_after_retry": final_non_200 == 0,
+            "web_time_budget_exceeded": time_budget_exceeded,
+            "web_planned_scope_count": target_count,
+            "web_completed_scope_count": target_count,
+            "web_skipped_scope_count": 0,
+            "web_all_scopes_completed": not time_budget_exceeded,
+        },
+        "per_scope": [{"app_name": app_name, "app_id": "123", "country": "us"}],
+        "source_decision": {"status": status, "selected_source": "apple_web_catalog_reviews"},
+    }
+    path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+
+
+def test_source_comparison_history_promotes_clean_single_app_runs(tmp_path):
+    paths = []
+    for index in range(2):
+        path = tmp_path / f"run-{index}" / "source_comparison_report.json"
+        write_source_comparison_report(
+            path,
+            run_id=f"run-{index}",
+            status="web_catalog_replacement_candidate",
+            app_name=f"Fixture {index}",
+            recovered_429=index,
+        )
+        paths.append(path)
+
+    summary = summarize_history_from_reports(paths, min_runs=2, single_app_only=True)
+    markdown = render_markdown_summary(summary)
+
+    assert summary["promotion_gate"]["status"] == "ready_for_promotion"
+    assert summary["aggregate"]["replacement_candidate_runs"] == 2
+    assert summary["aggregate"]["web_recovered_429_pages_total"] == 1
+    assert "Fixture 0" in markdown
+
+
+def test_source_comparison_history_blocks_mixed_or_incomplete_runs(tmp_path):
+    clean_path = tmp_path / "clean" / "source_comparison_report.json"
+    budget_path = tmp_path / "budget" / "source_comparison_report.json"
+    write_source_comparison_report(
+        clean_path,
+        run_id="clean",
+        status="web_catalog_replacement_candidate",
+    )
+    write_source_comparison_report(
+        budget_path,
+        run_id="budget",
+        status="web_catalog_time_budget_exceeded",
+        web_reviews=320,
+        final_non_200=2,
+        unrecovered_429=2,
+        time_budget_exceeded=True,
+    )
+
+    summary = summarize_history_from_reports([clean_path, budget_path], min_runs=2)
+
+    assert summary["promotion_gate"]["status"] == "not_ready"
+    assert "not_all_runs_are_replacement_candidates" in summary["promotion_gate"]["blocking_reasons"]
+    assert "one_or_more_runs_exceeded_time_budget" in summary["promotion_gate"]["blocking_reasons"]
+    assert summary["aggregate"]["runs_with_final_non_200_pages"] == 1
 
 
 def test_load_targets_and_url(tmp_path):

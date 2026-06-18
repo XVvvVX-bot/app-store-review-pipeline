@@ -56,8 +56,15 @@ Recommended public-source path:
 
 1. Keep RSS as the production baseline.
 2. Run the rotating single-app web catalog canary every 6 hours.
-3. Promote web catalog into a separate ingestion mode only after repeated scheduled canaries show clean parity across varied app categories and offsets.
-4. Keep manual 5-app or 10-app deep runs as stress tests, not routine automation.
+3. Download canary artifacts periodically and run `scripts/summarize_source_comparisons.py --single-app-only --min-web-max-pages 25 --min-runs 5` to judge the full scheduled-style profile without mixing in shallow smoke runs or manual stress tests.
+4. Promote web catalog into a separate ingestion mode only after repeated scheduled canaries show clean parity across varied app categories and offsets.
+5. Keep manual 5-app or 10-app deep runs as stress tests, not routine automation.
+
+Current public-source readout from downloaded June 18, 2026 canary artifacts:
+
+- All web canary reports are **not ready** for promotion because the history includes a failed multi-app offset window with time-budget exhaustion and final 429s.
+- Full single-app canary reports are **promising but need more evidence**: 2/2 full single-app runs matched RSS parity cleanly, but the promotion gate requires at least 5 clean full-profile runs.
+- Rendered HTML with Playwright remains diagnostic only; repeated scrolling did not reveal more review rows or trigger deeper review network calls.
 
 The next contractual production path is still a licensed-provider POC:
 
