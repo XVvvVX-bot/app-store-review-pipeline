@@ -1702,7 +1702,7 @@ def test_source_coverage_scorecard_marks_parity_and_gaps():
     assert summary["aggregate"]["minimum_web_to_rss_ratio_for_web_scopes"] == pytest.approx(500 / 556)
 
 
-def test_source_coverage_selector_prioritizes_reachable_missing_scope():
+def test_source_coverage_selector_prioritizes_reachable_cleanup_scope():
     records = [
         {
             "target_index": 1,
@@ -1749,7 +1749,7 @@ def test_source_coverage_selector_prioritizes_reachable_missing_scope():
     selected = choose_next_web_catalog_scope(records, max_pages_per_app_country=35, review_limit=20)
 
     assert selected is not None
-    assert selected["target_index"] == 3
+    assert selected["target_index"] == 4
 
 
 def test_web_catalog_ingestion_markdown_summary_includes_gate(tmp_path):

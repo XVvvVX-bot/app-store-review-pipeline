@@ -140,11 +140,11 @@ def choose_next_web_catalog_scope(
         rss_reviews = int(record.get("rss_reviews") or 0)
         web_reviews = int(record.get("web_catalog_reviews") or 0)
         gap = int(record.get("web_review_gap_to_rss") or 0)
-        can_reach_parity = capacity <= 0 or rss_reviews <= capacity
-        missing_web = web_reviews == 0
+        can_reach_parity = capacity <= 0 or gap <= capacity
+        cleanup_existing_scope = web_reviews > 0
         return (
             1 if can_reach_parity else 0,
-            1 if missing_web else 0,
+            1 if cleanup_existing_scope else 0,
             gap,
             rss_reviews,
         )
