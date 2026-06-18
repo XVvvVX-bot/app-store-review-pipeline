@@ -7,6 +7,7 @@ from app_store_review_pipeline.apple_rss import apple_rss_url, normalize_entries
 from app_store_review_pipeline.apple_web import (
     app_store_web_catalog_next_url,
     app_store_web_catalog_url,
+    app_store_web_reviews_url,
     parse_html_review_ids,
     parse_json_ld_aggregate_rating,
     parse_serialized_next_href,
@@ -365,7 +366,11 @@ def test_web_probe_url_helpers():
     )
     assert (
         app_store_web_catalog_next_url("/v1/catalog/us/apps/1508186374/reviews?l=en-US&offset=6")
-        == "https://apps.apple.com/api/apps/v1/catalog/us/apps/1508186374/reviews?l=en-US&offset=6&platform=iphone"
+        == "https://apps.apple.com/api/apps/v1/catalog/us/apps/1508186374/reviews?l=en-US&offset=6&platform=iphone&sort=recent"
+    )
+    assert (
+        app_store_web_reviews_url("1508186374", "US")
+        == "https://apps.apple.com/api/apps/v1/catalog/us/apps/1508186374/reviews?l=en-US&offset=0&platform=iphone&sort=recent"
     )
 
 

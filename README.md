@@ -97,12 +97,15 @@ Probe public App Store HTML and web JSON review surfaces:
 ```bash
 .venv/bin/python app_store_pipeline.py probe-web \
   --limit 20 \
+  --web-sort recent \
   --attempt-pagination \
   --max-web-pages 2 \
-  --request-delay-seconds 1
+  --request-delay-seconds 1 \
+  --web-429-retries 1 \
+  --web-429-retry-seconds 30
 ```
 
-`probe-web` is a source-health and feasibility diagnostic. It records visible HTML review cards, aggregate rating metadata, the public web catalog's initial review relationship, and optional next-page review counts. It does not load Postgres and is not the production ingestion source.
+`probe-web` is a source-health and feasibility diagnostic. It records visible HTML review cards, aggregate rating metadata, the public web catalog reviews endpoint with `sort=recent`, and optional next-page review counts. It does not load Postgres and is not the production ingestion source.
 
 Run tests:
 

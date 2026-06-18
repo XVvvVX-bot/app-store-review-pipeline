@@ -21,9 +21,13 @@ However, HTML pages are not a better primary bulk review source:
 - The product page and `see-all=reviews` page expose only a small visible set of review cards in browser checks.
 - Playwright checks on June 18, 2026 found 6 visible review cards on the Peacock `see-all=reviews` page. Scrolling did not add more review cards or trigger a review-pagination network request.
 - The HTML serialized server data and public web catalog app lookup expose a `next` review href. A direct public next-page request must include `platform=iphone`; without it the API returns a missing-parameter error.
+- The public web catalog reviews endpoint accepts `sort=recent`; `sortBy=recent`, `orderBy=recent`, and similar guesses were rejected or ignored. `sort=recent` returned review dates in recent order during live checks.
+- The web catalog `next` href omits `sort=recent`, so a client must preserve the sort parameter while following pagination.
 - A bounded `probe-web --limit 20 --attempt-pagination --max-web-pages 2` check on June 18, 2026 found that the first web catalog page usually returned 6 reviews and the next page often returned another 6, but some scopes returned `429 API capacity exceeded`.
 - A single-app depth check against Amazon Shopping on June 18, 2026 reached 15 successful web catalog review pages at a fast delay and 17 successful pages with a 1-second delay before `429 API capacity exceeded`. That is materially deeper than visible HTML but still below the RSS 10-page window in review volume.
-- The public web catalog path may be useful for continued feasibility testing, but it is still an undocumented web surface and not yet a proven production replacement for RSS.
+- A later single-app backoff check reached 20 successful recent-sort web catalog review pages and 120 reviews for Amazon Shopping. Three pages initially returned `429`, then recovered after a 45-second retry delay. The 429 responses did not include a `Retry-After` header in captured response headers.
+- A 20-app recent-sort backoff check reached 40 successful web catalog pages and 240 reviews. Three pages initially returned `429`, then recovered after a 30-second retry delay. A same-target RSS fetch during the same investigation returned 50 reviews across 21 RSS pages.
+- The public web catalog path is now a serious candidate for a richer recent-review acquisition path, but it is still an undocumented web surface and not yet the default production source.
 - The HTML shape is less stable than the RSS JSON structure.
 - The aggregate rating count proves review presence, but does not provide a complete review-row feed.
 
@@ -32,5 +36,5 @@ Use HTML, Playwright, and `probe-web` checks as diagnostics for source health an
 Run a bounded web probe with:
 
 ```bash
-.venv/bin/python app_store_pipeline.py probe-web --limit 20 --attempt-pagination --max-web-pages 2
+.venv/bin/python app_store_pipeline.py probe-web --limit 20 --web-sort recent --attempt-pagination --max-web-pages 2 --web-429-retries 1 --web-429-retry-seconds 30
 ```

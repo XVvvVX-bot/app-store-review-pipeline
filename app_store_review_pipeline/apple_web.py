@@ -34,11 +34,30 @@ def app_store_web_catalog_url(app_id: str, country: str, *, language: str = "en-
     )
 
 
-def app_store_web_catalog_next_url(next_href: str, *, platform: str = "iphone") -> str:
+def app_store_web_reviews_url(
+    app_id: str,
+    country: str,
+    *,
+    language: str = "en-US",
+    offset: int = 0,
+    sort: str = "recent",
+    platform: str = "iphone",
+) -> str:
+    params = {
+        "l": language,
+        "offset": str(offset),
+        "platform": platform,
+        "sort": sort,
+    }
+    return f"https://apps.apple.com/api/apps/v1/catalog/{country.lower()}/apps/{app_id}/reviews?{urlencode(params)}"
+
+
+def app_store_web_catalog_next_url(next_href: str, *, platform: str = "iphone", sort: str = "recent") -> str:
     url = next_href if next_href.startswith("https://") else f"https://apps.apple.com/api/apps{next_href}"
     parts = urlsplit(url)
     params = dict(parse_qsl(parts.query, keep_blank_values=True))
     params.setdefault("platform", platform)
+    params.setdefault("sort", sort)
     return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(params), parts.fragment))
 
 
@@ -194,8 +213,11 @@ def probe_web_reviews(
     timeout_seconds: float = 20.0,
     request_delay_seconds: float = 0.5,
     review_limit: int = 20,
+    web_sort: str = "recent",
     attempt_pagination: bool = False,
     max_web_pages: int = 2,
+    web_429_retries: int = 0,
+    web_429_retry_seconds: float = 30.0,
     sleep_fn: Callable[[float], None] = time.sleep,
     session: requests.Session | None = None,
 ) -> dict[str, Any]:
@@ -216,9 +238,12 @@ def probe_web_reviews(
                         session=http,
                         timeout_seconds=timeout_seconds,
                         review_limit=review_limit,
+                        web_sort=web_sort,
                         attempt_pagination=attempt_pagination,
                         max_web_pages=max_web_pages if attempt_pagination else 1,
                         request_delay_seconds=request_delay_seconds,
+                        web_429_retries=web_429_retries,
+                        web_429_retry_seconds=web_429_retry_seconds,
                         sleep_fn=sleep_fn,
                     )
                 )
@@ -232,7 +257,10 @@ def probe_web_reviews(
         "target_count": len(selected),
         "scope_count": len(rows),
         "attempt_pagination": attempt_pagination,
+        "web_sort": web_sort,
         "max_web_pages": max_web_pages if attempt_pagination else 1,
+        "web_429_retries": web_429_retries,
+        "web_429_retry_seconds": web_429_retry_seconds,
         "summary": summarize_web_probe(rows),
         "results": rows,
     }
@@ -247,14 +275,17 @@ def probe_web_reviews_for_scope(
     session: requests.Session,
     timeout_seconds: float,
     review_limit: int,
+    web_sort: str,
     attempt_pagination: bool,
     max_web_pages: int,
     request_delay_seconds: float,
+    web_429_retries: int,
+    web_429_retry_seconds: float,
     sleep_fn: Callable[[float], None],
 ) -> dict[str, Any]:
     country = country.lower()
     page_url = app_store_reviews_page_url(target, country)
-    catalog_url = app_store_web_catalog_url(target.apple_app_id, country, review_limit=review_limit)
+    catalog_url = app_store_web_reviews_url(target.apple_app_id, country, sort=web_sort)
     headers = {"User-Agent": WEB_USER_AGENT, "Accept": "text/html,application/xhtml+xml"}
 
     page_response = session.get(page_url, headers=headers, timeout=timeout_seconds)
@@ -273,13 +304,21 @@ def probe_web_reviews_for_scope(
     catalog_response_bytes = 0
     catalog_review_summary = {"review_count": 0, "review_ids": [], "next_href": None, "min_date": None, "max_date": None}
     catalog_error = None
-    catalog_response = session.get(catalog_url, headers=catalog_headers, timeout=timeout_seconds)
+    catalog_response, catalog_attempts = get_with_429_retries(
+        session,
+        catalog_url,
+        headers=catalog_headers,
+        timeout_seconds=timeout_seconds,
+        web_429_retries=web_429_retries,
+        web_429_retry_seconds=web_429_retry_seconds,
+        sleep_fn=sleep_fn,
+    )
     catalog_status_code = catalog_response.status_code
     catalog_response_bytes = len(catalog_response.content or b"")
     try:
         catalog_payload = catalog_response.json()
         if isinstance(catalog_payload, dict):
-            catalog_review_summary = parse_web_catalog_reviews(catalog_payload)
+            catalog_review_summary = parse_web_catalog_review_page(catalog_payload)
         else:
             catalog_error = "catalog JSON was not an object"
     except (ValueError, json.JSONDecodeError) as exc:
@@ -292,6 +331,9 @@ def probe_web_reviews_for_scope(
             "status_code": catalog_status_code,
             "response_bytes": catalog_response_bytes,
             "content_type": catalog_response.headers.get("content-type"),
+            "response_headers": selected_response_headers(catalog_response),
+            "attempt_count": len(catalog_attempts),
+            "attempts": catalog_attempts,
             "review_count": catalog_review_summary["review_count"],
             "review_ids": catalog_review_summary["review_ids"],
             "next_href": catalog_review_summary["next_href"],
@@ -305,8 +347,16 @@ def probe_web_reviews_for_scope(
     while attempt_pagination and next_href and page_index <= max_web_pages:
         if request_delay_seconds:
             sleep_fn(request_delay_seconds)
-        next_url = app_store_web_catalog_next_url(str(next_href))
-        next_response = session.get(next_url, headers=catalog_headers, timeout=timeout_seconds)
+        next_url = app_store_web_catalog_next_url(str(next_href), sort=web_sort)
+        next_response, next_attempts = get_with_429_retries(
+            session,
+            next_url,
+            headers=catalog_headers,
+            timeout_seconds=timeout_seconds,
+            web_429_retries=web_429_retries,
+            web_429_retry_seconds=web_429_retry_seconds,
+            sleep_fn=sleep_fn,
+        )
         next_summary = {"review_count": 0, "review_ids": [], "next_href": None, "min_date": None, "max_date": None}
         next_error = None
         try:
@@ -324,6 +374,9 @@ def probe_web_reviews_for_scope(
                 "status_code": next_response.status_code,
                 "response_bytes": len(next_response.content or b""),
                 "content_type": next_response.headers.get("content-type"),
+                "response_headers": selected_response_headers(next_response),
+                "attempt_count": len(next_attempts),
+                "attempts": next_attempts,
                 "review_count": next_summary["review_count"],
                 "review_ids": next_summary["review_ids"],
                 "next_href": next_summary["next_href"],
@@ -381,6 +434,8 @@ def probe_web_reviews_for_scope(
 def summarize_web_probe(rows: list[dict[str, Any]]) -> dict[str, Any]:
     pagination_status_counts: dict[str, int] = {}
     page_status_counts: dict[str, int] = {}
+    retried_page_count = 0
+    recovered_429_page_count = 0
     for row in rows:
         probe = row.get("web_catalog_next_probe") or {}
         status = probe.get("status_code")
@@ -392,6 +447,11 @@ def summarize_web_probe(rows: list[dict[str, Any]]) -> dict[str, Any]:
             if page_status is not None:
                 key = str(page_status)
                 page_status_counts[key] = page_status_counts.get(key, 0) + 1
+            attempts = page.get("attempts") or []
+            if len(attempts) > 1:
+                retried_page_count += 1
+                if any(attempt.get("status_code") == 429 for attempt in attempts[:-1]) and page_status == 200:
+                    recovered_429_page_count += 1
 
     return {
         "html_ok_scopes": sum(1 for row in rows if row.get("html_status_code") == 200),
@@ -407,4 +467,49 @@ def summarize_web_probe(rows: list[dict[str, Any]]) -> dict[str, Any]:
         ),
         "pagination_status_counts": pagination_status_counts,
         "web_catalog_page_status_counts": page_status_counts,
+        "retried_page_count": retried_page_count,
+        "recovered_429_page_count": recovered_429_page_count,
     }
+
+
+def get_with_429_retries(
+    session: requests.Session,
+    url: str,
+    *,
+    headers: dict[str, str],
+    timeout_seconds: float,
+    web_429_retries: int,
+    web_429_retry_seconds: float,
+    sleep_fn: Callable[[float], None],
+) -> tuple[requests.Response, list[dict[str, Any]]]:
+    attempts: list[dict[str, Any]] = []
+    max_attempts = max(1, web_429_retries + 1)
+    response = None
+    for attempt_number in range(1, max_attempts + 1):
+        response = session.get(url, headers=headers, timeout=timeout_seconds)
+        attempts.append(
+            {
+                "attempt_number": attempt_number,
+                "status_code": response.status_code,
+                "response_bytes": len(response.content or b""),
+                "response_headers": selected_response_headers(response),
+            }
+        )
+        if response.status_code != 429 or attempt_number >= max_attempts:
+            break
+        sleep_fn(web_429_retry_seconds)
+    if response is None:
+        raise RuntimeError("unreachable web request state")
+    return response, attempts
+
+
+def selected_response_headers(response: requests.Response) -> dict[str, str]:
+    interesting = {
+        "retry-after",
+        "x-cache",
+        "x-cache-remote",
+        "x-apple-jingle-correlation-key",
+        "content-type",
+        "date",
+    }
+    return {key: value for key, value in response.headers.items() if key.lower() in interesting}

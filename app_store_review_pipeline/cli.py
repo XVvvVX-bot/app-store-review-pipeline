@@ -74,7 +74,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--review-limit",
         type=int,
         default=20,
-        help="Requested sparse review limit for the public web catalog app lookup.",
+        help="Requested sparse review limit for the legacy app-include catalog lookup.",
+    )
+    probe_web.add_argument(
+        "--web-sort",
+        default="recent",
+        choices=["recent", "helpful", "favorable", "critical"],
+        help="Sort order for the public web catalog reviews endpoint.",
     )
     probe_web.add_argument(
         "--attempt-pagination",
@@ -86,6 +92,18 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=2,
         help="Maximum web catalog review pages to follow when --attempt-pagination is enabled.",
+    )
+    probe_web.add_argument(
+        "--web-429-retries",
+        type=int,
+        default=0,
+        help="Number of retry attempts for a web catalog page that returns 429. Default is no retry.",
+    )
+    probe_web.add_argument(
+        "--web-429-retry-seconds",
+        type=float,
+        default=30.0,
+        help="Delay before retrying a web catalog page after HTTP 429.",
     )
     probe_web.set_defaults(func=command_probe_web)
 
@@ -208,8 +226,11 @@ def command_probe_web(args: argparse.Namespace) -> int:
         timeout_seconds=args.timeout_seconds,
         request_delay_seconds=args.request_delay_seconds,
         review_limit=args.review_limit,
+        web_sort=args.web_sort,
         attempt_pagination=args.attempt_pagination,
         max_web_pages=args.max_web_pages,
+        web_429_retries=args.web_429_retries,
+        web_429_retry_seconds=args.web_429_retry_seconds,
     )
     print(
         json.dumps(
