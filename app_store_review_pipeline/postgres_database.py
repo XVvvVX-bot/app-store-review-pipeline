@@ -551,7 +551,7 @@ def update_sync_states_postgres(
             reviews = grouped_reviews.get(key, [])
             terminal_reason = pages[-1].get("terminal_reason") if pages else None
             overlap = sum(int(page.get("overlap_review_count") or 0) for page in pages)
-            backlog_reasons = {"page_cap", "empty_page_before_overlap"}
+            backlog_reasons = {"page_cap", "empty_page_before_overlap", "empty_page_after_sparse_scan"}
             backlogged = terminal_reason in backlog_reasons and overlap == 0
             current_high_water = connection.execute(
                 """

@@ -31,6 +31,7 @@ def fetch_targets(
     *,
     sort_by: str = DEFAULT_SORT_BY,
     max_pages_per_app_country: int = 10,
+    max_consecutive_empty_pages: int = 10,
     timeout_seconds: float = 20.0,
     request_delay_seconds: float = 1.0,
     max_attempts: int = 3,
@@ -57,6 +58,7 @@ def fetch_targets(
                 scope = (target.apple_app_id, country.lower(), sort_by)
                 known_review_ids = known_review_ids_by_scope.get(scope, set())
                 pages_for_scope = 0
+                consecutive_empty_pages = 0
                 for page_number in range(1, max_pages_per_app_country + 1):
                     if pages_for_scope and request_delay_seconds:
                         sleep_fn(request_delay_seconds)
@@ -74,12 +76,18 @@ def fetch_targets(
                         sleep_fn=sleep_fn,
                     )
                     overlap_count = sum(1 for review in reviews if review.review_id in known_review_ids)
+                    if page_report.status == "ok" and page_report.review_count == 0:
+                        consecutive_empty_pages += 1
+                    else:
+                        consecutive_empty_pages = 0
                     terminal_reason = terminal_reason_for_page(
                         page_report,
                         page_number=page_number,
                         max_pages_per_app_country=max_pages_per_app_country,
+                        max_consecutive_empty_pages=max_consecutive_empty_pages,
                         overlap_count=overlap_count,
                         known_review_count=len(known_review_ids),
+                        consecutive_empty_pages=consecutive_empty_pages,
                         use_overlap_stop=use_overlap_stop,
                     )
                     page_report = replace(
@@ -92,7 +100,7 @@ def fetch_targets(
                     pages_for_scope += 1
 
                     if terminal_reason:
-                        warning_reasons = {"page_cap", "empty_page_before_overlap"}
+                        warning_reasons = {"page_cap", "empty_page_before_overlap", "empty_page_after_sparse_scan"}
                         if terminal_reason in warning_reasons:
                             warning_scopes.append(
                                 {
@@ -127,6 +135,14 @@ def fetch_targets(
         "fetched_pages": sum(1 for page in page_reports if page.get("status") == "ok"),
         "fetch_errors": sum(1 for page in page_reports if page.get("status") == "error"),
         "empty_pages": sum(1 for page in page_reports if page.get("status") == "ok" and page.get("review_count") == 0),
+        "sparse_empty_pages": sum(
+            1
+            for page in page_reports
+            if page.get("status") == "ok"
+            and page.get("review_count") == 0
+            and page.get("has_next_link")
+            and not page.get("terminal_reason")
+        ),
         "review_count": len(review_rows),
         "unique_review_count": len({row.get("review_key") for row in review_rows if row.get("review_key")}),
         "capped_scopes": capped_scopes,
@@ -139,15 +155,24 @@ def terminal_reason_for_page(
     *,
     page_number: int,
     max_pages_per_app_country: int,
+    max_consecutive_empty_pages: int,
     overlap_count: int,
     known_review_count: int,
+    consecutive_empty_pages: int,
     use_overlap_stop: bool,
 ) -> str | None:
     if page_report.status != "ok":
         return "fetch_error"
     if page_report.review_count == 0:
+        if page_report.has_next_link and page_number < max_pages_per_app_country:
+            if max_consecutive_empty_pages <= 0 or consecutive_empty_pages < max_consecutive_empty_pages:
+                return None
         if use_overlap_stop and known_review_count > 0 and overlap_count == 0:
             return "empty_page_before_overlap"
+        if page_report.has_next_link and page_number < max_pages_per_app_country:
+            return "empty_page_after_sparse_scan"
+        if page_number >= max_pages_per_app_country:
+            return "page_cap"
         return "empty_page"
     if use_overlap_stop and overlap_count > 0:
         return "caught_up_to_existing_reviews"

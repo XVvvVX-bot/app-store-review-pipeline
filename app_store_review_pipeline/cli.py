@@ -6,6 +6,7 @@ from pathlib import Path
 
 from app_store_review_pipeline.config import (
     DEFAULT_DATABASE_URL,
+    DEFAULT_MAX_CONSECUTIVE_EMPTY_PAGES,
     DEFAULT_MAX_ATTEMPTS,
     DEFAULT_MAX_PAGES_PER_APP_COUNTRY,
     DEFAULT_RAW_ROOT,
@@ -76,6 +77,12 @@ def add_fetch_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--raw-root", type=Path, default=DEFAULT_RAW_ROOT)
     parser.add_argument("--sort-by", default=DEFAULT_SORT_BY)
     parser.add_argument("--max-pages-per-app-country", type=int, default=DEFAULT_MAX_PAGES_PER_APP_COUNTRY)
+    parser.add_argument(
+        "--max-consecutive-empty-pages",
+        type=int,
+        default=DEFAULT_MAX_CONSECUTIVE_EMPTY_PAGES,
+        help="Continue across RSS pages that are empty but still advertise a next page, up to this streak length.",
+    )
     parser.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
     parser.add_argument("--request-delay-seconds", type=float, default=DEFAULT_REQUEST_DELAY_SECONDS)
     parser.add_argument("--max-attempts", type=int, default=DEFAULT_MAX_ATTEMPTS)
@@ -112,6 +119,7 @@ def command_fetch(args: argparse.Namespace) -> int:
         run_id,
         sort_by=args.sort_by,
         max_pages_per_app_country=args.max_pages_per_app_country,
+        max_consecutive_empty_pages=args.max_consecutive_empty_pages,
         timeout_seconds=args.timeout_seconds,
         request_delay_seconds=args.request_delay_seconds,
         max_attempts=args.max_attempts,
@@ -133,6 +141,7 @@ def summarize_fetch_cli(report: dict) -> dict:
         "unique_reviews": report.get("unique_review_count", 0),
         "fetch_errors": report.get("fetch_errors", 0),
         "capped_scopes": len(report.get("capped_scopes", [])),
+        "sparse_empty_pages": report.get("sparse_empty_pages", 0),
     }
 
 

@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 
 from app_store_review_pipeline.apple_rss import apple_rss_url, normalize_entries, parse_apple_review
-from app_store_review_pipeline.fetcher import terminal_reason_for_page
-from app_store_review_pipeline.models import ReviewPage
+from app_store_review_pipeline.fetcher import fetch_targets, terminal_reason_for_page
+from app_store_review_pipeline.models import AppTarget, ReviewPage
 from app_store_review_pipeline.postgres_database import mask_database_url, scope_key
 from app_store_review_pipeline.targets import active_targets, load_targets, parse_countries
 
@@ -50,7 +50,7 @@ def write_targets(path: Path):
         )
 
 
-def page(status="ok", review_count=50):
+def page(status="ok", review_count=50, has_next_link=False):
     return ReviewPage(
         page_key="run:app:us:mostrecent:1",
         run_id="run",
@@ -75,11 +75,69 @@ def page(status="ok", review_count=50):
         missing_updated_count=0,
         max_updated_epoch_seconds=100,
         min_updated_epoch_seconds=50,
-        has_next_link=False,
+        has_next_link=has_next_link,
         attempt_count=1,
         error_message=None,
         terminal_reason=None,
         overlap_review_count=0,
+    )
+
+
+class FakeResponse:
+    def __init__(self, payload: dict, status_code: int = 200):
+        self.payload = payload
+        self.status_code = status_code
+        self.content = str(payload).encode("utf-8")
+
+    def json(self):
+        return self.payload
+
+
+class FakeSession:
+    def __init__(self, payloads: list[dict]):
+        self.payloads = list(payloads)
+
+    def get(self, *args, **kwargs):
+        if not self.payloads:
+            raise AssertionError("No fake response payloads remaining")
+        return FakeResponse(self.payloads.pop(0))
+
+    def close(self):
+        pass
+
+
+def empty_payload(has_next=True):
+    links = [{"attributes": {"rel": "next", "href": "https://example.test/next"}}] if has_next else []
+    return {"feed": {"title": {"label": "iTunes Store: Customer Reviews"}, "link": links}}
+
+
+def review_payload(review_id="review-1", has_next=True):
+    links = [{"attributes": {"rel": "next", "href": "https://example.test/next"}}] if has_next else []
+    return {
+        "feed": {
+            "title": {"label": "iTunes Store: Customer Reviews"},
+            "link": links,
+            "entry": {
+                "author": {"name": {"label": "Reviewer"}},
+                "updated": {"label": "2026-06-17T01:02:03-07:00"},
+                "im:rating": {"label": "5"},
+                "id": {"label": review_id},
+                "title": {"label": "Useful"},
+                "content": {"label": "Useful review text"},
+            },
+        }
+    }
+
+
+def fixture_target():
+    return AppTarget(
+        app_name="Fixture",
+        category="test",
+        apple_app_id="123456789",
+        apple_slug="fixture",
+        countries=("us",),
+        active=True,
+        notes=None,
     )
 
 
@@ -157,8 +215,10 @@ def test_terminal_reason_for_page():
             page(status="error"),
             page_number=1,
             max_pages_per_app_country=10,
+            max_consecutive_empty_pages=10,
             overlap_count=0,
             known_review_count=0,
+            consecutive_empty_pages=0,
             use_overlap_stop=True,
         )
         == "fetch_error"
@@ -168,8 +228,10 @@ def test_terminal_reason_for_page():
             page(review_count=0),
             page_number=1,
             max_pages_per_app_country=10,
+            max_consecutive_empty_pages=10,
             overlap_count=0,
             known_review_count=0,
+            consecutive_empty_pages=1,
             use_overlap_stop=True,
         )
         == "empty_page"
@@ -179,19 +241,49 @@ def test_terminal_reason_for_page():
             page(review_count=0),
             page_number=1,
             max_pages_per_app_country=10,
+            max_consecutive_empty_pages=10,
             overlap_count=0,
             known_review_count=100,
+            consecutive_empty_pages=1,
             use_overlap_stop=True,
         )
         == "empty_page_before_overlap"
     )
     assert (
         terminal_reason_for_page(
+            page(review_count=0, has_next_link=True),
+            page_number=1,
+            max_pages_per_app_country=10,
+            max_consecutive_empty_pages=10,
+            overlap_count=0,
+            known_review_count=100,
+            consecutive_empty_pages=1,
+            use_overlap_stop=True,
+        )
+        is None
+    )
+    assert (
+        terminal_reason_for_page(
+            page(review_count=0, has_next_link=True),
+            page_number=3,
+            max_pages_per_app_country=10,
+            max_consecutive_empty_pages=3,
+            overlap_count=0,
+            known_review_count=0,
+            consecutive_empty_pages=3,
+            use_overlap_stop=True,
+        )
+        == "empty_page_after_sparse_scan"
+    )
+    assert (
+        terminal_reason_for_page(
             page(),
             page_number=1,
             max_pages_per_app_country=10,
+            max_consecutive_empty_pages=10,
             overlap_count=1,
             known_review_count=100,
+            consecutive_empty_pages=0,
             use_overlap_stop=True,
         )
         == "caught_up_to_existing_reviews"
@@ -201,12 +293,56 @@ def test_terminal_reason_for_page():
             page(),
             page_number=10,
             max_pages_per_app_country=10,
+            max_consecutive_empty_pages=10,
             overlap_count=0,
             known_review_count=100,
+            consecutive_empty_pages=0,
             use_overlap_stop=True,
         )
         == "page_cap"
     )
+
+
+def test_fetch_targets_continues_across_sparse_empty_pages(tmp_path):
+    report = fetch_targets(
+        [fixture_target()],
+        tmp_path / "raw",
+        "run",
+        max_pages_per_app_country=3,
+        max_consecutive_empty_pages=10,
+        request_delay_seconds=0,
+        retry_delay_seconds=0,
+        sleep_fn=lambda _: None,
+        session=FakeSession([empty_payload(has_next=True), review_payload(), empty_payload(has_next=False)]),
+    )
+
+    assert len(report["page_reports"]) == 3
+    assert report["page_reports"][0]["terminal_reason"] is None
+    assert report["page_reports"][0]["has_next_link"] is True
+    assert report["page_reports"][1]["review_count"] == 1
+    assert report["page_reports"][2]["terminal_reason"] == "page_cap"
+    assert report["review_count"] == 1
+    assert report["sparse_empty_pages"] == 1
+
+
+def test_fetch_targets_stops_after_empty_page_threshold(tmp_path):
+    report = fetch_targets(
+        [fixture_target()],
+        tmp_path / "raw",
+        "run",
+        max_pages_per_app_country=10,
+        max_consecutive_empty_pages=2,
+        request_delay_seconds=0,
+        retry_delay_seconds=0,
+        sleep_fn=lambda _: None,
+        session=FakeSession([empty_payload(has_next=True), empty_payload(has_next=True), review_payload()]),
+    )
+
+    assert len(report["page_reports"]) == 2
+    assert report["page_reports"][0]["terminal_reason"] is None
+    assert report["page_reports"][1]["terminal_reason"] == "empty_page_after_sparse_scan"
+    assert report["review_count"] == 0
+    assert report["warning_scopes"][0]["reason"] == "empty_page_after_sparse_scan"
 
 
 def test_database_helpers():

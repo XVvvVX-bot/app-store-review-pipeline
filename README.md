@@ -11,6 +11,7 @@ The pipeline uses Apple's public iTunes customer reviews RSS JSON feed, stores c
 - No login, cookies, CAPTCHA solving, proxy rotation, hidden endpoints, or App Store Connect credentials.
 - No routine CSV export; Postgres is the cumulative store.
 - The RSS feed is a recent-review source, not a guaranteed all-history source.
+- HTML App Store pages are used only for source-health diagnostics, not as the main ingestion path. See [docs/source_notes.md](docs/source_notes.md).
 
 ## Architecture
 
@@ -33,6 +34,8 @@ https://itunes.apple.com/{country}/rss/customerreviews/page={page}/id={app_id}/s
 ```
 
 The default 10-page cap reflects the observed Apple RSS limit of about 500 recent reviews per app-country scope. On incremental runs, the fetcher stops earlier when a page contains review IDs that are already in Postgres.
+
+Apple's legacy RSS can return sparse pages: an empty `feed.entry` page may still include a `next` link, and later pages may contain review rows. For that reason, empty pages with `next` links are skipped through by default until the page cap or `--max-consecutive-empty-pages` is reached.
 
 ## Install
 
@@ -78,6 +81,7 @@ Run the full daily pipeline:
 .venv/bin/python app_store_pipeline.py daily \
   --database-url postgresql:///app_store_reviews \
   --max-pages-per-app-country 10 \
+  --max-consecutive-empty-pages 10 \
   --request-delay-seconds 1
 ```
 
@@ -131,6 +135,7 @@ The daily workflow defaults to:
 - database: `postgresql:///app_store_reviews`
 - secret override: `APP_STORE_DATABASE_URL`
 - max pages per app-country: `10`
+- max consecutive empty RSS pages with `next` links: `10`
 - overlap stop: enabled
 
 Before relying on automation, register a self-hosted runner for this GitHub repository and make sure local Postgres is running.
