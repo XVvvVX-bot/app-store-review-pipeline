@@ -112,6 +112,8 @@ Run a controlled web catalog ingestion trial with:
   --web-429-backoff-multiplier 1.5
 ```
 
+The matching `App Store Web Catalog Ingestion` workflow runs this conservative profile on the self-hosted macOS ARM64 runner every 6 hours at `15 3,9,15,21 * * *`. It writes to the local Postgres database, stores rows with `source='apple_app_store_web_catalog_reviews'`, and uploads `data/raw/apple_web_catalog/` plus `data/reports/apple_web_catalog/` as audit artifacts. Keep `limit=1` and `target_offset=auto` as the routine setting until the web catalog path has more operational history.
+
 Run a rendered HTML probe with Playwright when we need browser-level evidence:
 
 ```bash

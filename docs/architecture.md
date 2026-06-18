@@ -70,6 +70,8 @@ For high-volume apps, the safest response is a shorter schedule cadence or a lic
 
 The web catalog ingestion path uses the same review-ID overlap idea, but source identity is separate from RSS. A web catalog run can stop when it sees an already-known web catalog review ID for that app-country-sort scope. The currently validated public profile is one app per run, up to 25 web pages, `limit=20`, 5-second request delay, and bounded 429 retry/backoff.
 
+The `App Store Web Catalog Ingestion` workflow runs that profile as a controlled self-hosted Postgres ingestion trial. It is intentionally separate from the RSS daily workflow, so web catalog rows can be evaluated without changing the production baseline.
+
 ## Storage
 
 Postgres is the cumulative store. Raw JSON and daily reports are artifacts for audit/debugging; they are not the source of truth after loading.

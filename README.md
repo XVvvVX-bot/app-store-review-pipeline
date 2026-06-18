@@ -311,11 +311,12 @@ If the pipeline reaches page 10 without overlap, the scope is marked `backlogged
 
 ## GitHub Actions
 
-Seven workflows are included:
+Eight workflows are included:
 
 - `CI`: runs unit tests on GitHub-hosted Ubuntu.
 - `App Store Review Pipeline`: runs the real daily ingestion on a self-hosted macOS ARM64 runner so it can reach the local Postgres database on this Mac.
 - `App Store Web Catalog Canary`: runs a bounded RSS vs web catalog `sort=recent` comparison on GitHub-hosted Ubuntu. It does not write Postgres and is used only to compare candidate source stability and review volume against RSS.
+- `App Store Web Catalog Ingestion`: runs the experimental web catalog ingestion on the self-hosted macOS ARM64 runner and writes rows to local Postgres under `source='apple_app_store_web_catalog_reviews'`.
 - `App Store Provider Compare`: manual-only RSS vs 42matters comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_42MATTERS_TOKEN` repository secret and does not write Postgres.
 - `App Store AppTweak Compare`: manual-only RSS vs AppTweak comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_APPTWEAK_TOKEN` repository secret and does not write Postgres.
 - `App Store Appfigures Compare`: manual-only RSS vs Appfigures Public Data comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_APPFIGURES_TOKEN` repository secret and does not write Postgres.
@@ -336,19 +337,39 @@ The web catalog canary defaults to:
 
 - schedule: every 6 hours, offset 30 minutes from the RSS workflow
 - runner: GitHub-hosted Ubuntu
-- target limit: `20`
-- web catalog pages per app-country: `5`
+- target limit: `1`
+- target offset: `auto`
+- web catalog pages per app-country: `25`
 - web catalog reviews per page: `20`
 - sort: `recent`
-- web catalog request delay: `2` seconds
-- HTTP 429 retries: `3`
-- HTTP 429 retry delay: `45` seconds
-- HTTP 429 backoff multiplier: `1`
+- web catalog request delay: `5` seconds
+- HTTP 429 retries: `5`
+- HTTP 429 retry delay: `60` seconds
+- HTTP 429 backoff multiplier: `1.5`
+- web time budget: `1200` seconds
 - HTML page probe: skipped by default
 - stop after each app-country matches its RSS review count: enabled by default
 - RSS pages per app-country: `10`
 
 Its artifact contains `data/reports/source_compare/{run_id}/source_comparison_report.json`, the readable `source_comparison_report.md`, plus the raw RSS comparison files under `data/raw/source_compare/{run_id}/rss/`. Compare several runs before promoting web catalog reviews into the production ingestion path. The canary is intentionally a capacity-and-stability comparison, not a tiny liveness probe: RSS can return up to 50 reviews on one page while web catalog currently accepts `limit=20` per page, so web catalog must prove it can add enough value at predictable runtime. Use manual runs with higher `max_web_pages` only for deeper stress tests; keep RSS-parity stopping enabled unless you are deliberately stress-testing post-parity pagination. The comparison section includes `web_configured_review_ceiling`, `web_pages_per_scope_needed_for_rss_parity`, `web_volume_gap_likely_configuration_limited`, `web_unrecovered_429_page_count`, `web_catalog_target_reached_scopes`, and `web_catalog_stop_reasons` to show whether a lower web count is caused by the configured page cap, successful parity stopping, or deep-pagination instability. Read `source_decision.status` first: `web_catalog_replacement_candidate` is the only public-web result that can justify repeated promotion testing; `rss_baseline_empty`, `needs_deeper_web_catalog_run`, `same_order_but_not_replacement`, and `web_catalog_unstable_after_retry` are not production replacement outcomes.
+
+The web catalog ingestion workflow defaults to:
+
+- schedule: every 6 hours, offset 15 minutes from the RSS workflow and 15 minutes before the canary
+- runner: self-hosted macOS ARM64
+- database: `postgresql:///app_store_reviews`
+- secret override: `APP_STORE_DATABASE_URL`
+- target limit: `1`
+- target offset: `auto`
+- web catalog pages per app-country: `25`
+- web catalog reviews per page: `20`
+- web catalog request delay: `5` seconds
+- HTTP 429 retries: `5`
+- HTTP 429 retry delay: `60` seconds
+- HTTP 429 backoff multiplier: `1.5`
+- overlap stop: enabled
+
+This workflow is a controlled ingestion trial, not a replacement of the RSS daily workflow. It stores web catalog rows with a separate source key, so analysts can compare RSS and web catalog coverage in the same Postgres database without overwriting RSS rows.
 
 A conservative manual deep profile for replacement-source testing is:
 

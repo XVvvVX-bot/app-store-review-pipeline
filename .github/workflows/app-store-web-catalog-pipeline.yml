@@ -1,0 +1,159 @@
+name: App Store Web Catalog Ingestion
+
+on:
+  schedule:
+    # Experimental single-app web catalog ingestion, offset from RSS daily and web canary jobs.
+    - cron: "15 3,9,15,21 * * *"
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Maximum active targets to ingest"
+        required: false
+        default: "1"
+        type: string
+      target_offset:
+        description: "Number of active targets to skip before applying limit, or auto for scheduled-style rotation"
+        required: false
+        default: "auto"
+        type: string
+      max_pages_per_app_country:
+        description: "Maximum web catalog review pages per app-country scope"
+        required: false
+        default: "25"
+        type: string
+      review_limit:
+        description: "Requested web catalog reviews per page; Apple currently caps this at 20"
+        required: false
+        default: "20"
+        type: string
+      request_delay_seconds:
+        description: "Delay between web catalog requests"
+        required: false
+        default: "5"
+        type: string
+      web_429_retries:
+        description: "Retries after HTTP 429"
+        required: false
+        default: "5"
+        type: string
+      web_429_retry_seconds:
+        description: "Delay before retrying HTTP 429"
+        required: false
+        default: "60"
+        type: string
+      web_429_backoff_multiplier:
+        description: "Multiplier applied to HTTP 429 retry delay on each additional retry"
+        required: false
+        default: "1.5"
+        type: string
+      disable_overlap_stop:
+        description: "Fetch to page cap even after already-known web catalog review IDs are seen"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-store-web-catalog-ingestion
+  cancel-in-progress: false
+
+jobs:
+  web-catalog:
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 60
+    env:
+      PIP_CONFIG_FILE: /dev/null
+      PIP_USER: "false"
+      INPUT_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '1' }}
+      INPUT_TARGET_OFFSET: ${{ github.event_name == 'workflow_dispatch' && inputs.target_offset || 'auto' }}
+      INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ github.event_name == 'workflow_dispatch' && inputs.max_pages_per_app_country || '25' }}
+      INPUT_REVIEW_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.review_limit || '20' }}
+      INPUT_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '5' }}
+      INPUT_WEB_429_RETRIES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retries || '5' }}
+      INPUT_WEB_429_RETRY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_seconds || '60' }}
+      INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_backoff_multiplier || '1.5' }}
+      INPUT_DISABLE_OVERLAP_STOP: ${{ github.event_name == 'workflow_dispatch' && inputs.disable_overlap_stop || 'false' }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Create Python virtualenv
+        run: |
+          set -euo pipefail
+          python3.12 -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+
+      - name: Install dependencies
+        run: .venv/bin/python -m pip install -r requirements.txt
+
+      - name: Check local Postgres
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          .venv/bin/python app_store_pipeline.py init-postgres --database-url "$database_url"
+
+      - name: Run tests
+        run: .venv/bin/python -m pytest -q
+
+      - name: Run web catalog ingestion
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          target_offset="$INPUT_TARGET_OFFSET"
+          if [[ "$target_offset" == "auto" ]]; then
+            target_offset="$(.venv/bin/python - <<'PY'
+          import csv
+          import os
+          import time
+
+          limit = max(1, int(os.environ.get("INPUT_LIMIT", "1") or "1"))
+          with open("data/targets/apple_apps.csv", newline="", encoding="utf-8") as handle:
+              active_count = sum(
+                  1
+                  for row in csv.DictReader(handle)
+                  if str(row.get("active", "")).strip().lower() in {"1", "true", "yes", "y"}
+              )
+          if active_count <= 0:
+              print(0)
+          else:
+              slot = int(time.time() // (6 * 60 * 60))
+              print((slot * limit) % active_count)
+          PY
+          )"
+          fi
+          echo "Using target offset: $target_offset"
+
+          overlap_flag=""
+          if [ "$INPUT_DISABLE_OVERLAP_STOP" = "true" ]; then
+            overlap_flag="--disable-overlap-stop"
+          fi
+
+          .venv/bin/python app_store_pipeline.py daily-web-catalog \
+            --database-url "$database_url" \
+            --limit "$INPUT_LIMIT" \
+            --target-offset "$target_offset" \
+            --max-pages-per-app-country "$INPUT_MAX_PAGES_PER_APP_COUNTRY" \
+            --review-limit "$INPUT_REVIEW_LIMIT" \
+            --request-delay-seconds "$INPUT_REQUEST_DELAY_SECONDS" \
+            --web-429-retries "$INPUT_WEB_429_RETRIES" \
+            --web-429-retry-seconds "$INPUT_WEB_429_RETRY_SECONDS" \
+            --web-429-backoff-multiplier "$INPUT_WEB_429_BACKOFF_MULTIPLIER" \
+            $overlap_flag
+
+      - name: Upload web catalog ingestion artifacts
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-store-web-catalog-ingestion-${{ github.run_id }}
+          retention-days: 14
+          if-no-files-found: ignore
+          path: |
+            data/raw/apple_web_catalog/
+            data/reports/apple_web_catalog/
