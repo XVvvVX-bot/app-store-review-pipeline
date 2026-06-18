@@ -86,7 +86,7 @@ jobs:
       INPUT_WEB_429_RETRY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_seconds || '60' }}
       INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_backoff_multiplier || '1.5' }}
       INPUT_DISABLE_OVERLAP_STOP: ${{ github.event_name == 'workflow_dispatch' && inputs.disable_overlap_stop || 'false' }}
-      INPUT_STOP_AT_RSS_PARITY: ${{ github.event_name == 'workflow_dispatch' && inputs.stop_at_rss_parity || 'true' }}
+      INPUT_STOP_AT_RSS_PARITY: ${{ github.event_name != 'workflow_dispatch' || inputs.stop_at_rss_parity }}
 
     steps:
       - name: Check out repository
