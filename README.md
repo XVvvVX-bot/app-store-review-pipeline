@@ -166,6 +166,7 @@ Summarize downloaded web catalog ingestion artifacts:
 ```
 
 Use `--full-single-app-only` when judging the routine single-app profile; leave it off when analyzing manual depth-limit probes.
+When `--database-url` is provided, the summary also includes a web catalog depth section from Postgres page/review tables. Use it to distinguish an observed lower bound, such as a run stopping at RSS parity or page cap while the terminal page still had `next`, from a true catalog-exhaustion limit.
 
 Summarize cumulative RSS vs web catalog coverage directly from Postgres:
 
@@ -415,6 +416,7 @@ The web catalog ingestion workflow defaults to:
 This workflow is a controlled ingestion trial, not a replacement of the RSS daily workflow. It stores web catalog rows with a separate source key, so analysts can compare RSS and web catalog coverage in the same Postgres database without overwriting RSS rows. The scheduled profile uses RSS-parity stopping so high-volume apps can go beyond the old 25-page / 500-review ceiling when needed, while still stopping early once web catalog has matched the RSS-sized current window. When `target_offset=auto`, the workflow asks the source coverage scorecard for the highest-priority app-country scope below RSS parity, preferring scopes that can reach parity within the configured page cap.
 
 The web catalog `daily_report.json` includes stability fields in `fetch_summary`, including `status_code_counts`, `attempt_counts`, `retried_pages`, `final_non_200_pages`, `missing_text`, `missing_rating`, and `all_pages_ok_after_retry`. For source decisions, read these fields together with `reviews`, `unique_reviews`, and the Postgres row counts by `source`.
+The ingestion history summary adds cumulative depth evidence such as max page reached, apps at or above 500 unique web catalog reviews, final non-200 pages, and whether the terminal page still had a `next` link.
 
 Manual workflow dispatch includes `start_page` for depth probes. Routine scheduled runs should keep `start_page=1`; use values above 1 only for controlled limit tests after preserving artifact evidence.
 

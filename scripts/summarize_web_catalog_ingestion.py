@@ -305,10 +305,127 @@ def summarize_database(database_url: str) -> dict[str, Any]:
             """,
             (WEB_CATALOG_SOURCE,),
         ).fetchall()
+        web_depth_rows = connection.execute(
+            """
+            WITH page_summary AS (
+                SELECT
+                    app_id,
+                    app_name,
+                    country,
+                    MIN(page_number) AS min_page_number,
+                    MAX(page_number) AS max_page_number,
+                    COUNT(*) AS page_rows,
+                    COALESCE(SUM(review_count), 0) AS page_observed_review_rows,
+                    COALESCE(SUM(CASE WHEN attempt_count > 1 THEN 1 ELSE 0 END), 0) AS retried_pages,
+                    COALESCE(SUM(CASE WHEN status_code = 429 THEN 1 ELSE 0 END), 0) AS final_429_pages,
+                    COALESCE(
+                        SUM(
+                            CASE
+                                WHEN status_code IS NOT NULL
+                                    AND (status_code < 200 OR status_code >= 300)
+                                THEN 1
+                                ELSE 0
+                            END
+                        ),
+                        0
+                    ) AS final_non_200_pages,
+                    COALESCE(SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END), 0) AS fetch_error_pages,
+                    MAX(COALESCE(has_next_link, 0)) AS has_next_link_on_any_page,
+                    MAX(
+                        CASE
+                            WHEN terminal_reason IS NOT NULL THEN COALESCE(has_next_link, 0)
+                            ELSE 0
+                        END
+                    ) AS terminal_page_had_next_link,
+                    MAX(CASE WHEN terminal_reason IS NOT NULL THEN page_number ELSE NULL END) AS terminal_page_number,
+                    STRING_AGG(DISTINCT terminal_reason, ', ' ORDER BY terminal_reason)
+                        FILTER (WHERE terminal_reason IS NOT NULL) AS terminal_reasons
+                FROM app_store_review_pages
+                WHERE source = %s
+                GROUP BY app_id, app_name, country
+            ),
+            review_summary AS (
+                SELECT app_id, country, COUNT(*) AS unique_review_rows
+                FROM app_store_reviews
+                WHERE source = %s
+                GROUP BY app_id, country
+            )
+            SELECT
+                page_summary.*,
+                COALESCE(review_summary.unique_review_rows, 0) AS unique_review_rows
+            FROM page_summary
+            LEFT JOIN review_summary
+                ON review_summary.app_id = page_summary.app_id
+                AND review_summary.country = page_summary.country
+            ORDER BY unique_review_rows DESC, max_page_number DESC, app_name
+            """,
+            (WEB_CATALOG_SOURCE, WEB_CATALOG_SOURCE),
+        ).fetchall()
+    web_catalog_depth = summarize_web_catalog_depth_rows([dict(row) for row in web_depth_rows])
     return {
         "database_url": mask_database_url(database_url),
         "source_rows": [dict(row) for row in source_rows],
         "web_catalog_apps": [dict(row) for row in web_app_rows],
+        "web_catalog_depth": web_catalog_depth,
+    }
+
+
+def summarize_web_catalog_depth_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    apps = []
+    for row in rows:
+        unique_review_rows = int_or_zero(row.get("unique_review_rows"))
+        page_observed_review_rows = int_or_zero(row.get("page_observed_review_rows"))
+        max_page_number = int_or_zero(row.get("max_page_number"))
+        terminal_reasons = str(row.get("terminal_reasons") or "")
+        has_next = int_or_zero(row.get("has_next_link_on_any_page")) > 0
+        terminal_page_had_next = int_or_zero(row.get("terminal_page_had_next_link")) > 0
+        apps.append(
+            {
+                "app_id": row.get("app_id"),
+                "app_name": row.get("app_name"),
+                "country": row.get("country"),
+                "min_page_number": int_or_zero(row.get("min_page_number")),
+                "max_page_number": max_page_number,
+                "page_rows": int_or_zero(row.get("page_rows")),
+                "page_observed_review_rows": page_observed_review_rows,
+                "unique_review_rows": unique_review_rows,
+                "retried_pages": int_or_zero(row.get("retried_pages")),
+                "final_429_pages": int_or_zero(row.get("final_429_pages")),
+                "final_non_200_pages": int_or_zero(row.get("final_non_200_pages")),
+                "fetch_error_pages": int_or_zero(row.get("fetch_error_pages")),
+                "has_next_link_on_any_page": has_next,
+                "terminal_page_had_next_link": terminal_page_had_next,
+                "terminal_page_number": int_or_zero(row.get("terminal_page_number")) or None,
+                "terminal_reasons": terminal_reasons,
+                "exceeds_500_unique_reviews": unique_review_rows > 500,
+                "hit_page_cap_with_next_link": "page_cap" in terminal_reasons and has_next,
+                "stopped_before_catalog_exhaustion": terminal_page_had_next,
+            }
+        )
+    apps.sort(
+        key=lambda row: (
+            int_or_zero(row.get("unique_review_rows")),
+            int_or_zero(row.get("max_page_number")),
+            str(row.get("app_name") or ""),
+        ),
+        reverse=True,
+    )
+    max_depth_app = apps[0] if apps else None
+    return {
+        "app_scope_count": len(apps),
+        "apps_over_500_unique_reviews": sum(1 for row in apps if row["exceeds_500_unique_reviews"]),
+        "apps_at_or_above_500_unique_reviews": sum(1 for row in apps if row["unique_review_rows"] >= 500),
+        "max_unique_reviews_for_one_app": max((row["unique_review_rows"] for row in apps), default=0),
+        "max_page_reached": max((row["max_page_number"] for row in apps), default=0),
+        "page_cap_with_next_link_scopes": sum(1 for row in apps if row["hit_page_cap_with_next_link"]),
+        "stopped_before_catalog_exhaustion_scopes": sum(
+            1 for row in apps if row["stopped_before_catalog_exhaustion"]
+        ),
+        "final_non_200_pages_total": sum(row["final_non_200_pages"] for row in apps),
+        "final_429_pages_total": sum(row["final_429_pages"] for row in apps),
+        "retried_pages_total": sum(row["retried_pages"] for row in apps),
+        "max_depth_app": max_depth_app,
+        "apps": apps,
     }
 
 
@@ -396,6 +513,53 @@ def render_markdown_summary(summary: dict[str, Any]) -> str:
                 + " |"
             )
         lines.append("")
+        depth = database.get("web_catalog_depth") or {}
+        if depth:
+            max_depth_app = depth.get("max_depth_app") or {}
+            lines.extend(
+                [
+                    "### Web Catalog Depth Evidence",
+                    "",
+                    f"- App-country scopes with web catalog pages: `{depth.get('app_scope_count', 0)}`",
+                    f"- Apps at or above 500 unique reviews: `{depth.get('apps_at_or_above_500_unique_reviews', 0)}`",
+                    f"- Apps above 500 unique reviews: `{depth.get('apps_over_500_unique_reviews', 0)}`",
+                    f"- Max unique reviews for one app-country: `{depth.get('max_unique_reviews_for_one_app', 0)}`",
+                    f"- Max page reached: `{depth.get('max_page_reached', 0)}`",
+                    f"- Page-cap scopes that still had a next link: `{depth.get('page_cap_with_next_link_scopes', 0)}`",
+                    f"- Scopes stopped while terminal page still had next: "
+                    f"`{depth.get('stopped_before_catalog_exhaustion_scopes', 0)}`",
+                    f"- Final 429 / non-200 pages: `{depth.get('final_429_pages_total', 0)} / {depth.get('final_non_200_pages_total', 0)}`",
+                    f"- Deepest app-country: `{max_depth_app.get('app_name') or ''}` "
+                    f"`{max_depth_app.get('country') or ''}` "
+                    f"with `{max_depth_app.get('unique_review_rows') or 0}` unique reviews through page "
+                    f"`{max_depth_app.get('max_page_number') or 0}`",
+                    "",
+                    "| App | App ID | Country | Unique Reviews | Max Page | Page Rows | Observed Page Reviews | Retried Pages | Final Non-200 | Terminal Reasons | Terminal Had Next | Next At Cap |",
+                    "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |",
+                ]
+            )
+            for row in (depth.get("apps") or [])[:20]:
+                lines.append(
+                    "| "
+                    + " | ".join(
+                        [
+                            markdown_escape(str(row.get("app_name") or "")),
+                            markdown_escape(str(row.get("app_id") or "")),
+                            markdown_escape(str(row.get("country") or "")),
+                            str(row.get("unique_review_rows") or 0),
+                            str(row.get("max_page_number") or 0),
+                            str(row.get("page_rows") or 0),
+                            str(row.get("page_observed_review_rows") or 0),
+                            str(row.get("retried_pages") or 0),
+                            str(row.get("final_non_200_pages") or 0),
+                            markdown_escape(str(row.get("terminal_reasons") or "")),
+                            bool_label(row.get("terminal_page_had_next_link")),
+                            bool_label(row.get("hit_page_cap_with_next_link")),
+                        ]
+                    )
+                    + " |"
+                )
+            lines.append("")
 
     lines.extend(
         [

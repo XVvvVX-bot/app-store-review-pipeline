@@ -67,6 +67,7 @@ from scripts.summarize_source_comparisons import (
 from scripts.summarize_source_coverage import choose_next_web_catalog_scope, summarize_scope_records
 from scripts.summarize_web_catalog_ingestion import (
     render_markdown_summary as render_web_ingestion_markdown_summary,
+    summarize_web_catalog_depth_rows,
 )
 from scripts.summarize_web_catalog_ingestion import (
     summarize_history_from_reports as summarize_web_ingestion_history_from_reports,
@@ -1871,6 +1872,104 @@ def test_web_catalog_ingestion_history_uses_effective_start_page_from_raw_report
     assert summary["runs"][0]["requested_start_page"] == 51
     assert summary["runs"][0]["configured_review_ceiling"] == 2000
     assert summary["runs"][0]["reached_configured_ceiling"] is True
+
+
+def test_web_catalog_depth_summary_marks_over_500_and_open_page_cap():
+    summary = summarize_web_catalog_depth_rows(
+        [
+            {
+                "app_id": "297606951",
+                "app_name": "Amazon Shopping",
+                "country": "us",
+                "min_page_number": 1,
+                "max_page_number": 175,
+                "page_rows": 225,
+                "page_observed_review_rows": 4500,
+                "unique_review_rows": 3500,
+                "retried_pages": 8,
+                "final_429_pages": 0,
+                "final_non_200_pages": 0,
+                "fetch_error_pages": 0,
+                "has_next_link_on_any_page": 1,
+                "terminal_page_had_next_link": 1,
+                "terminal_page_number": 175,
+                "terminal_reasons": "page_cap",
+            },
+            {
+                "app_id": "351727428",
+                "app_name": "Venmo",
+                "country": "us",
+                "min_page_number": 1,
+                "max_page_number": 25,
+                "page_rows": 25,
+                "page_observed_review_rows": 500,
+                "unique_review_rows": 500,
+                "retried_pages": 0,
+                "final_429_pages": 0,
+                "final_non_200_pages": 0,
+                "fetch_error_pages": 0,
+                "has_next_link_on_any_page": 1,
+                "terminal_page_had_next_link": 1,
+                "terminal_page_number": 25,
+                "terminal_reasons": "page_cap",
+            },
+        ]
+    )
+
+    assert summary["app_scope_count"] == 2
+    assert summary["apps_at_or_above_500_unique_reviews"] == 2
+    assert summary["apps_over_500_unique_reviews"] == 1
+    assert summary["max_unique_reviews_for_one_app"] == 3500
+    assert summary["max_page_reached"] == 175
+    assert summary["page_cap_with_next_link_scopes"] == 2
+    assert summary["stopped_before_catalog_exhaustion_scopes"] == 2
+    assert summary["max_depth_app"]["app_name"] == "Amazon Shopping"
+    assert summary["apps"][0]["hit_page_cap_with_next_link"] is True
+    assert summary["apps"][0]["stopped_before_catalog_exhaustion"] is True
+
+
+def test_web_catalog_depth_markdown_includes_database_depth_section():
+    summary = {
+        "promotion_gate": {"status": "needs_more_evidence", "min_runs": 1, "blocking_reasons": []},
+        "generated_from_report_count": 0,
+        "full_single_app_only": False,
+        "min_reviews_per_run": 500,
+        "aggregate": {},
+        "database": {
+            "database_url": "postgresql:///app_store_reviews",
+            "source_rows": [],
+            "web_catalog_apps": [],
+            "web_catalog_depth": summarize_web_catalog_depth_rows(
+                [
+                    {
+                        "app_id": "297606951",
+                        "app_name": "Amazon Shopping",
+                        "country": "us",
+                        "min_page_number": 1,
+                        "max_page_number": 175,
+                        "page_rows": 225,
+                        "page_observed_review_rows": 4500,
+                        "unique_review_rows": 3500,
+                        "retried_pages": 8,
+                        "final_429_pages": 0,
+                        "final_non_200_pages": 0,
+                        "fetch_error_pages": 0,
+                        "has_next_link_on_any_page": 1,
+                        "terminal_page_had_next_link": 1,
+                        "terminal_page_number": 175,
+                        "terminal_reasons": "page_cap",
+                    }
+                ]
+            ),
+        },
+        "runs": [],
+    }
+
+    markdown = render_web_ingestion_markdown_summary(summary)
+
+    assert "### Web Catalog Depth Evidence" in markdown
+    assert "Amazon Shopping" in markdown
+    assert "Max page reached: `175`" in markdown
 
 
 def test_42matters_reviews_url_and_redaction():
