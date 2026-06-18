@@ -64,7 +64,7 @@ from scripts.summarize_source_comparisons import (
     render_markdown_summary,
     summarize_history_from_reports,
 )
-from scripts.summarize_source_coverage import summarize_scope_records
+from scripts.summarize_source_coverage import choose_next_web_catalog_scope, summarize_scope_records
 from scripts.summarize_web_catalog_ingestion import (
     render_markdown_summary as render_web_ingestion_markdown_summary,
 )
@@ -1699,6 +1699,56 @@ def test_source_coverage_scorecard_marks_parity_and_gaps():
     assert summary["aggregate"]["missing_web_scope_count"] == 1
     assert summary["aggregate"]["web_review_gap_to_rss_total"] == 589
     assert summary["aggregate"]["minimum_web_to_rss_ratio_for_web_scopes"] == pytest.approx(500 / 556)
+
+
+def test_source_coverage_selector_prioritizes_reachable_missing_scope():
+    records = [
+        {
+            "target_index": 1,
+            "app_name": "Already Covered",
+            "rss_has_rows": True,
+            "web_has_rows": True,
+            "rss_reviews": 500,
+            "web_catalog_reviews": 520,
+            "web_at_or_above_rss": True,
+            "web_review_gap_to_rss": 0,
+        },
+        {
+            "target_index": 2,
+            "app_name": "Huge But Over Capacity",
+            "rss_has_rows": True,
+            "web_has_rows": False,
+            "rss_reviews": 1000,
+            "web_catalog_reviews": 0,
+            "web_at_or_above_rss": False,
+            "web_review_gap_to_rss": 1000,
+        },
+        {
+            "target_index": 3,
+            "app_name": "Reachable Missing",
+            "rss_has_rows": True,
+            "web_has_rows": False,
+            "rss_reviews": 650,
+            "web_catalog_reviews": 0,
+            "web_at_or_above_rss": False,
+            "web_review_gap_to_rss": 650,
+        },
+        {
+            "target_index": 4,
+            "app_name": "Partial",
+            "rss_has_rows": True,
+            "web_has_rows": True,
+            "rss_reviews": 620,
+            "web_catalog_reviews": 500,
+            "web_at_or_above_rss": False,
+            "web_review_gap_to_rss": 120,
+        },
+    ]
+
+    selected = choose_next_web_catalog_scope(records, max_pages_per_app_country=35, review_limit=20)
+
+    assert selected is not None
+    assert selected["target_index"] == 3
 
 
 def test_web_catalog_ingestion_markdown_summary_includes_gate(tmp_path):

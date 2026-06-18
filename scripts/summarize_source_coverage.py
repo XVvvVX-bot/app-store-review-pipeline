@@ -121,11 +121,44 @@ def summarize_scope_records(records: list[dict[str, Any]], *, min_parity_scopes:
     }
 
 
+def choose_next_web_catalog_scope(
+    records: list[dict[str, Any]],
+    *,
+    max_pages_per_app_country: int,
+    review_limit: int,
+) -> dict[str, Any] | None:
+    capacity = max(0, max_pages_per_app_country) * max(0, review_limit)
+    candidates = [
+        record
+        for record in records
+        if record["rss_has_rows"] and not record["web_at_or_above_rss"]
+    ]
+    if not candidates:
+        return None
+
+    def rank(record: dict[str, Any]) -> tuple[int, int, int, int]:
+        rss_reviews = int(record.get("rss_reviews") or 0)
+        web_reviews = int(record.get("web_catalog_reviews") or 0)
+        gap = int(record.get("web_review_gap_to_rss") or 0)
+        can_reach_parity = capacity <= 0 or rss_reviews <= capacity
+        missing_web = web_reviews == 0
+        return (
+            1 if can_reach_parity else 0,
+            1 if missing_web else 0,
+            gap,
+            rss_reviews,
+        )
+
+    return max(candidates, key=rank)
+
+
 def summarize_source_coverage(
     *,
     database_url: str,
     targets_path: Path,
     min_parity_scopes: int,
+    max_pages_per_app_country: int = 35,
+    review_limit: int = 20,
 ) -> dict[str, Any]:
     counts = load_source_counts(database_url)
     records = build_scope_records(targets_path, counts)
@@ -136,6 +169,11 @@ def summarize_source_coverage(
             "targets_path": str(targets_path),
             "rss_source": SOURCE,
             "web_catalog_source": WEB_CATALOG_SOURCE,
+            "next_web_catalog_scope": choose_next_web_catalog_scope(
+                records,
+                max_pages_per_app_country=max_pages_per_app_country,
+                review_limit=review_limit,
+            ),
             "scopes": records,
         }
     )
@@ -145,6 +183,7 @@ def summarize_source_coverage(
 def render_markdown_summary(summary: dict[str, Any]) -> str:
     gate = summary.get("promotion_gate") or {}
     aggregate = summary.get("aggregate") or {}
+    next_scope = summary.get("next_web_catalog_scope") or {}
     lines = [
         "# App Store Source Coverage Scorecard",
         "",
@@ -156,6 +195,8 @@ def render_markdown_summary(summary: dict[str, Any]) -> str:
         f"- Web catalog source: `{summary.get('web_catalog_source')}`",
         f"- Minimum parity scopes required: `{gate.get('min_parity_scopes')}`",
         f"- Blocking reasons: `{gate.get('blocking_reasons') or []}`",
+        f"- Next web catalog target offset: `{next_scope.get('target_index', '')}`",
+        f"- Next web catalog target: `{next_scope.get('app_name', '')}` `{next_scope.get('country', '')}`",
         "",
         "## Aggregate",
         "",
@@ -242,6 +283,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--targets", type=Path, default=DEFAULT_TARGETS)
     parser.add_argument("--output-json", type=Path)
     parser.add_argument("--output-markdown", type=Path)
+    parser.add_argument("--max-pages-per-app-country", type=int, default=35)
+    parser.add_argument("--review-limit", type=int, default=20)
+    parser.add_argument(
+        "--print-next-target-offset",
+        action="store_true",
+        help="Print only the target offset for the highest-priority scope below RSS parity.",
+    )
     parser.add_argument(
         "--min-parity-scopes",
         type=int,
@@ -267,7 +315,13 @@ def main(argv: list[str] | None = None) -> int:
         database_url=args.database_url,
         targets_path=args.targets,
         min_parity_scopes=args.min_parity_scopes,
+        max_pages_per_app_country=args.max_pages_per_app_country,
+        review_limit=args.review_limit,
     )
+    if args.print_next_target_offset:
+        next_scope = summary.get("next_web_catalog_scope") or {}
+        print(next_scope.get("target_index", 0))
+        return 0
     write_outputs(summary, args.output_json, args.output_markdown)
     print(json.dumps(summary["promotion_gate"], indent=2, sort_keys=True))
     print(json.dumps(summary["aggregate"], indent=2, sort_keys=True))

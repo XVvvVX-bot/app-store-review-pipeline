@@ -402,7 +402,7 @@ The web catalog ingestion workflow defaults to:
 - database: `postgresql:///app_store_reviews`
 - secret override: `APP_STORE_DATABASE_URL`
 - target limit: `1`
-- target offset: `auto`
+- target offset: `auto`, selected from Postgres coverage gaps instead of simple time rotation
 - web catalog pages per app-country: `35`
 - web catalog reviews per page: `20`
 - web catalog request delay: `5` seconds
@@ -412,7 +412,7 @@ The web catalog ingestion workflow defaults to:
 - overlap stop: enabled
 - stop after each app-country matches its current RSS review count: enabled by default
 
-This workflow is a controlled ingestion trial, not a replacement of the RSS daily workflow. It stores web catalog rows with a separate source key, so analysts can compare RSS and web catalog coverage in the same Postgres database without overwriting RSS rows. The scheduled profile uses RSS-parity stopping so high-volume apps can go beyond the old 25-page / 500-review ceiling when needed, while still stopping early once web catalog has matched the RSS-sized current window.
+This workflow is a controlled ingestion trial, not a replacement of the RSS daily workflow. It stores web catalog rows with a separate source key, so analysts can compare RSS and web catalog coverage in the same Postgres database without overwriting RSS rows. The scheduled profile uses RSS-parity stopping so high-volume apps can go beyond the old 25-page / 500-review ceiling when needed, while still stopping early once web catalog has matched the RSS-sized current window. When `target_offset=auto`, the workflow asks the source coverage scorecard for the highest-priority app-country scope below RSS parity, preferring scopes that can reach parity within the configured page cap.
 
 The web catalog `daily_report.json` includes stability fields in `fetch_summary`, including `status_code_counts`, `attempt_counts`, `retried_pages`, `final_non_200_pages`, `missing_text`, `missing_rating`, and `all_pages_ok_after_retry`. For source decisions, read these fields together with `reviews`, `unique_reviews`, and the Postgres row counts by `source`.
 

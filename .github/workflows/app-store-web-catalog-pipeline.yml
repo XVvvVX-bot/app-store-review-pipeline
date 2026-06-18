@@ -120,25 +120,12 @@ jobs:
           database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
           target_offset="$INPUT_TARGET_OFFSET"
           if [[ "$target_offset" == "auto" ]]; then
-            target_offset="$(.venv/bin/python - <<'PY'
-          import csv
-          import os
-          import time
-
-          limit = max(1, int(os.environ.get("INPUT_LIMIT", "1") or "1"))
-          with open("data/targets/apple_apps.csv", newline="", encoding="utf-8") as handle:
-              active_count = sum(
-                  1
-                  for row in csv.DictReader(handle)
-                  if str(row.get("active", "")).strip().lower() in {"1", "true", "yes", "y"}
-              )
-          if active_count <= 0:
-              print(0)
-          else:
-              slot = int(time.time() // (6 * 60 * 60))
-              print((slot * limit) % active_count)
-          PY
-          )"
+            target_offset="$(.venv/bin/python scripts/summarize_source_coverage.py \
+              --database-url "$database_url" \
+              --targets data/targets/apple_apps.csv \
+              --max-pages-per-app-country "$INPUT_MAX_PAGES_PER_APP_COUNTRY" \
+              --review-limit "$INPUT_REVIEW_LIMIT" \
+              --print-next-target-offset)"
           fi
           echo "Using target offset: $target_offset"
 
