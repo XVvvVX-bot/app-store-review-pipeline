@@ -44,9 +44,9 @@ The web catalog endpoint returns structured JSON review pages and can match the 
 - stop once the web catalog reaches RSS parity
 - hard web time budget
 
-This profile has passed replacement or parity gates for sampled apps including Amazon Shopping, Walmart, Target, Uber, TikTok, DoorDash, Instagram, and YouTube. Larger multi-app deep-pagination batches are not stable enough yet because they hit 429 pressure and time budgets.
+This profile has passed replacement or parity gates for sampled apps including Amazon Shopping, Walmart, Target, Uber, TikTok, DoorDash, Instagram, YouTube, and Netflix. Larger multi-app deep-pagination batches are not stable enough yet because they hit 429 pressure and time budgets.
 
-Manual depth probes show that web catalog can go beyond the RSS-sized 500-review window for some apps: Amazon Shopping has reached 3,500 distinct web catalog reviews through page 175, and the terminal page still had a `next` link. Treat that as a lower-bound depth proof, not a full historical-completeness claim.
+Manual depth probes show that web catalog can go beyond the RSS-sized 500-review window for some apps: Amazon Shopping has reached 5,042 distinct web catalog reviews through page 253, and the terminal page still had a `next` link. Treat that as a lower-bound depth proof, not a full historical-completeness claim.
 
 Use `scripts/summarize_source_comparisons.py` to judge promotion from repeated canary artifacts. As of the June 18, 2026 downloaded canary set, the full single-app profile has 5 clean replacement-candidate runs and passes the current promotion gate: 2,479 RSS reviews vs 2,500 web catalog reviews, 8 recovered `429` pages, 0 unrecovered `429` pages, and 0 incomplete scopes. The mixed all-run history is still not ready because it includes an incomplete multi-app run.
 
