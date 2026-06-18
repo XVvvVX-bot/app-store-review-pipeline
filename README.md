@@ -120,7 +120,7 @@ Compare RSS and web catalog on the same target window:
   --rss-request-delay-seconds 0.5
 ```
 
-`compare-sources` writes `source_comparison_report.json` with RSS volume, web catalog volume, 429 recovery counts, and a single-run candidate gate.
+`compare-sources` writes `source_comparison_report.json` with RSS volume, web catalog volume, 429 recovery counts, a same-order stability gate, and the stricter RSS-replacement gate.
 
 Run tests:
 

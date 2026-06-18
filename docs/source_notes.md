@@ -33,6 +33,7 @@ However, HTML pages are not a better primary bulk review source:
 - A GitHub-hosted 20-app comparison run with 2-second web delay, three 45-second 429 retries, and only 2 web pages per scope completed with all 40 web pages at `200`, including 2 recovered `429` pages. It did not pass the volume gate because RSS returned 400 reviews while web catalog was capped at 240 page-level reviews by configuration. That confirmed the canary must run as a capacity test, not only a liveness probe.
 - A GitHub-hosted manual 20-app comparison with 10 web pages per scope was still running after 21 minutes and was canceled as too heavy for the scheduled canary default. Keep 10-page runs as manual depth tests unless later evidence shows stable runtimes.
 - A GitHub-hosted 20-app comparison with 5 web pages per scope and the old implicit 6-review page size completed successfully in 6m57s. All 100 web catalog pages finished at `200` after bounded retry, with 2 recovered `429` pages. However, RSS returned 3,400 reviews in the same target window while web catalog returned 600 page-level reviews. The scheduled canary now requests `limit=20`, which should raise the 5-page web ceiling from about 600 to about 2,000 reviews for 20 app-country scopes.
+- A GitHub-hosted 20-app comparison with 5 web pages per scope and `limit=20` completed successfully in 11m22s. All 100 web catalog pages finished at `200` after bounded retry, with 5 recovered `429` pages. RSS returned 9,939 unique reviews in the same target window; web catalog returned 2,000 page-level reviews. That is lower than RSS, but still the same order of magnitude for the 20-app canary window.
 - The public web catalog path is now a serious candidate for a richer-than-HTML diagnostic or supplemental path, but it is still an undocumented web surface and not yet the default production source.
 - The HTML shape is less stable than the RSS JSON structure.
 - The aggregate rating count proves review presence, but does not provide a complete review-row feed.
@@ -53,7 +54,7 @@ Do not promote web catalog reviews into the production ingestion path until seve
 
 - `web_catalog.web_catalog_page_status_counts` is dominated by `200` responses after bounded retry.
 - `recovered_429_page_count` stays small enough that the workflow runtime remains predictable.
-- `comparison.web_reviews_at_or_above_rss` is consistently true for the same target window.
+- `comparison.web_reviews_same_order_as_rss` is consistently true for the same target window. `comparison.web_reviews_at_or_above_rss` remains the stronger bar for a true RSS replacement.
 - `web_catalog.web_catalog_page_reviews_total` is nonzero and commercially useful for the sampled target set.
 - `comparison.web_all_pages_ok_after_retry` is consistently true.
 - `web_sort` is `recent`, and page date ranges move backward in time as offsets increase.

@@ -490,8 +490,10 @@ def test_source_comparison_summary_gate():
 
     assert summary["web_reviews_minus_rss_reviews"] == 70
     assert summary["web_to_rss_review_ratio"] == 2.4
+    assert summary["web_reviews_same_order_as_rss"] is True
     assert summary["web_reviews_at_or_above_rss"] is True
     assert summary["web_all_pages_ok_after_retry"] is True
+    assert summary["candidate_passes_same_order_stability_gate"] is True
     assert summary["candidate_passes_single_run_gate"] is True
 
 
@@ -519,6 +521,38 @@ def test_source_comparison_gate_requires_web_reviews():
     summary = summarize_comparison(rss_report, web_report)
 
     assert summary["web_reviews_at_or_above_rss"] is True
+    assert summary["web_reviews_same_order_as_rss"] is False
+    assert summary["candidate_passes_same_order_stability_gate"] is False
+    assert summary["candidate_passes_single_run_gate"] is False
+
+
+def test_source_comparison_same_order_gate_allows_lower_same_magnitude_volume():
+    rss_report = {
+        "page_reports": [{"status": "ok", "review_count": 50}],
+        "fetched_pages": 1,
+        "fetch_errors": 0,
+        "empty_pages": 0,
+        "sparse_empty_pages": 0,
+        "review_count": 10000,
+        "unique_review_count": 10000,
+        "warning_scopes": [],
+        "capped_scopes": [],
+    }
+    web_report = {
+        "summary": {
+            "web_catalog_page_reviews_total": 2000,
+            "web_catalog_page_status_counts": {"200": 100},
+            "recovered_429_page_count": 5,
+            "retried_page_count": 5,
+        }
+    }
+
+    summary = summarize_comparison(rss_report, web_report)
+
+    assert summary["web_to_rss_review_ratio"] == 0.2
+    assert summary["web_reviews_same_order_as_rss"] is True
+    assert summary["web_reviews_at_or_above_rss"] is False
+    assert summary["candidate_passes_same_order_stability_gate"] is True
     assert summary["candidate_passes_single_run_gate"] is False
 
 

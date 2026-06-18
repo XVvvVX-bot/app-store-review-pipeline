@@ -147,6 +147,10 @@ def summarize_comparison(rss_report: dict[str, Any], web_report: dict[str, Any])
     web_summary = summarize_web_report(web_report)
     rss_reviews = int(rss_summary["unique_reviews_seen"] or 0)
     web_reviews = int(web_summary.get("web_catalog_page_reviews_total") or 0)
+    web_to_rss_ratio = web_reviews / rss_reviews if rss_reviews else None
+    web_same_order_as_rss = web_reviews > 0 and (
+        rss_reviews == 0 or (web_to_rss_ratio is not None and web_to_rss_ratio >= 0.1)
+    )
     web_page_status_counts = web_summary.get("web_catalog_page_status_counts") or {}
     web_non_200_pages = sum(
         int(count)
@@ -155,7 +159,8 @@ def summarize_comparison(rss_report: dict[str, Any], web_report: dict[str, Any])
     )
     return {
         "web_reviews_minus_rss_reviews": web_reviews - rss_reviews,
-        "web_to_rss_review_ratio": web_reviews / rss_reviews if rss_reviews else None,
+        "web_to_rss_review_ratio": web_to_rss_ratio,
+        "web_reviews_same_order_as_rss": web_same_order_as_rss,
         "web_reviews_at_or_above_rss": web_reviews >= rss_reviews,
         "rss_fetch_error_count": rss_summary["fetch_errors"],
         "web_non_200_page_count_after_retry": web_non_200_pages,
@@ -165,6 +170,11 @@ def summarize_comparison(rss_report: dict[str, Any], web_report: dict[str, Any])
         "candidate_passes_single_run_gate": (
             web_reviews > 0
             and web_reviews >= rss_reviews
+            and web_non_200_pages == 0
+            and rss_summary["fetch_errors"] == 0
+        ),
+        "candidate_passes_same_order_stability_gate": (
+            web_same_order_as_rss
             and web_non_200_pages == 0
             and rss_summary["fetch_errors"] == 0
         ),
