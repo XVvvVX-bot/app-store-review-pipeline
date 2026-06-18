@@ -1699,6 +1699,9 @@ def test_source_coverage_scorecard_marks_parity_and_gaps():
     assert summary["aggregate"]["below_rss_scope_count"] == 1
     assert summary["aggregate"]["missing_web_scope_count"] == 1
     assert summary["aggregate"]["web_review_gap_to_rss_total"] == 589
+    assert summary["aggregate"]["web_scopes_at_or_above_500_count"] == 2
+    assert summary["aggregate"]["web_scopes_above_500_count"] == 1
+    assert summary["aggregate"]["max_web_catalog_reviews_for_scope"] == 3500
     assert summary["aggregate"]["minimum_web_to_rss_ratio_for_web_scopes"] == pytest.approx(500 / 556)
 
 

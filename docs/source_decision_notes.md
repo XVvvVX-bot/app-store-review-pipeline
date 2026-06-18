@@ -44,10 +44,12 @@ The web catalog endpoint returns structured JSON review pages and can match the 
 - stop once the web catalog reaches RSS parity
 - hard web time budget
 
-This profile has passed replacement or parity gates for sampled apps including Amazon Shopping, Walmart, Target, Uber, Uber Eats, TikTok, DoorDash, Instagram, YouTube, Netflix, Life360, and SHEIN. Larger multi-app deep-pagination batches are not stable enough yet because they hit 429 pressure and time budgets.
+This profile has passed replacement or parity gates for 20 sampled app-country scopes, including Amazon Shopping, Walmart, Target, Uber, Uber Eats, TikTok, DoorDash, Instagram, YouTube, Netflix, Life360, SHEIN, Cash App, PayPal, Venmo, ReelShort, Lyft, Freecash, Pokemon GO, and Rips by Triumph. Larger multi-app deep-pagination batches are not stable enough yet because they hit 429 pressure and time budgets.
 
-Manual depth probes show that web catalog can go beyond the RSS-sized 500-review window for some apps: Amazon Shopping has reached 5,042 distinct web catalog reviews through page 253, and the terminal page still had a `next` link. Treat that as a lower-bound depth proof, not a full historical-completeness claim.
+Manual depth probes show that web catalog can go beyond the RSS-sized 500-review window for some apps: Amazon Shopping has reached 5,042 distinct web catalog reviews through page 253, and the terminal page still had a `next` link. The current scorecard also has 20/20 tested web catalog scopes above 500 reviews, all at or above their RSS counts. Treat the 5,042-row result as a lower-bound depth proof, not a full historical-completeness claim.
 
 Use `scripts/summarize_source_comparisons.py` to judge promotion from repeated canary artifacts. As of the June 18, 2026 downloaded canary set, the full single-app profile has 5 clean replacement-candidate runs and passes the current promotion gate: 2,479 RSS reviews vs 2,500 web catalog reviews, 8 recovered `429` pages, 0 unrecovered `429` pages, and 0 incomplete scopes. The mixed all-run history is still not ready because it includes an incomplete multi-app run.
 
 The web catalog endpoint has been verified to return full review text rows, not only review IDs. A local smoke run fetched PayPal web catalog rows with review ID, user name, rating, title, review text, and date, then loaded 20 rows into a temporary Postgres database under `source='apple_app_store_web_catalog_reviews'`.
+
+As of the June 18, 2026 Postgres scorecard, web catalog controlled ingestion is `ready_for_controlled_promotion`: 20 web catalog scopes have data, all 20 are at or above RSS parity, no tested web scope is below RSS, and the cumulative web catalog table holds 15,962 reviews. This is enough to keep proving the source in controlled production-style runs, but it is not yet a claim that the undocumented web catalog endpoint is a contractual production source or that all 200 target scopes have been covered.

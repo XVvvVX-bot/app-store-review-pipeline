@@ -73,6 +73,7 @@ def summarize_scope_records(records: list[dict[str, Any]], *, min_parity_scopes:
     ]
     rss_total = sum(int(record["rss_reviews"]) for record in records)
     web_total = sum(int(record["web_catalog_reviews"]) for record in records)
+    web_review_counts = [int(record["web_catalog_reviews"]) for record in web_scopes]
 
     blocking_reasons: list[str] = []
     if len(parity_scopes) < min_parity_scopes:
@@ -110,6 +111,9 @@ def summarize_scope_records(records: list[dict[str, Any]], *, min_parity_scopes:
             "web_to_rss_total_ratio": web_total / rss_total if rss_total else None,
             "web_scope_parity_rate": len(parity_scopes) / len(web_scopes) if web_scopes else None,
             "target_scope_parity_rate": len(parity_scopes) / len(rss_scopes) if rss_scopes else None,
+            "web_scopes_at_or_above_500_count": sum(1 for count in web_review_counts if count >= 500),
+            "web_scopes_above_500_count": sum(1 for count in web_review_counts if count > 500),
+            "max_web_catalog_reviews_for_scope": max(web_review_counts) if web_review_counts else 0,
             "average_web_to_rss_ratio_for_web_scopes": (
                 sum(web_scope_ratios) / len(web_scope_ratios) if web_scope_ratios else None
             ),
@@ -208,6 +212,9 @@ def render_markdown_summary(summary: dict[str, Any]) -> str:
         f"- RSS scopes missing web catalog rows: `{aggregate.get('missing_web_scope_count', 0)}`",
         f"- RSS reviews total: `{aggregate.get('rss_reviews_total', 0)}`",
         f"- Web catalog reviews total: `{aggregate.get('web_catalog_reviews_total', 0)}`",
+        f"- Web catalog scopes >=500 reviews: `{aggregate.get('web_scopes_at_or_above_500_count', 0)}`",
+        f"- Web catalog scopes >500 reviews: `{aggregate.get('web_scopes_above_500_count', 0)}`",
+        f"- Max web catalog reviews in one scope: `{aggregate.get('max_web_catalog_reviews_for_scope', 0)}`",
         f"- Web/RSS total ratio: `{format_ratio(aggregate.get('web_to_rss_total_ratio'))}`",
         f"- Web-scope parity rate: `{format_ratio(aggregate.get('web_scope_parity_rate'))}`",
         "",
