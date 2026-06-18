@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+import math
 from pathlib import Path
 from typing import Any, Callable
 
@@ -96,7 +97,13 @@ def compare_sources(
         },
         "rss": summarize_rss_report(rss_report),
         "web_catalog": summarize_web_report(web_report),
-        "comparison": summarize_comparison(rss_report, web_report),
+        "comparison": summarize_comparison(
+            rss_report,
+            web_report,
+            scope_count=sum(len(target.countries) for target in targets),
+            web_max_pages=web_max_pages,
+            web_review_limit=web_review_limit,
+        ),
         "per_scope": compare_per_scope(rss_report, web_report),
         "paths": {
             "rss_raw_dir": str(raw_dir / "rss"),
@@ -142,7 +149,14 @@ def summarize_web_report(report: dict[str, Any]) -> dict[str, Any]:
     return summary
 
 
-def summarize_comparison(rss_report: dict[str, Any], web_report: dict[str, Any]) -> dict[str, Any]:
+def summarize_comparison(
+    rss_report: dict[str, Any],
+    web_report: dict[str, Any],
+    *,
+    scope_count: int | None = None,
+    web_max_pages: int | None = None,
+    web_review_limit: int | None = None,
+) -> dict[str, Any]:
     rss_summary = summarize_rss_report(rss_report)
     web_summary = summarize_web_report(web_report)
     rss_reviews = int(rss_summary["unique_reviews_seen"] or 0)
@@ -157,7 +171,7 @@ def summarize_comparison(rss_report: dict[str, Any], web_report: dict[str, Any])
         for status, count in web_page_status_counts.items()
         if str(status) != "200"
     )
-    return {
+    summary = {
         "web_reviews_minus_rss_reviews": web_reviews - rss_reviews,
         "web_to_rss_review_ratio": web_to_rss_ratio,
         "web_reviews_same_order_as_rss": web_same_order_as_rss,
@@ -179,6 +193,56 @@ def summarize_comparison(rss_report: dict[str, Any], web_report: dict[str, Any])
             and rss_summary["fetch_errors"] == 0
         ),
     }
+    summary.update(
+        summarize_web_capacity(
+            rss_reviews,
+            web_reviews,
+            scope_count=scope_count,
+            web_max_pages=web_max_pages,
+            web_review_limit=web_review_limit,
+        )
+    )
+    return summary
+
+
+def summarize_web_capacity(
+    rss_reviews: int,
+    web_reviews: int,
+    *,
+    scope_count: int | None,
+    web_max_pages: int | None,
+    web_review_limit: int | None,
+) -> dict[str, Any]:
+    empty = {
+        "web_configured_review_ceiling": None,
+        "web_configured_ceiling_usage_ratio": None,
+        "web_configured_ceiling_hit": None,
+        "web_pages_per_scope_needed_for_rss_parity": None,
+        "web_additional_pages_per_scope_needed_for_rss_parity": None,
+        "web_page_depth_can_reach_rss_parity": None,
+        "web_volume_gap_likely_configuration_limited": None,
+    }
+    if not scope_count or not web_max_pages or not web_review_limit:
+        return empty
+
+    ceiling = scope_count * web_max_pages * web_review_limit
+    pages_for_parity = math.ceil(rss_reviews / (scope_count * web_review_limit)) if rss_reviews > 0 else 0
+    ceiling_hit = web_reviews >= ceiling if ceiling > 0 else False
+    can_reach_parity = web_max_pages >= pages_for_parity
+    empty.update(
+        {
+            "web_configured_review_ceiling": ceiling,
+            "web_configured_ceiling_usage_ratio": web_reviews / ceiling if ceiling else None,
+            "web_configured_ceiling_hit": ceiling_hit,
+            "web_pages_per_scope_needed_for_rss_parity": pages_for_parity,
+            "web_additional_pages_per_scope_needed_for_rss_parity": max(0, pages_for_parity - web_max_pages),
+            "web_page_depth_can_reach_rss_parity": can_reach_parity,
+            "web_volume_gap_likely_configuration_limited": (
+                web_reviews < rss_reviews and ceiling_hit and not can_reach_parity
+            ),
+        }
+    )
+    return empty
 
 
 def compare_per_scope(rss_report: dict[str, Any], web_report: dict[str, Any]) -> list[dict[str, Any]]:

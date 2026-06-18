@@ -55,6 +55,7 @@ Do not promote web catalog reviews into the production ingestion path until seve
 - `web_catalog.web_catalog_page_status_counts` is dominated by `200` responses after bounded retry.
 - `recovered_429_page_count` stays small enough that the workflow runtime remains predictable.
 - `comparison.web_reviews_same_order_as_rss` is consistently true for the same target window. `comparison.web_reviews_at_or_above_rss` remains the stronger bar for a true RSS replacement.
+- `comparison.web_page_depth_can_reach_rss_parity` is true for any run used to judge RSS replacement, or `comparison.web_volume_gap_likely_configuration_limited` is false when web volume is lower than RSS.
 - `web_catalog.web_catalog_page_reviews_total` is nonzero and commercially useful for the sampled target set.
 - `comparison.web_all_pages_ok_after_retry` is consistently true.
 - `web_sort` is `recent`, and page date ranges move backward in time as offsets increase.

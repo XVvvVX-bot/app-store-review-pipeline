@@ -495,6 +495,7 @@ def test_source_comparison_summary_gate():
     assert summary["web_all_pages_ok_after_retry"] is True
     assert summary["candidate_passes_same_order_stability_gate"] is True
     assert summary["candidate_passes_single_run_gate"] is True
+    assert summary["web_configured_review_ceiling"] is None
 
 
 def test_source_comparison_gate_requires_web_reviews():
@@ -547,13 +548,64 @@ def test_source_comparison_same_order_gate_allows_lower_same_magnitude_volume():
         }
     }
 
-    summary = summarize_comparison(rss_report, web_report)
+    summary = summarize_comparison(
+        rss_report,
+        web_report,
+        scope_count=20,
+        web_max_pages=5,
+        web_review_limit=20,
+    )
 
     assert summary["web_to_rss_review_ratio"] == 0.2
     assert summary["web_reviews_same_order_as_rss"] is True
     assert summary["web_reviews_at_or_above_rss"] is False
     assert summary["candidate_passes_same_order_stability_gate"] is True
     assert summary["candidate_passes_single_run_gate"] is False
+    assert summary["web_configured_review_ceiling"] == 2000
+    assert summary["web_configured_ceiling_usage_ratio"] == 1.0
+    assert summary["web_configured_ceiling_hit"] is True
+    assert summary["web_pages_per_scope_needed_for_rss_parity"] == 25
+    assert summary["web_additional_pages_per_scope_needed_for_rss_parity"] == 20
+    assert summary["web_page_depth_can_reach_rss_parity"] is False
+    assert summary["web_volume_gap_likely_configuration_limited"] is True
+
+
+def test_source_comparison_capacity_marks_depth_that_can_reach_parity():
+    rss_report = {
+        "page_reports": [{"status": "ok", "review_count": 50}],
+        "fetched_pages": 1,
+        "fetch_errors": 0,
+        "empty_pages": 0,
+        "sparse_empty_pages": 0,
+        "review_count": 10000,
+        "unique_review_count": 10000,
+        "warning_scopes": [],
+        "capped_scopes": [],
+    }
+    web_report = {
+        "summary": {
+            "web_catalog_page_reviews_total": 10000,
+            "web_catalog_page_status_counts": {"200": 500},
+            "recovered_429_page_count": 0,
+            "retried_page_count": 0,
+        }
+    }
+
+    summary = summarize_comparison(
+        rss_report,
+        web_report,
+        scope_count=20,
+        web_max_pages=25,
+        web_review_limit=20,
+    )
+
+    assert summary["web_configured_review_ceiling"] == 10000
+    assert summary["web_pages_per_scope_needed_for_rss_parity"] == 25
+    assert summary["web_additional_pages_per_scope_needed_for_rss_parity"] == 0
+    assert summary["web_page_depth_can_reach_rss_parity"] is True
+    assert summary["web_reviews_at_or_above_rss"] is True
+    assert summary["candidate_passes_single_run_gate"] is True
+    assert summary["web_volume_gap_likely_configuration_limited"] is False
 
 
 def test_source_comparison_per_scope():

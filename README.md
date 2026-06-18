@@ -120,7 +120,7 @@ Compare RSS and web catalog on the same target window:
   --rss-request-delay-seconds 0.5
 ```
 
-`compare-sources` writes `source_comparison_report.json` with RSS volume, web catalog volume, 429 recovery counts, a same-order stability gate, and the stricter RSS-replacement gate.
+`compare-sources` writes `source_comparison_report.json` with RSS volume, web catalog volume, 429 recovery counts, capacity/parity metrics, a same-order stability gate, and the stricter RSS-replacement gate.
 
 Run tests:
 
@@ -184,4 +184,4 @@ The web catalog canary defaults to:
 - HTTP 429 retry delay: `45` seconds
 - RSS pages per app-country: `10`
 
-Its artifact contains `data/reports/source_compare/{run_id}/source_comparison_report.json`, plus the raw RSS comparison files under `data/raw/source_compare/{run_id}/rss/`. Compare several runs before promoting web catalog reviews into the production ingestion path. The canary is intentionally a capacity-and-stability comparison, not a tiny liveness probe: RSS can return up to 50 reviews on one page while web catalog currently accepts `limit=20` per page, so web catalog must prove it can add enough value at predictable runtime. Use manual runs with higher `max_web_pages` only for deeper stress tests.
+Its artifact contains `data/reports/source_compare/{run_id}/source_comparison_report.json`, plus the raw RSS comparison files under `data/raw/source_compare/{run_id}/rss/`. Compare several runs before promoting web catalog reviews into the production ingestion path. The canary is intentionally a capacity-and-stability comparison, not a tiny liveness probe: RSS can return up to 50 reviews on one page while web catalog currently accepts `limit=20` per page, so web catalog must prove it can add enough value at predictable runtime. Use manual runs with higher `max_web_pages` only for deeper stress tests. The comparison section includes `web_configured_review_ceiling`, `web_pages_per_scope_needed_for_rss_parity`, and `web_volume_gap_likely_configuration_limited` to show whether a lower web count is caused by the configured page cap.
