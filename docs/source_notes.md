@@ -35,6 +35,8 @@ However, HTML pages are not a better primary bulk review source:
 - A GitHub-hosted 20-app comparison with 5 web pages per scope and the old implicit 6-review page size completed successfully in 6m57s. All 100 web catalog pages finished at `200` after bounded retry, with 2 recovered `429` pages. However, RSS returned 3,400 reviews in the same target window while web catalog returned 600 page-level reviews. The scheduled canary now requests `limit=20`, which should raise the 5-page web ceiling from about 600 to about 2,000 reviews for 20 app-country scopes.
 - A GitHub-hosted 20-app comparison with 5 web pages per scope and `limit=20` completed successfully in 11m22s. All 100 web catalog pages finished at `200` after bounded retry, with 5 recovered `429` pages. RSS returned 9,939 unique reviews in the same target window; web catalog returned 2,000 page-level reviews. That is lower than RSS, but still the same order of magnitude for the 20-app canary window.
 - A GitHub-hosted 10-app deep comparison with 25 web pages per scope and `limit=20` completed successfully in about 47 minutes, but it did not pass the replacement or stability gates. RSS returned 5,000 unique reviews with 0 fetch errors. Web catalog had enough configured capacity to reach 5,000 reviews, but returned only 1,220 reviews, with 61 final `200` pages and 13 final `429` pages after bounded retry. Every tested app-country scope eventually stopped on unrecovered `429`, so the volume gap was caused by deep-pagination stability, not the configured page cap.
+- A local Playwright rendered-HTML probe on Amazon Shopping on June 18, 2026 saw 6 rendered review title IDs before scrolling and 6 after scrolling. It found no new review IDs after scroll and no review API requests after the initial page load.
+- A local 2-app RSS-vs-web-catalog check on June 18, 2026 with 3 web pages per scope and `limit=20` returned 6/6 web pages at `200`, but RSS returned 1,000 unique reviews while web catalog returned 120 page-level reviews. The lower web count was configuration-limited and did not pass the replacement gate.
 - The public web catalog path is now a serious candidate for a richer-than-HTML diagnostic or supplemental path, but it is still an undocumented web surface and not yet the default production source.
 - The HTML shape is less stable than the RSS JSON structure.
 - The aggregate rating count proves review presence, but does not provide a complete review-row feed.
@@ -46,6 +48,20 @@ Run a bounded web probe with:
 ```bash
 .venv/bin/python app_store_pipeline.py probe-web --limit 20 --web-sort recent --attempt-pagination --max-web-pages 5 --review-limit 20 --request-delay-seconds 2 --web-429-retries 3 --web-429-retry-seconds 45
 ```
+
+Run a rendered HTML probe with Playwright when we need browser-level evidence:
+
+```bash
+npm install
+npx playwright install chromium
+npm run probe:rendered-html -- \
+  --url "https://apps.apple.com/us/app/amazon-shopping/id297606951?see-all=reviews&platform=iphone" \
+  --output data/reports/rendered_html/amazon-shopping.json \
+  --scrolls 8 \
+  --wait-ms 1000
+```
+
+If `new_review_ids_after_scroll` is empty and no review-related network requests appear, the browser-rendered page did not expose deeper review data beyond the initial visible cards for that test case.
 
 ## Web Catalog Canary Promotion Gate
 

@@ -123,6 +123,20 @@ Compare RSS and web catalog on the same target window:
 
 `compare-sources` writes `source_comparison_report.json` with RSS volume, web catalog volume, 429 recovery counts, capacity/parity metrics, a same-order stability gate, and the stricter RSS-replacement gate.
 
+Probe rendered App Store HTML with Playwright:
+
+```bash
+npm install
+npx playwright install chromium
+npm run probe:rendered-html -- \
+  --url "https://apps.apple.com/us/app/amazon-shopping/id297606951?see-all=reviews&platform=iphone" \
+  --output data/reports/rendered_html/amazon-shopping.json \
+  --scrolls 8 \
+  --wait-ms 1000
+```
+
+The Playwright probe records visible rendered review card IDs before and after scrolling, plus any review-related network requests triggered by the page. It is a diagnostic for HTML depth and stability, not a production ingestion path.
+
 Probe the licensed 42matters candidate when an access token is available:
 
 ```bash
@@ -151,6 +165,31 @@ APP_STORE_42MATTERS_TOKEN=... \
 ```
 
 `compare-42matters` writes `provider_comparison_report.json` with RSS volume, provider volume, provider page success rate, per-app ratios, and candidate gates for same-order stability and RSS replacement.
+
+Probe the licensed AppTweak candidate when an API token is available:
+
+```bash
+APP_STORE_APPTWEAK_TOKEN=... \
+.venv/bin/python app_store_pipeline.py probe-apptweak \
+  --limit 10 \
+  --page-limit 2 \
+  --request-limit 500 \
+  --request-delay-seconds 1
+```
+
+Compare RSS and AppTweak on the same target window:
+
+```bash
+APP_STORE_APPTWEAK_TOKEN=... \
+.venv/bin/python app_store_pipeline.py compare-apptweak \
+  --limit 10 \
+  --provider-page-limit 2 \
+  --provider-request-limit 500 \
+  --provider-request-delay-seconds 1 \
+  --rss-request-delay-seconds 0.5
+```
+
+`compare-apptweak` writes the same `provider_comparison_report.json` shape as `compare-42matters`, so the two licensed providers can be judged against RSS using the same gates.
 
 Run tests:
 
@@ -184,12 +223,13 @@ If the pipeline reaches page 10 without overlap, the scope is marked `backlogged
 
 ## GitHub Actions
 
-Four workflows are included:
+Five workflows are included:
 
 - `CI`: runs unit tests on GitHub-hosted Ubuntu.
 - `App Store Review Pipeline`: runs the real daily ingestion on a self-hosted macOS ARM64 runner so it can reach the local Postgres database on this Mac.
 - `App Store Web Catalog Canary`: runs a bounded RSS vs web catalog `sort=recent` comparison on GitHub-hosted Ubuntu. It does not write Postgres and is used only to compare candidate source stability and review volume against RSS.
 - `App Store Provider Compare`: manual-only RSS vs 42matters comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_42MATTERS_TOKEN` repository secret and does not write Postgres.
+- `App Store AppTweak Compare`: manual-only RSS vs AppTweak comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_APPTWEAK_TOKEN` repository secret and does not write Postgres.
 
 The daily workflow defaults to:
 

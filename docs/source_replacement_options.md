@@ -34,7 +34,7 @@ Licensed app-intelligence providers are the only path found so far that plausibl
 | --- | --- | --- | --- |
 | 42matters / Similarweb | Documents an iOS reviews endpoint for any Apple App Store app, 3 QPS rate limit, `limit` 1-100, page pagination, default 30-day history, and up to 10 years with historical package. | Best first POC candidate because docs explicitly mention any iOS app and pagination. | Requires access token and paid Small plan or above for production use. Country/storefront semantics need live validation. |
 | Appfigures | `/reviews` resource covers app reviews from supported platforms; public data add-on is required for products not owned by the account. | Strong candidate for third-party public apps if public-data add-on is approved. | Requires paid/add-on access. Need validate review row fields, pagination, countries, refresh cadence. |
-| AppTweak | Review search endpoint returns review entries for an app/country with `limit` up to 500 and offset pagination; App Store API covers 100+ countries. | Strong candidate for large batches and country-aware analysis. | API availability is plan-based. Docs say reviews AppTweak has been able to gather, so completeness needs POC validation. |
+| AppTweak | Review search endpoint returns review entries for an app/country with `limit` up to 500 and offset pagination; App Store API covers 100+ countries. | Strong candidate for large batches and country-aware analysis. A token-gated probe and RSS comparison harness is now available. | API availability is plan-based. Docs say reviews AppTweak has been able to gather, so completeness needs POC validation. |
 | AppFollow | Reviews API endpoint returns reviews for an application or collection with pagination when using `ext_id`. | Useful candidate for review-management workflow and exports. | Public third-party coverage and pricing/credit limits need vendor confirmation. |
 | Appbot | RESTful JSON API supports iOS, Google Play, Windows; API access is an add-on for larger plans. | Possible candidate if review-management product fits analyst workflow. | Public third-party/competitor coverage is less explicit in public docs; confirm before integration. |
 
@@ -98,3 +98,34 @@ APP_STORE_42MATTERS_TOKEN=... \
 The report is written under `data/reports/provider_compare/{run_id}/provider_comparison_report.json`. Use the replacement gate only after checking provider page success rate, review volume vs RSS, per-app ratios, and runtime.
 
 Do not commit provider API tokens or raw credentials. Use environment variables or GitHub Actions secrets only.
+
+## AppTweak Probe
+
+The repository includes token-gated AppTweak probe and RSS comparison commands. They do not load Postgres.
+
+Single-source probe:
+
+```bash
+APP_STORE_APPTWEAK_TOKEN=... \
+.venv/bin/python app_store_pipeline.py probe-apptweak \
+  --limit 10 \
+  --page-limit 2 \
+  --request-limit 500 \
+  --request-delay-seconds 1
+```
+
+The report is written under `data/reports/provider_apptweak/{run_id}/provider_probe_report.json`.
+
+RSS-vs-provider comparison:
+
+```bash
+APP_STORE_APPTWEAK_TOKEN=... \
+.venv/bin/python app_store_pipeline.py compare-apptweak \
+  --limit 10 \
+  --provider-page-limit 2 \
+  --provider-request-limit 500 \
+  --provider-request-delay-seconds 1 \
+  --rss-request-delay-seconds 0.5
+```
+
+The report is written under `data/reports/provider_compare/{run_id}/provider_comparison_report.json`. Judge it with the same replacement gate as 42matters: provider page success rate, provider review volume vs RSS, per-app or app-country ratios, and runtime.

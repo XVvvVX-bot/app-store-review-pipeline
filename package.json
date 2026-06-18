@@ -1,0 +1,11 @@
+{
+  "name": "app-store-review-pipeline",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "probe:rendered-html": "node scripts/probe_rendered_app_store_reviews.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.53.1"
+  }
+}

@@ -8,6 +8,7 @@ from app_store_review_pipeline.config import DEFAULT_SORT_BY
 from app_store_review_pipeline.fetcher import fetch_targets
 from app_store_review_pipeline.files import write_json, write_jsonl
 from app_store_review_pipeline.models import AppTarget
+from app_store_review_pipeline.provider_apptweak import probe_apptweak_reviews
 from app_store_review_pipeline.provider_42matters import probe_42matters_reviews
 from app_store_review_pipeline.source_compare import summarize_rss_report
 from app_store_review_pipeline.utils import utc_timestamp
@@ -118,6 +119,114 @@ def compare_rss_with_42matters(
     return comparison
 
 
+def compare_rss_with_apptweak(
+    targets: list[AppTarget],
+    *,
+    run_id: str,
+    raw_root: Path,
+    reports_root: Path,
+    api_token: str,
+    sort_by: str = DEFAULT_SORT_BY,
+    rss_max_pages_per_app_country: int = 10,
+    rss_max_consecutive_empty_pages: int = 10,
+    rss_request_delay_seconds: float = 0.5,
+    rss_max_attempts: int = 3,
+    rss_retry_delay_seconds: float = 5.0,
+    provider_country_fallback: str = "us",
+    provider_language: str = "us",
+    provider_device: str = "iphone",
+    provider_start_date: str | None = None,
+    provider_end_date: str | None = None,
+    provider_term: str | None = None,
+    provider_page_limit: int = 2,
+    provider_request_limit: int = 500,
+    provider_request_delay_seconds: float = 1.0,
+    timeout_seconds: float = 20.0,
+    sleep_fn: Callable[[float], None] = time.sleep,
+) -> dict[str, Any]:
+    raw_dir = raw_root / run_id
+    report_dir = reports_root / run_id
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    report_dir.mkdir(parents=True, exist_ok=True)
+
+    started_at = utc_timestamp()
+    rss_report = fetch_targets(
+        targets,
+        raw_dir / "rss",
+        run_id,
+        sort_by=sort_by,
+        max_pages_per_app_country=rss_max_pages_per_app_country,
+        max_consecutive_empty_pages=rss_max_consecutive_empty_pages,
+        timeout_seconds=timeout_seconds,
+        request_delay_seconds=rss_request_delay_seconds,
+        max_attempts=rss_max_attempts,
+        retry_delay_seconds=rss_retry_delay_seconds,
+        known_review_ids_by_scope={},
+        use_overlap_stop=False,
+        sleep_fn=sleep_fn,
+    )
+    write_jsonl(raw_dir / "rss" / "review_pages.jsonl", rss_report["page_reports"])
+    write_jsonl(raw_dir / "rss" / "reviews.jsonl", rss_report["reviews"])
+    write_json(raw_dir / "rss" / "fetch_report.json", rss_report)
+
+    provider_report_path = report_dir / "provider_probe_report.json"
+    provider_report = probe_apptweak_reviews(
+        targets,
+        provider_report_path,
+        api_token=api_token,
+        limit=0,
+        country_fallback=provider_country_fallback,
+        language=provider_language,
+        device=provider_device,
+        start_date=provider_start_date,
+        end_date=provider_end_date,
+        term=provider_term,
+        page_limit=provider_page_limit,
+        request_limit=provider_request_limit,
+        timeout_seconds=timeout_seconds,
+        request_delay_seconds=provider_request_delay_seconds,
+        sleep_fn=sleep_fn,
+    )
+
+    comparison = {
+        "run_id": run_id,
+        "started_at": started_at,
+        "completed_at": utc_timestamp(),
+        "target_count": len(targets),
+        "scope_count": sum(len(target.countries) for target in targets),
+        "settings": {
+            "sort_by": sort_by,
+            "rss_max_pages_per_app_country": rss_max_pages_per_app_country,
+            "rss_max_consecutive_empty_pages": rss_max_consecutive_empty_pages,
+            "rss_request_delay_seconds": rss_request_delay_seconds,
+            "rss_max_attempts": rss_max_attempts,
+            "rss_retry_delay_seconds": rss_retry_delay_seconds,
+            "provider": "apptweak",
+            "provider_country_fallback": provider_country_fallback,
+            "provider_language": provider_language,
+            "provider_device": provider_device,
+            "provider_start_date": provider_start_date,
+            "provider_end_date": provider_end_date,
+            "provider_term": provider_term,
+            "provider_page_limit": provider_page_limit,
+            "provider_request_limit": provider_request_limit,
+            "provider_request_delay_seconds": provider_request_delay_seconds,
+            "timeout_seconds": timeout_seconds,
+        },
+        "rss": summarize_rss_report(rss_report),
+        "provider": provider_report["summary"],
+        "comparison": summarize_provider_comparison(rss_report, provider_report),
+        "per_app": compare_provider_per_app(rss_report, provider_report),
+        "paths": {
+            "rss_raw_dir": str(raw_dir / "rss"),
+            "provider_report_path": str(provider_report_path),
+            "comparison_report_path": str(report_dir / "provider_comparison_report.json"),
+        },
+    }
+    write_json(report_dir / "provider_comparison_report.json", comparison)
+    return comparison
+
+
 def summarize_provider_comparison(rss_report: dict[str, Any], provider_report: dict[str, Any]) -> dict[str, Any]:
     rss_summary = summarize_rss_report(rss_report)
     provider_summary = provider_report.get("summary") or {}
@@ -160,25 +269,43 @@ def compare_provider_per_app(rss_report: dict[str, Any], provider_report: dict[s
     rss_reviews_by_app: dict[str, int] = {}
     rss_pages_by_app: dict[str, int] = {}
     rss_errors_by_app: dict[str, int] = {}
+    rss_reviews_by_scope: dict[tuple[str, str], int] = {}
+    rss_pages_by_scope: dict[tuple[str, str], int] = {}
+    rss_errors_by_scope: dict[tuple[str, str], int] = {}
     for page in rss_report.get("page_reports") or []:
         app_id = str(page.get("app_id") or "")
+        country = str(page.get("country") or "").lower()
+        scope = (app_id, country)
         rss_pages_by_app[app_id] = rss_pages_by_app.get(app_id, 0) + 1
         rss_reviews_by_app[app_id] = rss_reviews_by_app.get(app_id, 0) + int(page.get("review_count") or 0)
+        rss_pages_by_scope[scope] = rss_pages_by_scope.get(scope, 0) + 1
+        rss_reviews_by_scope[scope] = rss_reviews_by_scope.get(scope, 0) + int(page.get("review_count") or 0)
         if page.get("status") == "error":
             rss_errors_by_app[app_id] = rss_errors_by_app.get(app_id, 0) + 1
+            rss_errors_by_scope[scope] = rss_errors_by_scope.get(scope, 0) + 1
 
     rows: list[dict[str, Any]] = []
     for row in provider_report.get("results") or []:
         app_id = str(row.get("app_id") or "")
+        country = str(row.get("country") or "").lower()
+        has_country_scope = bool(country)
+        scope = (app_id, country)
         provider_reviews = int(row.get("review_count") or 0)
-        rss_reviews = int(rss_reviews_by_app.get(app_id, 0))
+        rss_reviews = int(
+            rss_reviews_by_scope.get(scope, 0) if has_country_scope else rss_reviews_by_app.get(app_id, 0)
+        )
         rows.append(
             {
                 "app_id": app_id,
                 "app_name": row.get("app_name"),
                 "category": row.get("category"),
-                "rss_page_count": rss_pages_by_app.get(app_id, 0),
-                "rss_fetch_errors": rss_errors_by_app.get(app_id, 0),
+                "country": country or None,
+                "rss_page_count": (
+                    rss_pages_by_scope.get(scope, 0) if has_country_scope else rss_pages_by_app.get(app_id, 0)
+                ),
+                "rss_fetch_errors": (
+                    rss_errors_by_scope.get(scope, 0) if has_country_scope else rss_errors_by_app.get(app_id, 0)
+                ),
                 "rss_review_count": rss_reviews,
                 "provider_page_count": len(row.get("pages") or []),
                 "provider_review_count": provider_reviews,

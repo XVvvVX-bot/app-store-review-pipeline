@@ -17,6 +17,11 @@ from app_store_review_pipeline.apple_web import (
 from app_store_review_pipeline.fetcher import fetch_targets, terminal_reason_for_page
 from app_store_review_pipeline.models import AppTarget, ReviewPage
 from app_store_review_pipeline.postgres_database import mask_database_url, scope_key
+from app_store_review_pipeline.provider_apptweak import (
+    apptweak_headers,
+    build_apptweak_reviews_url,
+    parse_apptweak_reviews_payload,
+)
 from app_store_review_pipeline.provider_42matters import (
     build_42matters_reviews_url,
     parse_42matters_reviews_payload,
@@ -772,6 +777,68 @@ def test_42matters_reviews_payload_summary():
     assert summary["review_fingerprints"][0] != summary["review_fingerprints"][1]
 
 
+def test_apptweak_reviews_url_headers_and_payload_summary():
+    url = build_apptweak_reviews_url(
+        "284882215",
+        country="US",
+        language="US",
+        device="iphone",
+        limit=500,
+        offset=500,
+        start_date="2026-06-01",
+        end_date="2026-06-18",
+        term="crash",
+    )
+
+    assert url.startswith("https://public-api.apptweak.com/api/public/store/apps/reviews/search.json?")
+    assert "apps=284882215" in url
+    assert "country=us" in url
+    assert "language=us" in url
+    assert "device=iphone" in url
+    assert "limit=500" in url
+    assert "offset=500" in url
+    assert "start_date=2026-06-01" in url
+    assert "end_date=2026-06-18" in url
+    assert "term=crash" in url
+    assert apptweak_headers("secret-token") == {
+        "Accept": "application/json",
+        "X-Apptweak-Key": "secret-token",
+    }
+
+    payload = {
+        "metadata": {"content": {"total_size": 2500}},
+        "content": [
+            {
+                "id": "review-a",
+                "author": "author-a",
+                "title": "Useful",
+                "rating": 5,
+                "content": "Works well",
+                "date": "2026-06-17",
+                "version": "1.0",
+            },
+            {
+                "id": "review-b",
+                "author": "author-b",
+                "title": "Bug",
+                "rating": 2,
+                "date": "2026-06-18",
+                "version": "1.1",
+            },
+        ],
+    }
+
+    summary = parse_apptweak_reviews_payload(payload)
+
+    assert summary["review_count"] == 2
+    assert summary["total_reviews"] == 2500
+    assert summary["missing_content_count"] == 1
+    assert summary["min_date"] == "2026-06-17"
+    assert summary["max_date"] == "2026-06-18"
+    assert len(summary["review_fingerprints"]) == 2
+    assert summary["review_fingerprints"][0] != summary["review_fingerprints"][1]
+
+
 def test_provider_comparison_replacement_gate():
     rss_report = {
         "page_reports": [{"app_id": "123", "status": "ok", "review_count": 50}],
@@ -864,6 +931,7 @@ def test_provider_comparison_per_app_summary():
             "app_id": "123",
             "app_name": "Fixture",
             "category": "shopping",
+            "country": None,
             "rss_page_count": 2,
             "rss_fetch_errors": 0,
             "rss_review_count": 75,
@@ -876,3 +944,33 @@ def test_provider_comparison_per_app_summary():
             "provider_max_date": "2026-06-18",
         }
     ]
+
+
+def test_provider_comparison_uses_country_scope_when_available():
+    rss_report = {
+        "page_reports": [
+            {"app_id": "123", "country": "us", "status": "ok", "review_count": 50},
+            {"app_id": "123", "country": "ca", "status": "ok", "review_count": 20},
+        ]
+    }
+    provider_report = {
+        "results": [
+            {
+                "app_id": "123",
+                "app_name": "Fixture",
+                "category": "shopping",
+                "country": "ca",
+                "pages": [{"page": 1}],
+                "review_count": 30,
+                "status_counts": {"200": 1},
+            }
+        ]
+    }
+
+    rows = compare_provider_per_app(rss_report, provider_report)
+
+    assert rows[0]["country"] == "ca"
+    assert rows[0]["rss_page_count"] == 1
+    assert rows[0]["rss_review_count"] == 20
+    assert rows[0]["provider_review_count"] == 30
+    assert rows[0]["provider_to_rss_review_ratio"] == 1.5
