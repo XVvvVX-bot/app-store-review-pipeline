@@ -22,7 +22,7 @@ from app_store_review_pipeline.apple_web import (
     probe_web_reviews,
     probe_web_reviews_for_scope,
 )
-from app_store_review_pipeline.cli import select_target_window
+from app_store_review_pipeline.cli import select_target_window, summarize_fetch_cli
 from app_store_review_pipeline.config import WEB_CATALOG_SOURCE
 from app_store_review_pipeline.fetcher import fetch_targets, terminal_reason_for_page
 from app_store_review_pipeline.models import AppTarget, ReviewPage
@@ -430,6 +430,47 @@ def test_fetch_web_catalog_targets_follows_next_pages_and_preserves_source(tmp_p
     assert report["reviews"][0]["content"] == "Web catalog review text 1"
     assert report["reviews"][0]["source_page_key"] == "run:123456789:us:recent:1"
     assert len(session.calls) == 2
+
+
+def test_summarize_fetch_cli_includes_stability_metrics():
+    summary = summarize_fetch_cli(
+        {
+            "review_count": 2,
+            "unique_review_count": 2,
+            "fetch_errors": 1,
+            "capped_scopes": [{"app_id": "123"}],
+            "sparse_empty_pages": 0,
+            "page_reports": [
+                {
+                    "status": "ok",
+                    "status_code": 200,
+                    "attempt_count": 2,
+                    "terminal_reason": None,
+                    "missing_text_count": 0,
+                    "missing_rating_count": 0,
+                },
+                {
+                    "status": "error",
+                    "status_code": 429,
+                    "attempt_count": 6,
+                    "terminal_reason": "fetch_error",
+                    "missing_text_count": 1,
+                    "missing_rating_count": 1,
+                },
+            ],
+        }
+    )
+
+    assert summary["status_counts"] == {"ok": 1, "error": 1}
+    assert summary["status_code_counts"] == {"200": 1, "429": 1}
+    assert summary["attempt_counts"] == {"2": 1, "6": 1}
+    assert summary["retried_pages"] == 2
+    assert summary["successful_after_retry_pages"] == 1
+    assert summary["final_non_200_pages"] == 1
+    assert summary["terminal_reasons"] == {"fetch_error": 1}
+    assert summary["missing_text"] == 1
+    assert summary["missing_rating"] == 1
+    assert summary["all_pages_ok_after_retry"] is False
 
 
 def test_load_source_inference_prefers_raw_row_source():

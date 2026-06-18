@@ -92,11 +92,37 @@ def run_daily_pipeline(args: argparse.Namespace, sleep_fn: Callable[[float], Non
 
 def summarize_fetch(fetch_report: dict) -> dict:
     page_reports = fetch_report.get("page_reports", [])
+    status_counts: dict[str, int] = {}
+    status_code_counts: dict[str, int] = {}
+    attempt_counts: dict[str, int] = {}
     terminal_reasons: dict[str, int] = {}
+    retried_pages = 0
+    successful_after_retry_pages = 0
+    final_non_200_pages = 0
+    missing_text = 0
+    missing_rating = 0
     for row in page_reports:
+        status = str(row.get("status") or "unknown")
+        status_counts[status] = status_counts.get(status, 0) + 1
+        status_code = row.get("status_code")
+        if status_code is not None:
+            key = str(status_code)
+            status_code_counts[key] = status_code_counts.get(key, 0) + 1
+            if not (200 <= int(status_code) < 300):
+                final_non_200_pages += 1
+        attempt_count = int(row.get("attempt_count") or 0)
+        if attempt_count:
+            key = str(attempt_count)
+            attempt_counts[key] = attempt_counts.get(key, 0) + 1
+        if attempt_count > 1:
+            retried_pages += 1
+            if row.get("status") == "ok":
+                successful_after_retry_pages += 1
         reason = row.get("terminal_reason")
         if reason:
             terminal_reasons[reason] = terminal_reasons.get(reason, 0) + 1
+        missing_text += int(row.get("missing_text_count") or 0)
+        missing_rating += int(row.get("missing_rating_count") or 0)
     return {
         "page_count": len(page_reports),
         "fetched_pages": fetch_report.get("fetched_pages", 0),
@@ -107,6 +133,17 @@ def summarize_fetch(fetch_report: dict) -> dict:
         "unique_reviews_seen": fetch_report.get("unique_review_count", 0),
         "capped_scopes": fetch_report.get("capped_scopes", []),
         "warning_scopes": fetch_report.get("warning_scopes", []),
+        "status_counts": status_counts,
+        "status_code_counts": status_code_counts,
+        "attempt_counts": attempt_counts,
+        "retried_pages": retried_pages,
+        "successful_after_retry_pages": successful_after_retry_pages,
+        "final_non_200_pages": final_non_200_pages,
         "terminal_reasons": terminal_reasons,
+        "missing_text": missing_text,
+        "missing_rating": missing_rating,
+        "all_pages_ok_after_retry": bool(page_reports)
+        and final_non_200_pages == 0
+        and fetch_report.get("fetch_errors", 0) == 0,
         "gap_warning": bool(fetch_report.get("capped_scopes") or fetch_report.get("warning_scopes")),
     }

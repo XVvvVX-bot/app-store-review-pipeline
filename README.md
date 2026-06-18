@@ -371,6 +371,8 @@ The web catalog ingestion workflow defaults to:
 
 This workflow is a controlled ingestion trial, not a replacement of the RSS daily workflow. It stores web catalog rows with a separate source key, so analysts can compare RSS and web catalog coverage in the same Postgres database without overwriting RSS rows.
 
+The web catalog `daily_report.json` includes stability fields in `fetch_summary`, including `status_code_counts`, `attempt_counts`, `retried_pages`, `final_non_200_pages`, `missing_text`, `missing_rating`, and `all_pages_ok_after_retry`. For source decisions, read these fields together with `reviews`, `unique_reviews`, and the Postgres row counts by `source`.
+
 A conservative manual deep profile for replacement-source testing is:
 
 - `limit`: `10`
