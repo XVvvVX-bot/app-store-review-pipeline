@@ -7,6 +7,7 @@ from pathlib import Path
 
 from app_store_review_pipeline.config import (
     DEFAULT_42MATTERS_REPORTS_ROOT,
+    DEFAULT_APPFIGURES_REPORTS_ROOT,
     DEFAULT_APPTWEAK_REPORTS_ROOT,
     DEFAULT_COMPARE_RAW_ROOT,
     DEFAULT_COMPARE_REPORTS_ROOT,
@@ -36,7 +37,12 @@ from app_store_review_pipeline.postgres_database import (
     validate_postgres,
 )
 from app_store_review_pipeline.provider_apptweak import probe_apptweak_reviews
-from app_store_review_pipeline.provider_compare import compare_rss_with_42matters, compare_rss_with_apptweak
+from app_store_review_pipeline.provider_appfigures import probe_appfigures_reviews
+from app_store_review_pipeline.provider_compare import (
+    compare_rss_with_42matters,
+    compare_rss_with_appfigures,
+    compare_rss_with_apptweak,
+)
 from app_store_review_pipeline.provider_42matters import probe_42matters_reviews
 from app_store_review_pipeline.targets import active_targets, load_targets
 from app_store_review_pipeline.source_compare import compare_sources
@@ -263,6 +269,61 @@ def build_parser() -> argparse.ArgumentParser:
     compare_apptweak.add_argument("--provider-request-limit", type=int, default=500)
     compare_apptweak.add_argument("--provider-request-delay-seconds", type=float, default=1.0)
     compare_apptweak.set_defaults(func=command_compare_apptweak)
+
+    provider_appfigures = subparsers.add_parser(
+        "probe-appfigures",
+        help="Probe the licensed Appfigures Public Data reviews API without loading Postgres.",
+    )
+    provider_appfigures.add_argument("--targets", type=Path, default=DEFAULT_TARGETS)
+    provider_appfigures.add_argument("--reports-root", type=Path, default=DEFAULT_APPFIGURES_REPORTS_ROOT)
+    provider_appfigures.add_argument("--output", type=Path)
+    provider_appfigures.add_argument(
+        "--access-token",
+        default=os.environ.get("APP_STORE_APPFIGURES_TOKEN"),
+        help="Appfigures personal access token. Defaults to APP_STORE_APPFIGURES_TOKEN.",
+    )
+    provider_appfigures.add_argument("--limit", type=int, default=5, help="Maximum active targets to probe. Use 0 for all.")
+    provider_appfigures.add_argument("--country-fallback", default="us")
+    provider_appfigures.add_argument("--start-date")
+    provider_appfigures.add_argument("--end-date")
+    provider_appfigures.add_argument("--lang")
+    provider_appfigures.add_argument("--stars")
+    provider_appfigures.add_argument("--sort", default="-date")
+    provider_appfigures.add_argument("--page-limit", type=int, default=2)
+    provider_appfigures.add_argument("--request-limit", type=int, default=500)
+    provider_appfigures.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
+    provider_appfigures.add_argument("--request-delay-seconds", type=float, default=DEFAULT_REQUEST_DELAY_SECONDS)
+    provider_appfigures.set_defaults(func=command_probe_appfigures)
+
+    compare_appfigures = subparsers.add_parser(
+        "compare-appfigures",
+        help="Compare RSS with the licensed Appfigures Public Data reviews API on the same targets.",
+    )
+    compare_appfigures.add_argument("--targets", type=Path, default=DEFAULT_TARGETS)
+    compare_appfigures.add_argument("--raw-root", type=Path, default=DEFAULT_PROVIDER_COMPARE_RAW_ROOT)
+    compare_appfigures.add_argument("--reports-root", type=Path, default=DEFAULT_PROVIDER_COMPARE_REPORTS_ROOT)
+    compare_appfigures.add_argument(
+        "--access-token",
+        default=os.environ.get("APP_STORE_APPFIGURES_TOKEN"),
+        help="Appfigures personal access token. Defaults to APP_STORE_APPFIGURES_TOKEN.",
+    )
+    compare_appfigures.add_argument("--limit", type=int, default=10, help="Maximum active targets to compare. Use 0 for all.")
+    compare_appfigures.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
+    compare_appfigures.add_argument("--rss-request-delay-seconds", type=float, default=0.5)
+    compare_appfigures.add_argument("--rss-max-pages-per-app-country", type=int, default=DEFAULT_MAX_PAGES_PER_APP_COUNTRY)
+    compare_appfigures.add_argument("--rss-max-consecutive-empty-pages", type=int, default=DEFAULT_MAX_CONSECUTIVE_EMPTY_PAGES)
+    compare_appfigures.add_argument("--rss-max-attempts", type=int, default=DEFAULT_MAX_ATTEMPTS)
+    compare_appfigures.add_argument("--rss-retry-delay-seconds", type=float, default=DEFAULT_RETRY_DELAY_SECONDS)
+    compare_appfigures.add_argument("--provider-country-fallback", default="us")
+    compare_appfigures.add_argument("--provider-start-date")
+    compare_appfigures.add_argument("--provider-end-date")
+    compare_appfigures.add_argument("--provider-lang")
+    compare_appfigures.add_argument("--provider-stars")
+    compare_appfigures.add_argument("--provider-sort", default="-date")
+    compare_appfigures.add_argument("--provider-page-limit", type=int, default=2)
+    compare_appfigures.add_argument("--provider-request-limit", type=int, default=500)
+    compare_appfigures.add_argument("--provider-request-delay-seconds", type=float, default=1.0)
+    compare_appfigures.set_defaults(func=command_compare_appfigures)
 
     daily = subparsers.add_parser("daily", help="Fetch, load, validate, and report Apple App Store reviews.")
     add_fetch_arguments(daily)
@@ -580,6 +641,85 @@ def command_compare_apptweak(args: argparse.Namespace) -> int:
         provider_term=args.provider_term,
         provider_page_limit=args.provider_page_limit,
         provider_request_limit=args.provider_request_limit,
+        provider_request_delay_seconds=args.provider_request_delay_seconds,
+        timeout_seconds=args.timeout_seconds,
+    )
+    print(
+        json.dumps(
+            {
+                "output": report["paths"]["comparison_report_path"],
+                "comparison": report["comparison"],
+                "rss": report["rss"],
+                "provider": report["provider"],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+def command_probe_appfigures(args: argparse.Namespace) -> int:
+    if not args.access_token:
+        print("error: missing Appfigures token; pass --access-token or set APP_STORE_APPFIGURES_TOKEN")
+        return 2
+    targets = active_targets(load_targets(args.targets))
+    output_path = args.output or (args.reports_root / make_run_id() / "provider_probe_report.json")
+    report = probe_appfigures_reviews(
+        targets,
+        output_path,
+        access_token=args.access_token,
+        limit=args.limit,
+        country_fallback=args.country_fallback,
+        page_limit=args.page_limit,
+        request_limit=args.request_limit,
+        sort=args.sort,
+        start_date=args.start_date,
+        end_date=args.end_date,
+        lang=args.lang,
+        stars=args.stars,
+        timeout_seconds=args.timeout_seconds,
+        request_delay_seconds=args.request_delay_seconds,
+    )
+    print(
+        json.dumps(
+            {
+                "output": str(output_path),
+                "summary": report["summary"],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+def command_compare_appfigures(args: argparse.Namespace) -> int:
+    if not args.access_token:
+        print("error: missing Appfigures token; pass --access-token or set APP_STORE_APPFIGURES_TOKEN")
+        return 2
+    targets = active_targets(load_targets(args.targets))
+    selected = targets[: args.limit] if args.limit > 0 else targets
+    run_id = make_run_id()
+    report = compare_rss_with_appfigures(
+        selected,
+        run_id=run_id,
+        raw_root=args.raw_root,
+        reports_root=args.reports_root,
+        access_token=args.access_token,
+        rss_max_pages_per_app_country=args.rss_max_pages_per_app_country,
+        rss_max_consecutive_empty_pages=args.rss_max_consecutive_empty_pages,
+        rss_request_delay_seconds=args.rss_request_delay_seconds,
+        rss_max_attempts=args.rss_max_attempts,
+        rss_retry_delay_seconds=args.rss_retry_delay_seconds,
+        provider_country_fallback=args.provider_country_fallback,
+        provider_page_limit=args.provider_page_limit,
+        provider_request_limit=args.provider_request_limit,
+        provider_sort=args.provider_sort,
+        provider_start_date=args.provider_start_date,
+        provider_end_date=args.provider_end_date,
+        provider_lang=args.provider_lang,
+        provider_stars=args.provider_stars,
         provider_request_delay_seconds=args.provider_request_delay_seconds,
         timeout_seconds=args.timeout_seconds,
     )

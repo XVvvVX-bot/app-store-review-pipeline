@@ -27,6 +27,14 @@ from app_store_review_pipeline.provider_apptweak import (
     build_apptweak_reviews_url,
     parse_apptweak_reviews_payload,
 )
+from app_store_review_pipeline.provider_appfigures import (
+    appfigures_headers,
+    build_appfigures_product_lookup_url,
+    build_appfigures_reviews_url,
+    parse_appfigures_product_payload,
+    parse_appfigures_reviews_payload,
+    probe_appfigures_reviews_for_scope,
+)
 from app_store_review_pipeline.provider_42matters import (
     build_42matters_reviews_url,
     parse_42matters_reviews_payload,
@@ -114,10 +122,11 @@ def page(status="ok", review_count=50, has_next_link=False):
 
 
 class FakeResponse:
-    def __init__(self, payload: dict, status_code: int = 200):
+    def __init__(self, payload: dict, status_code: int = 200, headers: dict | None = None):
         self.payload = payload
         self.status_code = status_code
         self.content = str(payload).encode("utf-8")
+        self.headers = headers or {}
 
     def json(self):
         return self.payload
@@ -126,8 +135,10 @@ class FakeResponse:
 class FakeSession:
     def __init__(self, payloads: list[dict]):
         self.payloads = list(payloads)
+        self.calls = []
 
-    def get(self, *args, **kwargs):
+    def get(self, url, *args, **kwargs):
+        self.calls.append({"url": url, "kwargs": kwargs})
         if not self.payloads:
             raise AssertionError("No fake response payloads remaining")
         return FakeResponse(self.payloads.pop(0))
@@ -917,6 +928,126 @@ def test_apptweak_reviews_url_headers_and_payload_summary():
     assert summary["max_date"] == "2026-06-18"
     assert len(summary["review_fingerprints"]) == 2
     assert summary["review_fingerprints"][0] != summary["review_fingerprints"][1]
+
+
+def test_appfigures_urls_headers_and_payload_summaries():
+    lookup_url = build_appfigures_product_lookup_url("284882215")
+    reviews_url = build_appfigures_reviews_url(
+        "123456",
+        country="US",
+        page=2,
+        count=500,
+        sort="-date",
+        start_date="2026-06-01",
+        end_date="2026-06-18",
+        lang="en",
+        stars="1,5",
+    )
+
+    assert lookup_url == "https://api.appfigures.com/v2/products/apple/284882215"
+    assert reviews_url.startswith("https://api.appfigures.com/v2/reviews?")
+    assert "products=123456" in reviews_url
+    assert "countries=us" in reviews_url
+    assert "page=2" in reviews_url
+    assert "count=500" in reviews_url
+    assert "sort=-date" in reviews_url
+    assert "start=2026-06-01" in reviews_url
+    assert "end=2026-06-18" in reviews_url
+    assert "lang=en" in reviews_url
+    assert "stars=1%2C5" in reviews_url
+    assert appfigures_headers("pat_test")["Authorization"] == "Bearer pat_test"
+
+    product_summary = parse_appfigures_product_payload(
+        {
+            "id": 123456,
+            "name": "Fixture",
+            "developer": "Developer",
+            "ref_no": "284882215",
+            "store": "apple",
+            "vendor_identifier": "284882215",
+        }
+    )
+    assert product_summary["product_id"] == 123456
+    assert product_summary["ref_no"] == 284882215
+
+    reviews_summary = parse_appfigures_reviews_payload(
+        {
+            "total": 1200,
+            "pages": 3,
+            "this_page": 1,
+            "reviews": [
+                {
+                    "id": "review-a",
+                    "author": "author-a",
+                    "title": "Useful",
+                    "review": "Works well",
+                    "stars": "5.00",
+                    "iso": "US",
+                    "version": "1.0",
+                    "date": "2026-06-17T12:00:00",
+                },
+                {
+                    "id": "review-b",
+                    "title": "Bug",
+                    "stars": "2.00",
+                    "iso": "US",
+                    "date": "2026-06-18T12:00:00",
+                },
+            ],
+        }
+    )
+    assert reviews_summary["total_reviews"] == 1200
+    assert reviews_summary["total_pages"] == 3
+    assert reviews_summary["page"] == 1
+    assert reviews_summary["review_count"] == 2
+    assert reviews_summary["missing_content_count"] == 1
+    assert reviews_summary["min_date"] == "2026-06-17T12:00:00"
+    assert reviews_summary["max_date"] == "2026-06-18T12:00:00"
+    assert len(reviews_summary["review_fingerprints"]) == 2
+    assert reviews_summary["review_fingerprints"][0] != reviews_summary["review_fingerprints"][1]
+
+
+def test_appfigures_probe_lookup_then_reviews():
+    session = FakeSession(
+        [
+            {"id": 123456, "name": "Fixture", "ref_no": "123456789", "store": "apple"},
+            {
+                "total": 2,
+                "pages": 1,
+                "this_page": 1,
+                "reviews": [
+                    {"id": "review-a", "review": "Works", "date": "2026-06-17T12:00:00", "stars": "5.00"},
+                    {"id": "review-b", "review": "Bug", "date": "2026-06-18T12:00:00", "stars": "2.00"},
+                ],
+            },
+        ]
+    )
+
+    report = probe_appfigures_reviews_for_scope(
+        fixture_target(),
+        "us",
+        session=session,
+        access_token="pat_test",
+        page_limit=2,
+        request_limit=500,
+        sort="-date",
+        start_date=None,
+        end_date=None,
+        lang=None,
+        stars=None,
+        timeout_seconds=1,
+        request_delay_seconds=0,
+        sleep_fn=lambda _seconds: None,
+    )
+
+    assert session.calls[0]["url"] == "https://api.appfigures.com/v2/products/apple/123456789"
+    assert session.calls[1]["url"].startswith("https://api.appfigures.com/v2/reviews?")
+    assert session.calls[0]["kwargs"]["headers"]["Authorization"] == "Bearer pat_test"
+    assert report["provider_product_id"] == 123456
+    assert report["country"] == "us"
+    assert report["review_count"] == 2
+    assert report["total_reviews"] == 2
+    assert report["status_counts"] == {"lookup_200": 1, "200": 1}
 
 
 def test_provider_comparison_replacement_gate():

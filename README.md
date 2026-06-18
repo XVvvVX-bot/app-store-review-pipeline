@@ -195,6 +195,31 @@ APP_STORE_APPTWEAK_TOKEN=... \
 
 `compare-apptweak` writes the same `provider_comparison_report.json` shape as `compare-42matters`, so the two licensed providers can be judged against RSS using the same gates and capacity diagnostics.
 
+Probe the licensed Appfigures Public Data candidate when a personal access token is available:
+
+```bash
+APP_STORE_APPFIGURES_TOKEN=... \
+.venv/bin/python app_store_pipeline.py probe-appfigures \
+  --limit 10 \
+  --page-limit 2 \
+  --request-limit 500 \
+  --request-delay-seconds 1
+```
+
+Compare RSS and Appfigures on the same target window:
+
+```bash
+APP_STORE_APPFIGURES_TOKEN=... \
+.venv/bin/python app_store_pipeline.py compare-appfigures \
+  --limit 10 \
+  --provider-page-limit 2 \
+  --provider-request-limit 500 \
+  --provider-request-delay-seconds 1 \
+  --rss-request-delay-seconds 0.5
+```
+
+`compare-appfigures` first maps Apple IDs to Appfigures product IDs with `/products/apple/{id}`, then fetches `/reviews`. It writes the same provider comparison shape as the other licensed-provider probes.
+
 Run tests:
 
 ```bash
@@ -227,13 +252,14 @@ If the pipeline reaches page 10 without overlap, the scope is marked `backlogged
 
 ## GitHub Actions
 
-Five workflows are included:
+Six workflows are included:
 
 - `CI`: runs unit tests on GitHub-hosted Ubuntu.
 - `App Store Review Pipeline`: runs the real daily ingestion on a self-hosted macOS ARM64 runner so it can reach the local Postgres database on this Mac.
 - `App Store Web Catalog Canary`: runs a bounded RSS vs web catalog `sort=recent` comparison on GitHub-hosted Ubuntu. It does not write Postgres and is used only to compare candidate source stability and review volume against RSS.
 - `App Store Provider Compare`: manual-only RSS vs 42matters comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_42MATTERS_TOKEN` repository secret and does not write Postgres.
 - `App Store AppTweak Compare`: manual-only RSS vs AppTweak comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_APPTWEAK_TOKEN` repository secret and does not write Postgres.
+- `App Store Appfigures Compare`: manual-only RSS vs Appfigures Public Data comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_APPFIGURES_TOKEN` repository secret and does not write Postgres.
 
 The daily workflow defaults to:
 

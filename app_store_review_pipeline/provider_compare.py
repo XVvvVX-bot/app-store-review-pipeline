@@ -10,6 +10,7 @@ from app_store_review_pipeline.fetcher import fetch_targets
 from app_store_review_pipeline.files import write_json, write_jsonl
 from app_store_review_pipeline.models import AppTarget
 from app_store_review_pipeline.provider_apptweak import probe_apptweak_reviews
+from app_store_review_pipeline.provider_appfigures import probe_appfigures_reviews
 from app_store_review_pipeline.provider_42matters import probe_42matters_reviews
 from app_store_review_pipeline.source_compare import summarize_rss_report
 from app_store_review_pipeline.utils import utc_timestamp
@@ -211,6 +212,114 @@ def compare_rss_with_apptweak(
             "provider_term": provider_term,
             "provider_page_limit": provider_page_limit,
             "provider_request_limit": provider_request_limit,
+            "provider_request_delay_seconds": provider_request_delay_seconds,
+            "timeout_seconds": timeout_seconds,
+        },
+        "rss": summarize_rss_report(rss_report),
+        "provider": provider_report["summary"],
+        "comparison": summarize_provider_comparison(rss_report, provider_report),
+        "per_app": compare_provider_per_app(rss_report, provider_report),
+        "paths": {
+            "rss_raw_dir": str(raw_dir / "rss"),
+            "provider_report_path": str(provider_report_path),
+            "comparison_report_path": str(report_dir / "provider_comparison_report.json"),
+        },
+    }
+    write_json(report_dir / "provider_comparison_report.json", comparison)
+    return comparison
+
+
+def compare_rss_with_appfigures(
+    targets: list[AppTarget],
+    *,
+    run_id: str,
+    raw_root: Path,
+    reports_root: Path,
+    access_token: str,
+    sort_by: str = DEFAULT_SORT_BY,
+    rss_max_pages_per_app_country: int = 10,
+    rss_max_consecutive_empty_pages: int = 10,
+    rss_request_delay_seconds: float = 0.5,
+    rss_max_attempts: int = 3,
+    rss_retry_delay_seconds: float = 5.0,
+    provider_country_fallback: str = "us",
+    provider_page_limit: int = 2,
+    provider_request_limit: int = 500,
+    provider_sort: str = "-date",
+    provider_start_date: str | None = None,
+    provider_end_date: str | None = None,
+    provider_lang: str | None = None,
+    provider_stars: str | None = None,
+    provider_request_delay_seconds: float = 1.0,
+    timeout_seconds: float = 20.0,
+    sleep_fn: Callable[[float], None] = time.sleep,
+) -> dict[str, Any]:
+    raw_dir = raw_root / run_id
+    report_dir = reports_root / run_id
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    report_dir.mkdir(parents=True, exist_ok=True)
+
+    started_at = utc_timestamp()
+    rss_report = fetch_targets(
+        targets,
+        raw_dir / "rss",
+        run_id,
+        sort_by=sort_by,
+        max_pages_per_app_country=rss_max_pages_per_app_country,
+        max_consecutive_empty_pages=rss_max_consecutive_empty_pages,
+        timeout_seconds=timeout_seconds,
+        request_delay_seconds=rss_request_delay_seconds,
+        max_attempts=rss_max_attempts,
+        retry_delay_seconds=rss_retry_delay_seconds,
+        known_review_ids_by_scope={},
+        use_overlap_stop=False,
+        sleep_fn=sleep_fn,
+    )
+    write_jsonl(raw_dir / "rss" / "review_pages.jsonl", rss_report["page_reports"])
+    write_jsonl(raw_dir / "rss" / "reviews.jsonl", rss_report["reviews"])
+    write_json(raw_dir / "rss" / "fetch_report.json", rss_report)
+
+    provider_report_path = report_dir / "provider_probe_report.json"
+    provider_report = probe_appfigures_reviews(
+        targets,
+        provider_report_path,
+        access_token=access_token,
+        limit=0,
+        country_fallback=provider_country_fallback,
+        page_limit=provider_page_limit,
+        request_limit=provider_request_limit,
+        sort=provider_sort,
+        start_date=provider_start_date,
+        end_date=provider_end_date,
+        lang=provider_lang,
+        stars=provider_stars,
+        timeout_seconds=timeout_seconds,
+        request_delay_seconds=provider_request_delay_seconds,
+        sleep_fn=sleep_fn,
+    )
+
+    comparison = {
+        "run_id": run_id,
+        "started_at": started_at,
+        "completed_at": utc_timestamp(),
+        "target_count": len(targets),
+        "scope_count": sum(len(target.countries) for target in targets),
+        "settings": {
+            "sort_by": sort_by,
+            "rss_max_pages_per_app_country": rss_max_pages_per_app_country,
+            "rss_max_consecutive_empty_pages": rss_max_consecutive_empty_pages,
+            "rss_request_delay_seconds": rss_request_delay_seconds,
+            "rss_max_attempts": rss_max_attempts,
+            "rss_retry_delay_seconds": rss_retry_delay_seconds,
+            "provider": "appfigures",
+            "provider_country_fallback": provider_country_fallback,
+            "provider_page_limit": provider_page_limit,
+            "provider_request_limit": provider_request_limit,
+            "provider_sort": provider_sort,
+            "provider_start_date": provider_start_date,
+            "provider_end_date": provider_end_date,
+            "provider_lang": provider_lang,
+            "provider_stars": provider_stars,
             "provider_request_delay_seconds": provider_request_delay_seconds,
             "timeout_seconds": timeout_seconds,
         },
