@@ -1,0 +1,95 @@
+name: App Store Provider Matrix Compare
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Maximum active targets to compare per configured provider"
+        required: false
+        default: "10"
+        type: string
+      provider_page_limit:
+        description: "Maximum provider pages per app/app-country row"
+        required: false
+        default: "2"
+        type: string
+      provider_42matters_request_limit:
+        description: "42matters reviews per request"
+        required: false
+        default: "100"
+        type: string
+      provider_large_request_limit:
+        description: "AppTweak/Appfigures reviews per request"
+        required: false
+        default: "500"
+        type: string
+      provider_request_delay_seconds:
+        description: "Delay between AppTweak/Appfigures requests"
+        required: false
+        default: "1"
+        type: string
+      rss_request_delay_seconds:
+        description: "Delay between RSS requests"
+        required: false
+        default: "0.5"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-store-provider-matrix-compare
+  cancel-in-progress: false
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      INPUT_LIMIT: ${{ inputs.limit || '10' }}
+      INPUT_PROVIDER_PAGE_LIMIT: ${{ inputs.provider_page_limit || '2' }}
+      INPUT_PROVIDER_42MATTERS_REQUEST_LIMIT: ${{ inputs.provider_42matters_request_limit || '100' }}
+      INPUT_PROVIDER_LARGE_REQUEST_LIMIT: ${{ inputs.provider_large_request_limit || '500' }}
+      INPUT_PROVIDER_REQUEST_DELAY_SECONDS: ${{ inputs.provider_request_delay_seconds || '1' }}
+      INPUT_RSS_REQUEST_DELAY_SECONDS: ${{ inputs.rss_request_delay_seconds || '0.5' }}
+      APP_STORE_42MATTERS_TOKEN: ${{ secrets.APP_STORE_42MATTERS_TOKEN }}
+      APP_STORE_APPTWEAK_TOKEN: ${{ secrets.APP_STORE_APPTWEAK_TOKEN }}
+      APP_STORE_APPFIGURES_TOKEN: ${{ secrets.APP_STORE_APPFIGURES_TOKEN }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Run configured provider comparisons
+        run: |
+          set -euo pipefail
+          python scripts/run_provider_matrix.py \
+            --limit "$INPUT_LIMIT" \
+            --provider-page-limit "$INPUT_PROVIDER_PAGE_LIMIT" \
+            --provider-42matters-request-limit "$INPUT_PROVIDER_42MATTERS_REQUEST_LIMIT" \
+            --provider-large-request-limit "$INPUT_PROVIDER_LARGE_REQUEST_LIMIT" \
+            --provider-request-delay-seconds "$INPUT_PROVIDER_REQUEST_DELAY_SECONDS" \
+            --rss-request-delay-seconds "$INPUT_RSS_REQUEST_DELAY_SECONDS"
+
+      - name: Upload provider matrix artifacts
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-store-provider-matrix-compare-${{ github.run_id }}
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            data/reports/provider_matrix/
+            data/reports/provider_compare/
+            data/raw/provider_compare/

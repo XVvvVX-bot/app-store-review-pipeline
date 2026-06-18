@@ -108,6 +108,21 @@ Important fields:
 
 Do not commit provider API tokens or raw credentials. Use environment variables or GitHub Actions secrets only.
 
+## Provider Matrix
+
+Use the provider matrix runner when one or more licensed-provider tokens are configured and we want one comparable POC artifact:
+
+```bash
+.venv/bin/python scripts/run_provider_matrix.py \
+  --limit 10 \
+  --provider-page-limit 2 \
+  --provider-42matters-request-limit 100 \
+  --provider-large-request-limit 500 \
+  --rss-request-delay-seconds 0.5
+```
+
+The matrix runner detects `APP_STORE_42MATTERS_TOKEN`, `APP_STORE_APPTWEAK_TOKEN`, and `APP_STORE_APPFIGURES_TOKEN`. It writes `data/reports/provider_matrix/provider_matrix_summary.json`, records missing-token providers as `missing_secret`, and captures each configured provider's comparison stdout/stderr. The matching GitHub Actions workflow is `App Store Provider Matrix Compare`.
+
 ## AppTweak Probe
 
 The repository includes token-gated AppTweak probe and RSS comparison commands. They do not load Postgres.

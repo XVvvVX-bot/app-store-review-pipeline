@@ -220,6 +220,19 @@ APP_STORE_APPFIGURES_TOKEN=... \
 
 `compare-appfigures` first maps Apple IDs to Appfigures product IDs with `/products/apple/{id}`, then fetches `/reviews`. It writes the same provider comparison shape as the other licensed-provider probes.
 
+Run every configured licensed-provider POC in one pass:
+
+```bash
+.venv/bin/python scripts/run_provider_matrix.py \
+  --limit 10 \
+  --provider-page-limit 2 \
+  --provider-42matters-request-limit 100 \
+  --provider-large-request-limit 500 \
+  --rss-request-delay-seconds 0.5
+```
+
+The matrix runner detects `APP_STORE_42MATTERS_TOKEN`, `APP_STORE_APPTWEAK_TOKEN`, and `APP_STORE_APPFIGURES_TOKEN`. Missing-token providers are recorded as `missing_secret`; configured providers are run and summarized in `data/reports/provider_matrix/provider_matrix_summary.json`.
+
 Run tests:
 
 ```bash
@@ -252,7 +265,7 @@ If the pipeline reaches page 10 without overlap, the scope is marked `backlogged
 
 ## GitHub Actions
 
-Six workflows are included:
+Seven workflows are included:
 
 - `CI`: runs unit tests on GitHub-hosted Ubuntu.
 - `App Store Review Pipeline`: runs the real daily ingestion on a self-hosted macOS ARM64 runner so it can reach the local Postgres database on this Mac.
@@ -260,6 +273,7 @@ Six workflows are included:
 - `App Store Provider Compare`: manual-only RSS vs 42matters comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_42MATTERS_TOKEN` repository secret and does not write Postgres.
 - `App Store AppTweak Compare`: manual-only RSS vs AppTweak comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_APPTWEAK_TOKEN` repository secret and does not write Postgres.
 - `App Store Appfigures Compare`: manual-only RSS vs Appfigures Public Data comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_APPFIGURES_TOKEN` repository secret and does not write Postgres.
+- `App Store Provider Matrix Compare`: manual-only one-shot runner for every configured licensed provider secret. It uploads a provider matrix summary even when no provider secrets are configured.
 
 The daily workflow defaults to:
 
