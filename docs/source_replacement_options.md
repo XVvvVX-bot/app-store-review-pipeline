@@ -10,7 +10,7 @@ Find a source that is more stable than Apple RSS while returning the same order 
 | --- | --- | --- |
 | Apple iTunes customer reviews RSS | Stable enough for daily public recent-review ingestion, structured JSON, but practical window is about 10 pages x 50 reviews per app-country scope. | Keep as primary baseline. |
 | App Store HTML / Playwright | Public pages expose rating signals and a small visible review set. Scrolling did not load deeper review rows in browser checks. | Diagnostic only. |
-| Apple public web catalog reviews | Structured JSON and better than visible HTML. Early deep pagination repeatedly hit unrecovered `429`, but the newer conservative profile with `Retry-After` support and configurable backoff passed local 1-app and 3-app RSS parity checks. | Candidate supplemental/replacement path, but not production default until a larger GitHub-hosted canary repeats the result. |
+| Apple public web catalog reviews | Structured JSON and better than visible HTML. Large multi-app deep-pagination batches repeatedly hit `429` pressure and time budgets, but the conservative rotating single-app profile has matched the RSS 500-review window for multiple tested apps on GitHub-hosted runners. | Strongest public replacement candidate. Keep RSS primary until repeated scheduled rotating canaries prove stability across more target windows. |
 | App Store Connect API | Official and stable, but scoped to apps in the authenticated developer account. | Strong for owned/partnered apps only. Not a public third-party source. |
 
 ## Official Apple Path
@@ -48,9 +48,18 @@ References:
 
 ## Recommendation
 
-Do not keep searching for a hidden public Apple endpoint as the main plan. We have enough evidence that public HTML and web catalog paths are either shallow or unstable under deep pagination. The web catalog canary now writes `source_decision.status`; only `web_catalog_replacement_candidate` should trigger repeated promotion testing. `needs_deeper_web_catalog_run`, `same_order_but_not_replacement`, and `web_catalog_unstable_after_retry` keep web catalog in diagnostic or supplemental territory.
+Do not use rendered App Store HTML as the main plan. Browser checks show the visible review page is shallow and scrolling does not expose deeper review rows.
 
-The next realistic path is a licensed-provider POC:
+The current public candidate is Apple web catalog reviews, but only with a conservative single-app rotating profile. Batch deep-pagination runs are not stable enough yet. Treat `web_catalog_replacement_candidate` from repeated rotating scheduled canaries as promotion evidence; treat `needs_deeper_web_catalog_run`, `same_order_but_not_replacement`, `web_catalog_unstable_after_retry`, and `web_catalog_time_budget_exceeded` as evidence against immediate promotion.
+
+Recommended public-source path:
+
+1. Keep RSS as the production baseline.
+2. Run the rotating single-app web catalog canary every 6 hours.
+3. Promote web catalog into a separate ingestion mode only after repeated scheduled canaries show clean parity across varied app categories and offsets.
+4. Keep manual 5-app or 10-app deep runs as stress tests, not routine automation.
+
+The next contractual production path is still a licensed-provider POC:
 
 1. Start with 42matters because its public docs most directly match the current requirement.
 2. Run a 10-app, 30-day probe with `limit=100` and enough pages to exceed the RSS 500-review window when available.
