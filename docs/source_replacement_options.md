@@ -65,6 +65,7 @@ Current public-source readout from downloaded June 18, 2026 canary artifacts:
 - All web canary reports are **not ready** for promotion because the history includes a failed multi-app offset window with time-budget exhaustion and final 429s.
 - Full single-app canary reports are **ready for controlled ingestion trials**: 5/5 full single-app runs matched or exceeded RSS parity cleanly, with 2,479 RSS reviews vs 2,500 web catalog reviews, 8 recovered 429 pages, and 0 unrecovered 429 pages.
 - Rendered HTML with Playwright remains diagnostic only; repeated scrolling did not reveal more review rows or trigger deeper review network calls.
+- Controlled web catalog Postgres ingestion is now verified for the conservative single-app profile: a Venmo run fetched and inserted 500 unique web catalog reviews across 25 final-200 pages in 2m25s, with 0 fetch errors, 0 missing text/rating, and no retries needed.
 
 The next contractual production path is still a licensed-provider POC:
 
