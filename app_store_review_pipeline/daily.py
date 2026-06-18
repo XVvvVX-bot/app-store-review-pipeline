@@ -103,6 +103,7 @@ def summarize_fetch(fetch_report: dict) -> dict:
         "reviews_seen": fetch_report.get("review_count", 0),
         "unique_reviews_seen": fetch_report.get("unique_review_count", 0),
         "capped_scopes": fetch_report.get("capped_scopes", []),
+        "warning_scopes": fetch_report.get("warning_scopes", []),
         "terminal_reasons": terminal_reasons,
-        "gap_warning": bool(fetch_report.get("capped_scopes")),
+        "gap_warning": bool(fetch_report.get("capped_scopes") or fetch_report.get("warning_scopes")),
     }

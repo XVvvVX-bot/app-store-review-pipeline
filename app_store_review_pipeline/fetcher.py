@@ -45,6 +45,7 @@ def fetch_targets(
     page_reports: list[dict[str, Any]] = []
     review_rows: list[dict[str, Any]] = []
     capped_scopes: list[dict[str, str]] = []
+    warning_scopes: list[dict[str, str]] = []
     owned_session = session is None
     http = session or requests.Session()
 
@@ -78,6 +79,7 @@ def fetch_targets(
                         page_number=page_number,
                         max_pages_per_app_country=max_pages_per_app_country,
                         overlap_count=overlap_count,
+                        known_review_count=len(known_review_ids),
                         use_overlap_stop=use_overlap_stop,
                     )
                     page_report = replace(
@@ -90,6 +92,17 @@ def fetch_targets(
                     pages_for_scope += 1
 
                     if terminal_reason:
+                        warning_reasons = {"page_cap", "empty_page_before_overlap"}
+                        if terminal_reason in warning_reasons:
+                            warning_scopes.append(
+                                {
+                                    "app_id": target.apple_app_id,
+                                    "app_name": target.app_name,
+                                    "country": country.lower(),
+                                    "sort_by": sort_by,
+                                    "reason": terminal_reason,
+                                }
+                            )
                         if terminal_reason == "page_cap":
                             capped_scopes.append(
                                 {
@@ -113,10 +126,11 @@ def fetch_targets(
         "reviews": review_rows,
         "fetched_pages": sum(1 for page in page_reports if page.get("status") == "ok"),
         "fetch_errors": sum(1 for page in page_reports if page.get("status") == "error"),
-        "empty_pages": sum(1 for page in page_reports if page.get("terminal_reason") == "empty_page"),
+        "empty_pages": sum(1 for page in page_reports if page.get("status") == "ok" and page.get("review_count") == 0),
         "review_count": len(review_rows),
         "unique_review_count": len({row.get("review_key") for row in review_rows if row.get("review_key")}),
         "capped_scopes": capped_scopes,
+        "warning_scopes": warning_scopes,
     }
 
 
@@ -126,11 +140,14 @@ def terminal_reason_for_page(
     page_number: int,
     max_pages_per_app_country: int,
     overlap_count: int,
+    known_review_count: int,
     use_overlap_stop: bool,
 ) -> str | None:
     if page_report.status != "ok":
         return "fetch_error"
     if page_report.review_count == 0:
+        if use_overlap_stop and known_review_count > 0 and overlap_count == 0:
+            return "empty_page_before_overlap"
         return "empty_page"
     if use_overlap_stop and overlap_count > 0:
         return "caught_up_to_existing_reviews"

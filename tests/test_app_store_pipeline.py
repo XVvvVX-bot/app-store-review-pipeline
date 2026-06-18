@@ -152,10 +152,61 @@ def test_normalize_entries_accepts_single_or_list():
 
 
 def test_terminal_reason_for_page():
-    assert terminal_reason_for_page(page(status="error"), page_number=1, max_pages_per_app_country=10, overlap_count=0, use_overlap_stop=True) == "fetch_error"
-    assert terminal_reason_for_page(page(review_count=0), page_number=1, max_pages_per_app_country=10, overlap_count=0, use_overlap_stop=True) == "empty_page"
-    assert terminal_reason_for_page(page(), page_number=1, max_pages_per_app_country=10, overlap_count=1, use_overlap_stop=True) == "caught_up_to_existing_reviews"
-    assert terminal_reason_for_page(page(), page_number=10, max_pages_per_app_country=10, overlap_count=0, use_overlap_stop=True) == "page_cap"
+    assert (
+        terminal_reason_for_page(
+            page(status="error"),
+            page_number=1,
+            max_pages_per_app_country=10,
+            overlap_count=0,
+            known_review_count=0,
+            use_overlap_stop=True,
+        )
+        == "fetch_error"
+    )
+    assert (
+        terminal_reason_for_page(
+            page(review_count=0),
+            page_number=1,
+            max_pages_per_app_country=10,
+            overlap_count=0,
+            known_review_count=0,
+            use_overlap_stop=True,
+        )
+        == "empty_page"
+    )
+    assert (
+        terminal_reason_for_page(
+            page(review_count=0),
+            page_number=1,
+            max_pages_per_app_country=10,
+            overlap_count=0,
+            known_review_count=100,
+            use_overlap_stop=True,
+        )
+        == "empty_page_before_overlap"
+    )
+    assert (
+        terminal_reason_for_page(
+            page(),
+            page_number=1,
+            max_pages_per_app_country=10,
+            overlap_count=1,
+            known_review_count=100,
+            use_overlap_stop=True,
+        )
+        == "caught_up_to_existing_reviews"
+    )
+    assert (
+        terminal_reason_for_page(
+            page(),
+            page_number=10,
+            max_pages_per_app_country=10,
+            overlap_count=0,
+            known_review_count=100,
+            use_overlap_stop=True,
+        )
+        == "page_cap"
+    )
 
 
 def test_database_helpers():
