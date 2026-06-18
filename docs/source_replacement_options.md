@@ -121,7 +121,7 @@ Use the provider matrix runner when one or more licensed-provider tokens are con
   --rss-request-delay-seconds 0.5
 ```
 
-The matrix runner detects `APP_STORE_42MATTERS_TOKEN`, `APP_STORE_APPTWEAK_TOKEN`, and `APP_STORE_APPFIGURES_TOKEN`. It writes `data/reports/provider_matrix/provider_matrix_summary.json`, records missing-token providers as `missing_secret`, and captures each configured provider's comparison stdout/stderr. The matching GitHub Actions workflow is `App Store Provider Matrix Compare`.
+The matrix runner detects `APP_STORE_42MATTERS_TOKEN`, `APP_STORE_APPTWEAK_TOKEN`, and `APP_STORE_APPFIGURES_TOKEN`. It writes `data/reports/provider_matrix/provider_matrix_summary.json` and `data/reports/provider_matrix/provider_matrix_report.md`, records missing-token providers as `missing_secret`, and captures each configured provider's comparison stdout/stderr. The matching GitHub Actions workflow is `App Store Provider Matrix Compare`.
 
 Read `source_decision.status` first:
 

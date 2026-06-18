@@ -90,7 +90,10 @@ def main() -> int:
     matrix["source_decision"] = build_source_decision(matrix)
 
     summary_path = args.output_dir / "provider_matrix_summary.json"
+    report_path = args.output_dir / "provider_matrix_report.md"
+    matrix["markdown_report_path"] = str(report_path)
     summary_path.write_text(json.dumps(matrix, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report_path.write_text(render_markdown_report(matrix), encoding="utf-8")
     print(json.dumps({"summary_path": str(summary_path), **matrix}, indent=2, sort_keys=True))
     return 1 if matrix["failed_provider_count"] else 0
 
@@ -233,6 +236,102 @@ def build_source_decision(matrix: dict[str, Any]) -> dict[str, Any]:
             "Do not replace RSS from this run; evaluate another provider, a larger plan tier, or another source category."
         ),
     }
+
+
+def render_markdown_report(matrix: dict[str, Any]) -> str:
+    decision = matrix.get("source_decision") or {}
+    lines = [
+        "# App Store Provider Matrix Report",
+        "",
+        f"Decision: **{decision.get('status', 'unknown')}**",
+        "",
+        f"Selected provider: `{decision.get('selected_provider') or 'none'}`",
+        "",
+        f"Recommended next action: {decision.get('recommended_next_action') or 'Review provider results.'}",
+        "",
+        "## Summary",
+        "",
+        f"- Configured providers: `{matrix.get('configured_provider_count', 0)}`",
+        f"- Successful providers: `{matrix.get('successful_provider_count', 0)}`",
+        f"- Failed providers: `{matrix.get('failed_provider_count', 0)}`",
+        f"- Missing-secret providers: `{matrix.get('missing_secret_provider_count', 0)}`",
+        "",
+        "## Provider Results",
+        "",
+        "| Provider | Status | Configured | Replacement Gate | RSS Ratio | Pages OK | Gap Config-Limited | Report |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for provider in matrix.get("providers") or []:
+        lines.append(
+            "| {provider} | {status} | {configured} | {replacement} | {ratio} | {pages_ok} | {gap} | {report} |".format(
+                provider=provider.get("provider"),
+                status=provider.get("status"),
+                configured="yes" if provider.get("configured") else "no",
+                replacement=bool_label(provider.get("candidate_passes_replacement_gate")),
+                ratio=format_ratio(provider.get("provider_to_rss_review_ratio")),
+                pages_ok=bool_label(provider.get("provider_all_pages_ok")),
+                gap=bool_label(provider.get("provider_volume_gap_likely_configuration_limited")),
+                report=f"`{provider.get('comparison_report_path')}`" if provider.get("comparison_report_path") else "",
+            )
+        )
+    missing = [
+        provider.get("secret_env")
+        for provider in matrix.get("providers") or []
+        if provider.get("status") == "missing_secret"
+    ]
+    if missing:
+        lines.extend(
+            [
+                "",
+                "## Missing Secrets",
+                "",
+                *[f"- `{secret}`" for secret in missing],
+            ]
+        )
+    failed = [
+        provider
+        for provider in matrix.get("providers") or []
+        if provider.get("status") == "failed"
+    ]
+    if failed:
+        lines.extend(["", "## Failed Providers", ""])
+        for provider in failed:
+            lines.append(
+                f"- `{provider.get('provider')}` returned `{provider.get('returncode')}`. "
+                f"Stdout: `{provider.get('stdout_path')}`. Stderr: `{provider.get('stderr_path')}`."
+            )
+    lines.extend(
+        [
+            "",
+            "## Decision Status Meaning",
+            "",
+            "- `replacement_candidate_found`: at least one provider beat RSS with clean pages.",
+            "- `needs_deeper_provider_run`: provider inventory likely exists, but the POC page cap was too shallow.",
+            "- `same_order_but_not_replacement`: provider volume is useful, but not enough to replace RSS.",
+            "- `needs_provider_secret`: no licensed-provider token is configured yet.",
+            "- `configured_provider_runs_failed`: configured provider commands failed.",
+            "- `no_provider_met_gate`: do not replace RSS from this matrix run.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def bool_label(value: Any) -> str:
+    if value is True:
+        return "yes"
+    if value is False:
+        return "no"
+    return ""
+
+
+def format_ratio(value: Any) -> str:
+    if value is None:
+        return ""
+    try:
+        return f"{float(value):.3f}"
+    except (TypeError, ValueError):
+        return str(value)
 
 
 if __name__ == "__main__":

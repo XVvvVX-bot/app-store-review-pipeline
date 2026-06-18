@@ -46,7 +46,7 @@ from app_store_review_pipeline.provider_compare import (
 )
 from app_store_review_pipeline.source_compare import compare_per_scope, summarize_comparison
 from app_store_review_pipeline.targets import active_targets, load_targets, parse_countries
-from scripts.run_provider_matrix import build_source_decision
+from scripts.run_provider_matrix import build_source_decision, render_markdown_report
 
 
 def write_targets(path: Path):
@@ -1221,6 +1221,58 @@ def test_provider_matrix_decision_requests_deeper_run():
 
     assert decision["status"] == "needs_deeper_provider_run"
     assert decision["selected_provider"] == "appfigures"
+
+
+def test_provider_matrix_markdown_report_lists_missing_secrets():
+    matrix = {
+        "configured_provider_count": 0,
+        "successful_provider_count": 0,
+        "failed_provider_count": 0,
+        "missing_secret_provider_count": 1,
+        "providers": [
+            {
+                "provider": "42matters",
+                "secret_env": "APP_STORE_42MATTERS_TOKEN",
+                "configured": False,
+                "status": "missing_secret",
+            }
+        ],
+    }
+    matrix["source_decision"] = build_source_decision(matrix)
+
+    report = render_markdown_report(matrix)
+
+    assert "Decision: **needs_provider_secret**" in report
+    assert "`APP_STORE_42MATTERS_TOKEN`" in report
+    assert "| 42matters | missing_secret | no |" in report
+
+
+def test_provider_matrix_markdown_report_formats_success_metrics():
+    matrix = {
+        "configured_provider_count": 1,
+        "successful_provider_count": 1,
+        "failed_provider_count": 0,
+        "missing_secret_provider_count": 0,
+        "providers": [
+            {
+                "provider": "apptweak",
+                "configured": True,
+                "status": "success",
+                "candidate_passes_replacement_gate": True,
+                "provider_to_rss_review_ratio": 1.23456,
+                "provider_all_pages_ok": True,
+                "provider_volume_gap_likely_configuration_limited": False,
+                "comparison_report_path": "data/reports/provider_apptweak_comparison/report.json",
+            }
+        ],
+    }
+    matrix["source_decision"] = build_source_decision(matrix)
+
+    report = render_markdown_report(matrix)
+
+    assert "Decision: **replacement_candidate_found**" in report
+    assert "Selected provider: `apptweak`" in report
+    assert "| apptweak | success | yes | yes | 1.235 | yes | no |" in report
 
 
 def test_provider_comparison_per_app_summary():

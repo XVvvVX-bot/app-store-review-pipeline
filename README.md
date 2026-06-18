@@ -231,7 +231,7 @@ Run every configured licensed-provider POC in one pass:
   --rss-request-delay-seconds 0.5
 ```
 
-The matrix runner detects `APP_STORE_42MATTERS_TOKEN`, `APP_STORE_APPTWEAK_TOKEN`, and `APP_STORE_APPFIGURES_TOKEN`. Missing-token providers are recorded as `missing_secret`; configured providers are run and summarized in `data/reports/provider_matrix/provider_matrix_summary.json`. The summary includes `source_decision.status`, which is one of `needs_provider_secret`, `configured_provider_runs_failed`, `needs_deeper_provider_run`, `same_order_but_not_replacement`, `replacement_candidate_found`, or `no_provider_met_gate`.
+The matrix runner detects `APP_STORE_42MATTERS_TOKEN`, `APP_STORE_APPTWEAK_TOKEN`, and `APP_STORE_APPFIGURES_TOKEN`. Missing-token providers are recorded as `missing_secret`; configured providers are run and summarized in `data/reports/provider_matrix/provider_matrix_summary.json` plus the human-readable `data/reports/provider_matrix/provider_matrix_report.md`. The summary includes `source_decision.status`, which is one of `needs_provider_secret`, `configured_provider_runs_failed`, `needs_deeper_provider_run`, `same_order_but_not_replacement`, `replacement_candidate_found`, or `no_provider_met_gate`.
 
 Run tests:
 
