@@ -112,7 +112,7 @@ Compare RSS and web catalog on the same target window:
 ```bash
 .venv/bin/python app_store_pipeline.py compare-sources \
   --limit 20 \
-  --web-max-pages 2 \
+  --web-max-pages 5 \
   --web-request-delay-seconds 2 \
   --web-429-retries 3 \
   --web-429-retry-seconds 45 \
@@ -175,11 +175,11 @@ The web catalog canary defaults to:
 - schedule: every 6 hours, offset 30 minutes from the RSS workflow
 - runner: GitHub-hosted Ubuntu
 - target limit: `20`
-- web catalog pages per app-country: `2`
+- web catalog pages per app-country: `5`
 - sort: `recent`
 - web catalog request delay: `2` seconds
 - HTTP 429 retries: `3`
 - HTTP 429 retry delay: `45` seconds
 - RSS pages per app-country: `10`
 
-Its artifact contains `data/reports/source_compare/{run_id}/source_comparison_report.json`, plus the raw RSS comparison files under `data/raw/source_compare/{run_id}/rss/`. Compare several runs before promoting web catalog reviews into the production ingestion path.
+Its artifact contains `data/reports/source_compare/{run_id}/source_comparison_report.json`, plus the raw RSS comparison files under `data/raw/source_compare/{run_id}/rss/`. Compare several runs before promoting web catalog reviews into the production ingestion path. The canary is intentionally a capacity-and-stability comparison, not a tiny liveness probe: RSS can return up to 50 reviews on one page while web catalog typically returns about 6 reviews per page, so web catalog must prove it can add enough value at predictable runtime. Use manual runs with higher `max_web_pages` only for deeper stress tests.

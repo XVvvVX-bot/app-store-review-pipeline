@@ -14,7 +14,7 @@ on:
       max_web_pages:
         description: "Maximum web catalog review pages per app-country scope"
         required: false
-        default: "2"
+        default: "5"
         type: string
       request_delay_seconds:
         description: "Delay between web catalog requests"
@@ -50,7 +50,7 @@ jobs:
     timeout-minutes: 60
     env:
       INPUT_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '20' }}
-      INPUT_MAX_WEB_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.max_web_pages || '2' }}
+      INPUT_MAX_WEB_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.max_web_pages || '5' }}
       INPUT_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '2' }}
       INPUT_RSS_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.rss_request_delay_seconds || '0.5' }}
       INPUT_WEB_429_RETRIES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retries || '3' }}
