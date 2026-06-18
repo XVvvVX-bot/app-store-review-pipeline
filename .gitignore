@@ -1,7 +1,7 @@
 .venv/
+.playwright-cli/
 __pycache__/
 .pytest_cache/
 data/reports/
 data/raw/
 *.pyc
-

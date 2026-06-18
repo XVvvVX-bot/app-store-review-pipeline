@@ -16,7 +16,9 @@ from app_store_review_pipeline.config import (
     DEFAULT_SORT_BY,
     DEFAULT_TARGETS,
     DEFAULT_TIMEOUT_SECONDS,
+    DEFAULT_WEB_REPORTS_ROOT,
 )
+from app_store_review_pipeline.apple_web import probe_web_reviews
 from app_store_review_pipeline.daily import run_daily_pipeline
 from app_store_review_pipeline.fetcher import fetch_targets
 from app_store_review_pipeline.files import write_json, write_jsonl
@@ -57,6 +59,35 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("--run-id")
     validate.add_argument("--output", type=Path)
     validate.set_defaults(func=command_validate_postgres)
+
+    probe_web = subparsers.add_parser(
+        "probe-web",
+        help="Probe public App Store HTML and web JSON review surfaces without loading Postgres.",
+    )
+    probe_web.add_argument("--targets", type=Path, default=DEFAULT_TARGETS)
+    probe_web.add_argument("--reports-root", type=Path, default=DEFAULT_WEB_REPORTS_ROOT)
+    probe_web.add_argument("--output", type=Path)
+    probe_web.add_argument("--limit", type=int, default=20, help="Maximum active targets to probe. Use 0 for all.")
+    probe_web.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
+    probe_web.add_argument("--request-delay-seconds", type=float, default=DEFAULT_REQUEST_DELAY_SECONDS)
+    probe_web.add_argument(
+        "--review-limit",
+        type=int,
+        default=20,
+        help="Requested sparse review limit for the public web catalog app lookup.",
+    )
+    probe_web.add_argument(
+        "--attempt-pagination",
+        action="store_true",
+        help="Follow web catalog review next hrefs up to --max-web-pages. This is diagnostic only.",
+    )
+    probe_web.add_argument(
+        "--max-web-pages",
+        type=int,
+        default=2,
+        help="Maximum web catalog review pages to follow when --attempt-pagination is enabled.",
+    )
+    probe_web.set_defaults(func=command_probe_web)
 
     daily = subparsers.add_parser("daily", help="Fetch, load, validate, and report Apple App Store reviews.")
     add_fetch_arguments(daily)
@@ -164,6 +195,32 @@ def command_validate_postgres(args: argparse.Namespace) -> int:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(output + "\n", encoding="utf-8")
     print(output)
+    return 0
+
+
+def command_probe_web(args: argparse.Namespace) -> int:
+    targets = active_targets(load_targets(args.targets))
+    output_path = args.output or (args.reports_root / make_run_id() / "web_probe_report.json")
+    report = probe_web_reviews(
+        targets,
+        output_path,
+        limit=args.limit,
+        timeout_seconds=args.timeout_seconds,
+        request_delay_seconds=args.request_delay_seconds,
+        review_limit=args.review_limit,
+        attempt_pagination=args.attempt_pagination,
+        max_web_pages=args.max_web_pages,
+    )
+    print(
+        json.dumps(
+            {
+                "output": str(output_path),
+                "summary": report["summary"],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
     return 0
 
 

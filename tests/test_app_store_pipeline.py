@@ -4,6 +4,15 @@ from pathlib import Path
 import pytest
 
 from app_store_review_pipeline.apple_rss import apple_rss_url, normalize_entries, parse_apple_review
+from app_store_review_pipeline.apple_web import (
+    app_store_web_catalog_next_url,
+    app_store_web_catalog_url,
+    parse_html_review_ids,
+    parse_json_ld_aggregate_rating,
+    parse_serialized_next_href,
+    parse_web_catalog_review_page,
+    parse_web_catalog_reviews,
+)
 from app_store_review_pipeline.fetcher import fetch_targets, terminal_reason_for_page
 from app_store_review_pipeline.models import AppTarget, ReviewPage
 from app_store_review_pipeline.postgres_database import mask_database_url, scope_key
@@ -348,3 +357,101 @@ def test_fetch_targets_stops_after_empty_page_threshold(tmp_path):
 def test_database_helpers():
     assert mask_database_url("postgresql://user:secret@localhost:5432/app_store_reviews") == "postgresql://user:***@localhost:5432/app_store_reviews"
     assert scope_key("123", "US") == "123:us:mostrecent"
+
+
+def test_web_probe_url_helpers():
+    assert app_store_web_catalog_url("1508186374", "US").startswith(
+        "https://apps.apple.com/api/apps/v1/catalog/us/apps/1508186374?"
+    )
+    assert (
+        app_store_web_catalog_next_url("/v1/catalog/us/apps/1508186374/reviews?l=en-US&offset=6")
+        == "https://apps.apple.com/api/apps/v1/catalog/us/apps/1508186374/reviews?l=en-US&offset=6&platform=iphone"
+    )
+
+
+def test_web_probe_parses_html_review_signals():
+    page_html = """
+    <html>
+      <head>
+        <script type="application/ld+json">
+          {"@type": "SoftwareApplication", "aggregateRating": {
+            "ratingValue": "4.7", "ratingCount": "3400000", "reviewCount": "12345"
+          }}
+        </script>
+        <script id="serialized-server-data" type="application/json">
+          {"page":{"nextHref":"/v1/catalog/us/apps/1508186374/reviews?l=en-US&amp;offset=6"}}
+        </script>
+      </head>
+      <body>
+        <h2 id="review-14119272497-title">Always having to update</h2>
+        <h2 id="review-14152889552-title">Better than Netflix</h2>
+        <h2 id="review-14119272497-title">Duplicate DOM ref</h2>
+      </body>
+    </html>
+    """
+
+    assert parse_html_review_ids(page_html) == ["14119272497", "14152889552"]
+    assert parse_serialized_next_href(page_html) == "/v1/catalog/us/apps/1508186374/reviews?l=en-US&offset=6"
+    assert parse_json_ld_aggregate_rating(page_html) == {
+        "rating_value": 4.7,
+        "rating_count": 3400000,
+        "review_count": 12345,
+    }
+
+
+def test_web_probe_parses_catalog_review_relationship():
+    payload = {
+        "data": [
+            {
+                "id": "1508186374",
+                "type": "apps",
+                "relationships": {
+                    "reviews": {
+                        "next": "/v1/catalog/us/apps/1508186374/reviews?l=en-US&offset=6",
+                        "data": [
+                            {
+                                "id": "review-1",
+                                "type": "user-reviews",
+                                "attributes": {
+                                    "date": "2026-06-10T18:50:44Z",
+                                    "rating": 3,
+                                    "review": "Useful text",
+                                },
+                            },
+                            {
+                                "id": "review-2",
+                                "type": "user-reviews",
+                                "attributes": {"date": "2026-06-12T01:00:00Z", "rating": 5},
+                            },
+                        ],
+                    }
+                },
+            }
+        ]
+    }
+
+    summary = parse_web_catalog_reviews(payload)
+
+    assert summary["review_count"] == 2
+    assert summary["review_ids"] == ["review-1", "review-2"]
+    assert summary["next_href"] == "/v1/catalog/us/apps/1508186374/reviews?l=en-US&offset=6"
+    assert summary["min_date"] == "2026-06-10T18:50:44Z"
+    assert summary["max_date"] == "2026-06-12T01:00:00Z"
+
+
+def test_web_probe_parses_catalog_review_page():
+    payload = {
+        "next": "/v1/catalog/us/apps/1508186374/reviews?l=en-US&offset=12",
+        "data": [
+            {"id": "review-3", "type": "user-reviews", "attributes": {"date": "2026-06-13T01:00:00Z"}},
+            {"id": "review-4", "type": "user-reviews", "attributes": {"date": "2026-06-14T01:00:00Z"}},
+        ],
+    }
+
+    summary = parse_web_catalog_review_page(payload)
+
+    assert summary["review_count"] == 2
+    assert summary["review_ids"] == ["review-3", "review-4"]
+    assert summary["next_href"] == "/v1/catalog/us/apps/1508186374/reviews?l=en-US&offset=12"
+    assert summary["min_date"] == "2026-06-13T01:00:00Z"
+    assert summary["max_date"] == "2026-06-14T01:00:00Z"
