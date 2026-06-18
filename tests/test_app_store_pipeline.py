@@ -493,8 +493,10 @@ def test_source_comparison_summary_gate():
     assert summary["web_reviews_same_order_as_rss"] is True
     assert summary["web_reviews_at_or_above_rss"] is True
     assert summary["web_all_pages_ok_after_retry"] is True
+    assert summary["web_unrecovered_429_page_count"] == 0
     assert summary["candidate_passes_same_order_stability_gate"] is True
     assert summary["candidate_passes_single_run_gate"] is True
+    assert summary["web_429_recovery_rate_after_retry"] == 1.0
     assert summary["web_configured_review_ceiling"] is None
 
 
@@ -606,6 +608,36 @@ def test_source_comparison_capacity_marks_depth_that_can_reach_parity():
     assert summary["web_reviews_at_or_above_rss"] is True
     assert summary["candidate_passes_single_run_gate"] is True
     assert summary["web_volume_gap_likely_configuration_limited"] is False
+
+
+def test_source_comparison_reports_unrecovered_429_rate():
+    rss_report = {
+        "page_reports": [{"status": "ok", "review_count": 50}],
+        "fetched_pages": 1,
+        "fetch_errors": 0,
+        "empty_pages": 0,
+        "sparse_empty_pages": 0,
+        "review_count": 500,
+        "unique_review_count": 500,
+        "warning_scopes": [],
+        "capped_scopes": [],
+    }
+    web_report = {
+        "summary": {
+            "web_catalog_page_reviews_total": 120,
+            "web_catalog_page_status_counts": {"200": 6, "429": 3},
+            "recovered_429_page_count": 2,
+            "retried_page_count": 5,
+        }
+    }
+
+    summary = summarize_comparison(rss_report, web_report)
+
+    assert summary["web_unrecovered_429_page_count"] == 3
+    assert summary["web_non_200_page_count_after_retry"] == 3
+    assert summary["web_recovered_429_page_count"] == 2
+    assert summary["web_429_recovery_rate_after_retry"] == 0.4
+    assert summary["web_all_pages_ok_after_retry"] is False
 
 
 def test_source_comparison_per_scope():

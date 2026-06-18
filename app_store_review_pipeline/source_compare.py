@@ -166,11 +166,14 @@ def summarize_comparison(
         rss_reviews == 0 or (web_to_rss_ratio is not None and web_to_rss_ratio >= 0.1)
     )
     web_page_status_counts = web_summary.get("web_catalog_page_status_counts") or {}
+    web_unrecovered_429_pages = int(web_page_status_counts.get("429") or 0)
     web_non_200_pages = sum(
         int(count)
         for status, count in web_page_status_counts.items()
         if str(status) != "200"
     )
+    web_recovered_429_pages = int(web_summary.get("recovered_429_page_count", 0) or 0)
+    web_429_attempted_recovery_pages = web_recovered_429_pages + web_unrecovered_429_pages
     summary = {
         "web_reviews_minus_rss_reviews": web_reviews - rss_reviews,
         "web_to_rss_review_ratio": web_to_rss_ratio,
@@ -178,8 +181,14 @@ def summarize_comparison(
         "web_reviews_at_or_above_rss": web_reviews >= rss_reviews,
         "rss_fetch_error_count": rss_summary["fetch_errors"],
         "web_non_200_page_count_after_retry": web_non_200_pages,
+        "web_unrecovered_429_page_count": web_unrecovered_429_pages,
         "web_all_pages_ok_after_retry": web_non_200_pages == 0,
-        "web_recovered_429_page_count": web_summary.get("recovered_429_page_count", 0),
+        "web_recovered_429_page_count": web_recovered_429_pages,
+        "web_429_recovery_rate_after_retry": (
+            web_recovered_429_pages / web_429_attempted_recovery_pages
+            if web_429_attempted_recovery_pages
+            else None
+        ),
         "web_retried_page_count": web_summary.get("retried_page_count", 0),
         "candidate_passes_single_run_gate": (
             web_reviews > 0
