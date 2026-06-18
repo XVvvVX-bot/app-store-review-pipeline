@@ -44,7 +44,7 @@ The web catalog endpoint returns structured JSON review pages and can match the 
 - stop once the web catalog reaches RSS parity
 - hard web time budget
 
-This profile has passed replacement or parity gates for sampled apps including Amazon Shopping, Walmart, Target, Uber, and TikTok. Larger multi-app deep-pagination batches are not stable enough yet because they hit 429 pressure and time budgets.
+This profile has passed replacement or parity gates for sampled apps including Amazon Shopping, Walmart, Target, Uber, TikTok, and DoorDash. Larger multi-app deep-pagination batches are not stable enough yet because they hit 429 pressure and time budgets.
 
 Manual depth probes show that web catalog can go beyond the RSS-sized 500-review window for some apps: Amazon Shopping has reached 3,500 distinct web catalog reviews through page 175, and the terminal page still had a `next` link. Treat that as a lower-bound depth proof, not a full historical-completeness claim.
 
