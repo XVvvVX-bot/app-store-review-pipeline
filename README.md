@@ -121,12 +121,13 @@ Run the experimental web catalog ingestion path into Postgres:
   --database-url postgresql:///app_store_reviews \
   --limit 1 \
   --target-offset 10 \
-  --max-pages-per-app-country 25 \
+  --max-pages-per-app-country 35 \
   --review-limit 20 \
   --request-delay-seconds 5 \
   --web-429-retries 5 \
   --web-429-retry-seconds 60 \
-  --web-429-backoff-multiplier 1.5
+  --web-429-backoff-multiplier 1.5 \
+  --stop-at-rss-parity
 ```
 
 Keep this path conservative: one app per run is the profile that has passed the current public-source gate. Larger web catalog batches are stress tests, not the routine default.
@@ -145,7 +146,7 @@ For manual depth-limit probes, use `--start-page` to continue beyond the routine
   --disable-overlap-stop
 ```
 
-Apple currently caps each web catalog review page at `20` rows. The known depth lower bound from live testing is at least 150 pages / 3,000 reviews for Amazon Shopping; that run stopped at our configured page cap while the response still advertised a next page, not at an Apple no-next or final non-200 response. Deeper offsets showed more retry pressure, so keep depth probes controlled and documented rather than making very deep pagination routine.
+Apple currently caps each web catalog review page at `20` rows. The known depth lower bound from live testing is at least 175 pages / 3,500 reviews for Amazon Shopping; that run stopped at our configured page cap while the response still advertised a next page, not at an Apple no-next or final non-200 response. Deeper offsets showed more retry pressure, so keep depth probes controlled and documented rather than making very deep pagination routine.
 
 Validate the cumulative database:
 
@@ -164,7 +165,7 @@ Summarize downloaded web catalog ingestion artifacts:
   --output-markdown data/reports/web_catalog_ingestion_history.md
 ```
 
-Use `--full-single-app-only` when judging the routine 25-page single-app profile; leave it off when analyzing manual depth-limit probes.
+Use `--full-single-app-only` when judging the routine single-app profile; leave it off when analyzing manual depth-limit probes.
 
 Probe public App Store HTML and web JSON review surfaces:
 
@@ -390,15 +391,16 @@ The web catalog ingestion workflow defaults to:
 - secret override: `APP_STORE_DATABASE_URL`
 - target limit: `1`
 - target offset: `auto`
-- web catalog pages per app-country: `25`
+- web catalog pages per app-country: `35`
 - web catalog reviews per page: `20`
 - web catalog request delay: `5` seconds
 - HTTP 429 retries: `5`
 - HTTP 429 retry delay: `60` seconds
 - HTTP 429 backoff multiplier: `1.5`
 - overlap stop: enabled
+- stop after each app-country matches its current RSS review count: enabled by default
 
-This workflow is a controlled ingestion trial, not a replacement of the RSS daily workflow. It stores web catalog rows with a separate source key, so analysts can compare RSS and web catalog coverage in the same Postgres database without overwriting RSS rows.
+This workflow is a controlled ingestion trial, not a replacement of the RSS daily workflow. It stores web catalog rows with a separate source key, so analysts can compare RSS and web catalog coverage in the same Postgres database without overwriting RSS rows. The scheduled profile uses RSS-parity stopping so high-volume apps can go beyond the old 25-page / 500-review ceiling when needed, while still stopping early once web catalog has matched the RSS-sized current window.
 
 The web catalog `daily_report.json` includes stability fields in `fetch_summary`, including `status_code_counts`, `attempt_counts`, `retried_pages`, `final_non_200_pages`, `missing_text`, `missing_rating`, and `all_pages_ok_after_retry`. For source decisions, read these fields together with `reviews`, `unique_reviews`, and the Postgres row counts by `source`.
 

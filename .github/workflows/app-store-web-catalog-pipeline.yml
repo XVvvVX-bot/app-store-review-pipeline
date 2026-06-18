@@ -19,7 +19,7 @@ on:
       max_pages_per_app_country:
         description: "Maximum web catalog review pages per app-country scope"
         required: false
-        default: "25"
+        default: "35"
         type: string
       start_page:
         description: "First web catalog page to fetch; use values above 1 for manual depth probes"
@@ -56,6 +56,11 @@ on:
         required: false
         default: false
         type: boolean
+      stop_at_rss_parity:
+        description: "Continue past overlap until web catalog reaches the current RSS review count, then stop"
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -73,7 +78,7 @@ jobs:
       PIP_USER: "false"
       INPUT_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '1' }}
       INPUT_TARGET_OFFSET: ${{ github.event_name == 'workflow_dispatch' && inputs.target_offset || 'auto' }}
-      INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ github.event_name == 'workflow_dispatch' && inputs.max_pages_per_app_country || '25' }}
+      INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ github.event_name == 'workflow_dispatch' && inputs.max_pages_per_app_country || '35' }}
       INPUT_START_PAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.start_page || '1' }}
       INPUT_REVIEW_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.review_limit || '20' }}
       INPUT_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '5' }}
@@ -81,6 +86,7 @@ jobs:
       INPUT_WEB_429_RETRY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_seconds || '60' }}
       INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_backoff_multiplier || '1.5' }}
       INPUT_DISABLE_OVERLAP_STOP: ${{ github.event_name == 'workflow_dispatch' && inputs.disable_overlap_stop || 'false' }}
+      INPUT_STOP_AT_RSS_PARITY: ${{ github.event_name == 'workflow_dispatch' && inputs.stop_at_rss_parity || 'true' }}
 
     steps:
       - name: Check out repository
@@ -140,6 +146,10 @@ jobs:
           if [ "$INPUT_DISABLE_OVERLAP_STOP" = "true" ]; then
             overlap_flag="--disable-overlap-stop"
           fi
+          parity_flag=""
+          if [ "$INPUT_STOP_AT_RSS_PARITY" = "true" ]; then
+            parity_flag="--stop-at-rss-parity"
+          fi
 
           .venv/bin/python app_store_pipeline.py daily-web-catalog \
             --database-url "$database_url" \
@@ -152,6 +162,7 @@ jobs:
             --web-429-retries "$INPUT_WEB_429_RETRIES" \
             --web-429-retry-seconds "$INPUT_WEB_429_RETRY_SECONDS" \
             --web-429-backoff-multiplier "$INPUT_WEB_429_BACKOFF_MULTIPLIER" \
+            $parity_flag \
             $overlap_flag
 
       - name: Upload web catalog ingestion artifacts

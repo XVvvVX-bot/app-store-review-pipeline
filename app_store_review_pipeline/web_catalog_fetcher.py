@@ -39,6 +39,7 @@ def fetch_web_catalog_targets(
     web_429_retry_seconds: float = 60.0,
     web_429_backoff_multiplier: float = 1.5,
     known_review_ids_by_scope: dict[tuple[str, str, str], set[str]] | None = None,
+    target_review_counts_by_scope: dict[tuple[str, str, str], int] | None = None,
     use_overlap_stop: bool = True,
     sleep_fn: Callable[[float], None] = time.sleep,
     session: requests.Session | None = None,
@@ -46,10 +47,12 @@ def fetch_web_catalog_targets(
     raw_dir.mkdir(parents=True, exist_ok=True)
     start_page = max(1, start_page)
     known_review_ids_by_scope = known_review_ids_by_scope or {}
+    target_review_counts_by_scope = target_review_counts_by_scope or {}
     page_reports: list[dict[str, Any]] = []
     review_rows: list[dict[str, Any]] = []
     capped_scopes: list[dict[str, str]] = []
     warning_scopes: list[dict[str, str]] = []
+    target_reached_scopes: list[dict[str, Any]] = []
     owned_session = session is None
     http = session or requests.Session()
 
@@ -60,6 +63,8 @@ def fetch_web_catalog_targets(
             for country in target.countries:
                 scope = (target.apple_app_id, country.lower(), sort_by)
                 known_review_ids = known_review_ids_by_scope.get(scope, set())
+                target_review_count = target_review_counts_by_scope.get(scope)
+                scope_review_total = 0
                 next_href: str | None = None
                 for page_number in range(start_page, max_pages_per_app_country + 1):
                     if page_number > start_page and request_delay_seconds:
@@ -82,12 +87,15 @@ def fetch_web_catalog_targets(
                         sleep_fn=sleep_fn,
                     )
                     overlap_count = sum(1 for review in reviews if review.review_id in known_review_ids)
+                    scope_review_total += len(reviews)
                     terminal_reason = web_terminal_reason_for_page(
                         page_report,
                         page_number=page_number,
                         max_pages_per_app_country=max_pages_per_app_country,
                         overlap_count=overlap_count,
                         known_review_count=len(known_review_ids),
+                        page_review_total=scope_review_total,
+                        target_review_count=target_review_count,
                         next_href=next_href,
                         use_overlap_stop=use_overlap_stop,
                     )
@@ -100,6 +108,17 @@ def fetch_web_catalog_targets(
                     review_rows.extend(asdict(review) for review in reviews)
 
                     if terminal_reason:
+                        if terminal_reason == "target_review_count_reached":
+                            target_reached_scopes.append(
+                                {
+                                    "app_id": target.apple_app_id,
+                                    "app_name": target.app_name,
+                                    "country": country.lower(),
+                                    "sort_by": sort_by,
+                                    "target_review_count": target_review_count,
+                                    "fetched_review_count": scope_review_total,
+                                }
+                            )
                         if terminal_reason in {"page_cap", "fetch_error"}:
                             warning_scopes.append(
                                 {
@@ -139,6 +158,9 @@ def fetch_web_catalog_targets(
         "unique_review_count": len({row.get("review_key") for row in review_rows if row.get("review_key")}),
         "capped_scopes": capped_scopes,
         "warning_scopes": warning_scopes,
+        "target_review_counts_enabled": bool(target_review_counts_by_scope),
+        "target_review_count_scopes": len(target_review_counts_by_scope),
+        "target_reached_scopes": target_reached_scopes,
     }
 
 
@@ -263,6 +285,8 @@ def web_terminal_reason_for_page(
     max_pages_per_app_country: int,
     overlap_count: int,
     known_review_count: int,
+    page_review_total: int,
+    target_review_count: int | None,
     next_href: str | None,
     use_overlap_stop: bool,
 ) -> str | None:
@@ -270,8 +294,17 @@ def web_terminal_reason_for_page(
         return page_report.terminal_reason
     if page_report.status != "ok":
         return "fetch_error"
+    if target_review_count is not None and target_review_count <= 0:
+        return "target_review_count_zero"
+    if (
+        target_review_count is not None
+        and target_review_count > 0
+        and page_review_total >= target_review_count
+    ):
+        return "target_review_count_reached"
     if use_overlap_stop and known_review_count > 0 and overlap_count > 0:
-        return "caught_up_to_existing_reviews"
+        if target_review_count is None or known_review_count >= target_review_count:
+            return "caught_up_to_existing_reviews"
     if page_number >= max_pages_per_app_country:
         return "page_cap"
     if not next_href:

@@ -27,6 +27,7 @@ from app_store_review_pipeline.config import (
     DEFAULT_WEB_CATALOG_RAW_ROOT,
     DEFAULT_WEB_CATALOG_REPORTS_ROOT,
     DEFAULT_WEB_REPORTS_ROOT,
+    SOURCE,
     WEB_CATALOG_SORT_BY,
     WEB_CATALOG_SOURCE,
 )
@@ -39,6 +40,7 @@ from app_store_review_pipeline.postgres_database import (
     initialize_postgres,
     load_pipeline_run_postgres,
     mask_database_url,
+    review_counts_by_scope,
     validate_postgres,
 )
 from app_store_review_pipeline.provider_apptweak import probe_apptweak_reviews
@@ -424,6 +426,14 @@ def add_web_catalog_fetch_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--web-429-retries", type=int, default=5)
     parser.add_argument("--web-429-retry-seconds", type=float, default=60.0)
     parser.add_argument("--web-429-backoff-multiplier", type=float, default=1.5)
+    parser.add_argument(
+        "--stop-at-rss-parity",
+        action="store_true",
+        help=(
+            "Use the current RSS review count in Postgres as a per-app-country target. "
+            "This lets web catalog fill past fixed shallow caps without endlessly deep-fetching."
+        ),
+    )
 
 
 def command_targets(args: argparse.Namespace) -> int:
@@ -909,6 +919,11 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         if use_overlap_stop
         else {}
     )
+    target_review_counts = (
+        review_counts_by_scope(args.database_url, scopes, source=SOURCE)
+        if getattr(args, "stop_at_rss_parity", False)
+        else {}
+    )
     fetch_report = fetch_web_catalog_targets(
         targets,
         raw_dir,
@@ -923,6 +938,7 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         web_429_retry_seconds=args.web_429_retry_seconds,
         web_429_backoff_multiplier=args.web_429_backoff_multiplier,
         known_review_ids_by_scope=known_ids,
+        target_review_counts_by_scope=target_review_counts,
         use_overlap_stop=use_overlap_stop,
     )
     write_jsonl(raw_dir / "review_pages.jsonl", fetch_report["page_reports"])
@@ -951,6 +967,9 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         "start_page": args.start_page,
         "review_limit": args.review_limit,
         "overlap_stop_enabled": use_overlap_stop,
+        "stop_at_rss_parity": bool(getattr(args, "stop_at_rss_parity", False)),
+        "rss_parity_source": SOURCE if getattr(args, "stop_at_rss_parity", False) else None,
+        "rss_parity_target_scope_count": len(target_review_counts),
         "fetch_summary": summarize_fetch_cli(fetch_report),
         "load_summary": load_summary,
         "validation_report_path": str(validation_path),

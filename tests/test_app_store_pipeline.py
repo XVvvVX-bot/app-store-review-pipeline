@@ -469,6 +469,46 @@ def test_fetch_web_catalog_targets_can_start_from_deeper_page(tmp_path):
     assert report["page_reports"][1]["terminal_reason"] == "page_cap"
 
 
+def test_fetch_web_catalog_targets_stops_after_target_review_count(tmp_path):
+    session = FakeWebSession(
+        [
+            FakeWebResponse(200, payload=web_catalog_payload(start=1, count=2, has_next=True)),
+            FakeWebResponse(200, payload=web_catalog_payload(start=3, count=2, has_next=True)),
+            FakeWebResponse(200, payload=web_catalog_payload(start=5, count=2, has_next=False)),
+        ]
+    )
+
+    report = fetch_web_catalog_targets(
+        [fixture_target()],
+        tmp_path,
+        "run",
+        max_pages_per_app_country=3,
+        review_limit=2,
+        request_delay_seconds=0,
+        web_429_retries=0,
+        known_review_ids_by_scope={("123456789", "us", "recent"): {"web-review-1"}},
+        target_review_counts_by_scope={("123456789", "us", "recent"): 4},
+        session=session,
+    )
+
+    assert len(session.calls) == 2
+    assert report["fetched_pages"] == 2
+    assert report["review_count"] == 4
+    assert report["target_review_counts_enabled"] is True
+    assert report["target_review_count_scopes"] == 1
+    assert report["target_reached_scopes"] == [
+        {
+            "app_id": "123456789",
+            "app_name": "Fixture",
+            "country": "us",
+            "sort_by": "recent",
+            "target_review_count": 4,
+            "fetched_review_count": 4,
+        }
+    ]
+    assert report["page_reports"][1]["terminal_reason"] == "target_review_count_reached"
+
+
 def test_daily_web_catalog_passes_start_page_to_fetcher(tmp_path, monkeypatch):
     targets_path = tmp_path / "targets.csv"
     write_targets(targets_path)
@@ -511,6 +551,63 @@ def test_daily_web_catalog_passes_start_page_to_fetcher(tmp_path, monkeypatch):
 
     assert command_daily_web_catalog(args) == 0
     assert observed["start_page"] == 51
+
+
+def test_daily_web_catalog_can_pass_rss_parity_targets_to_fetcher(tmp_path, monkeypatch):
+    targets_path = tmp_path / "targets.csv"
+    write_targets(targets_path)
+    observed = {}
+
+    def fake_fetch_web_catalog_targets(*args, **kwargs):
+        observed["target_review_counts_by_scope"] = kwargs["target_review_counts_by_scope"]
+        observed["known_review_ids_by_scope"] = kwargs["known_review_ids_by_scope"]
+        return {
+            "page_reports": [],
+            "reviews": [],
+            "review_count": 0,
+            "unique_review_count": 0,
+            "fetch_errors": 0,
+            "capped_scopes": [],
+            "target_review_counts_enabled": True,
+            "target_review_count_scopes": 1,
+            "target_reached_scopes": [],
+        }
+
+    monkeypatch.setattr("app_store_review_pipeline.cli.fetch_web_catalog_targets", fake_fetch_web_catalog_targets)
+    monkeypatch.setattr(
+        "app_store_review_pipeline.cli.existing_review_ids_by_scope",
+        lambda *args, **kwargs: {("123456789", "us", "recent"): {"web-review-1"}},
+    )
+    monkeypatch.setattr(
+        "app_store_review_pipeline.cli.review_counts_by_scope",
+        lambda *args, **kwargs: {("123456789", "us", "recent"): 535},
+    )
+    monkeypatch.setattr("app_store_review_pipeline.cli.load_pipeline_run_postgres", lambda *args, **kwargs: {})
+    monkeypatch.setattr("app_store_review_pipeline.cli.validate_postgres", lambda *args, **kwargs: {})
+
+    args = argparse.Namespace(
+        raw_root=tmp_path / "raw",
+        reports_root=tmp_path / "reports",
+        targets=targets_path,
+        database_url="postgresql:///app_store_reviews",
+        limit=1,
+        target_offset=0,
+        sort_by="recent",
+        max_pages_per_app_country=35,
+        start_page=1,
+        review_limit=20,
+        timeout_seconds=1.0,
+        request_delay_seconds=0.0,
+        web_429_retries=0,
+        web_429_retry_seconds=0.0,
+        web_429_backoff_multiplier=1.0,
+        disable_overlap_stop=False,
+        stop_at_rss_parity=True,
+    )
+
+    assert command_daily_web_catalog(args) == 0
+    assert observed["known_review_ids_by_scope"] == {("123456789", "us", "recent"): {"web-review-1"}}
+    assert observed["target_review_counts_by_scope"] == {("123456789", "us", "recent"): 535}
 
 
 def test_summarize_fetch_cli_includes_stability_metrics():

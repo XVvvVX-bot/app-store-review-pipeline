@@ -206,6 +206,33 @@ def existing_review_ids_by_scope(
     return results
 
 
+def review_counts_by_scope(
+    database_url: str,
+    scopes: Iterable[tuple[str, str, str]],
+    *,
+    source: str = SOURCE,
+) -> dict[tuple[str, str, str], int]:
+    scope_list = [(str(app_id), country.lower(), sort_by) for app_id, country, sort_by in scopes]
+    results: dict[tuple[str, str, str], int] = {}
+    if not scope_list:
+        return results
+    initialize_postgres(database_url)
+    with connect_postgres(database_url) as connection:
+        for app_id, country, sort_by in scope_list:
+            row = connection.execute(
+                """
+                SELECT COUNT(DISTINCT review_id) AS review_count
+                FROM app_store_reviews
+                WHERE app_id = %s AND country = %s AND source = %s
+                """,
+                (app_id, country, source),
+            ).fetchone()
+            review_count = int(row["review_count"] or 0)
+            if review_count > 0:
+                results[(app_id, country, sort_by)] = review_count
+    return results
+
+
 def load_pipeline_run_postgres(database_url: str, raw_dir: Path, targets_path: Path) -> dict:
     run_id = raw_dir.name
     page_rows = read_jsonl(raw_dir / "review_pages.jsonl")

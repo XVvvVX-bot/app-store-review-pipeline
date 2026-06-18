@@ -68,6 +68,9 @@ However, HTML pages are not a better primary bulk review source:
 - Additional self-hosted controlled ingestion trials on June 18, 2026 added cross-app evidence. Walmart with 25 pages reached 25/25 final `200` pages, 500 unique reviews, 0 missing text/rating, 0 final non-200 pages, and 2 pages recovered after retry; its current RSS distinct count was 556, so 25 pages was slightly below parity. Target with a 30-page cap reached 30/30 final `200` pages, 600 unique reviews, 0 retries, 0 missing text/rating, and exceeded its current RSS distinct count of 509. This suggests the endpoint can match or beat RSS for another mainstream app, but parity page caps should be dynamic rather than fixed at 25 for every app.
 - A manual Amazon Shopping depth probe on June 18, 2026 verified that web catalog can exceed the RSS-sized 500-review window. With `target_offset=0`, `max_pages_per_app_country=50`, `limit=20`, 5-second delay, `disable_overlap_stop=true`, and bounded 429 retry/backoff, the self-hosted workflow completed in 5m40s with 50/50 final `200` pages, 1,000 unique reviews, 0 empty pages, 0 fetch errors, 0 missing text/rating, and 1 page recovered after retry. The run stopped at the configured page cap, so the public web catalog depth limit was not reached. The same app's RSS rows in Postgres were 535.
 - Follow-up Amazon Shopping depth runs on June 18, 2026 extended the lower-bound proof to 150 pages / 3,000 reviews. The page 1-100 run reached 100/100 final `200` pages and 2,000 unique reviews in 9m54s, with 0 empty pages, 0 fetch errors, 0 missing text/rating, and 1 page recovered after retry. After fixing the `start_page` handoff, the page 101-150 continuation reached 50/50 final `200` pages in 9m37s, inserted 1,000 additional rows, and had 5 pages recovered after retry. Postgres held 3,000 distinct web catalog reviews for Amazon Shopping versus 535 RSS reviews. Page 150 requested offset 2,980, returned 20 reviews, and still had a next link, so the observed web catalog limit is still higher than 3,000 rows for this app.
+- A further Amazon Shopping continuation on June 18, 2026 tested pages 151-175. It reached 25/25 final `200` pages, inserted 500 more unique rows, had 1 recovered retry, 0 final non-200 pages, 0 empty pages, and 0 missing text/rating. Postgres then held 3,500 distinct web catalog reviews versus 535 RSS reviews. Page 175 requested offset 3,480, returned 20 reviews, and still advertised a next link, so the observed web catalog depth limit is still higher than 3,500 rows for this app.
+- The `daily-web-catalog` ingestion path now supports `--stop-at-rss-parity`, matching the comparison probe behavior. When enabled, the fetcher uses current RSS counts in Postgres as per-scope targets and will not let overlap-stop end the run early while web catalog coverage is still below that target. The scheduled ingestion profile now uses a 35-page safety cap with RSS-parity stopping, so apps with RSS counts above 500 can fetch enough pages to prove parity while apps already at parity stop on overlap.
+- A Walmart production-style parity smoke on June 18, 2026 verified the new ingestion behavior. Starting from web catalog 500 vs RSS 556, `daily-web-catalog --stop-at-rss-parity --max-pages-per-app-country 35` fetched 28/28 final `200` pages, 560 review rows, skipped 500 duplicates, inserted 60 new rows, and stopped with `target_review_count_reached`. Postgres then held 560 distinct Walmart web catalog reviews versus 556 RSS reviews.
 - `daily-web-catalog` and the workflow now support `start_page` for manual depth probes. This allows follow-up tests such as page 51-100 without re-fetching page 1-50. Keep scheduled runs at `start_page=1`. A June 18 regression check fixed a missing `start_page` handoff in the `daily-web-catalog` CLI path and added test coverage so workflow depth probes honor the dispatch input.
 - `scripts/summarize_web_catalog_ingestion.py` summarizes web catalog ingestion artifacts, optionally joins Postgres source/app row counts, and gates promotion evidence by repeated clean full single-app runs.
 - The HTML shape is less stable than the RSS JSON structure.
@@ -112,15 +115,16 @@ Run a controlled web catalog ingestion trial with:
   --database-url postgresql:///app_store_reviews \
   --limit 1 \
   --target-offset 10 \
-  --max-pages-per-app-country 25 \
+  --max-pages-per-app-country 35 \
   --review-limit 20 \
   --request-delay-seconds 5 \
   --web-429-retries 5 \
   --web-429-retry-seconds 60 \
-  --web-429-backoff-multiplier 1.5
+  --web-429-backoff-multiplier 1.5 \
+  --stop-at-rss-parity
 ```
 
-The matching `App Store Web Catalog Ingestion` workflow runs this conservative profile on the self-hosted macOS ARM64 runner every 6 hours at `15 3,9,15,21 * * *`. It writes to the local Postgres database, stores rows with `source='apple_app_store_web_catalog_reviews'`, and uploads `data/raw/apple_web_catalog/` plus `data/reports/apple_web_catalog/` as audit artifacts. Keep `limit=1` and `target_offset=auto` as the routine setting until the web catalog path has more operational history.
+The matching `App Store Web Catalog Ingestion` workflow runs this conservative profile on the self-hosted macOS ARM64 runner every 6 hours at `15 3,9,15,21 * * *`. It writes to the local Postgres database, stores rows with `source='apple_app_store_web_catalog_reviews'`, and uploads `data/raw/apple_web_catalog/` plus `data/reports/apple_web_catalog/` as audit artifacts. Keep `limit=1`, `target_offset=auto`, and RSS-parity stopping as the routine setting until the web catalog path has more operational history.
 
 Use the web catalog ingestion `daily_report.json` stability fields to judge each scheduled trial: `status_code_counts`, `attempt_counts`, `retried_pages`, `final_non_200_pages`, `missing_text`, `missing_rating`, and `all_pages_ok_after_retry`.
 

@@ -58,7 +58,7 @@ Recommended public-source path:
 2. Run the rotating single-app web catalog canary every 6 hours.
 3. Download canary artifacts periodically and run `scripts/summarize_source_comparisons.py --single-app-only --min-web-max-pages 25 --min-runs 5` to judge the full scheduled-style profile without mixing in shallow smoke runs or manual stress tests.
 4. Use `daily-web-catalog` and the `App Store Web Catalog Ingestion` workflow for controlled Postgres ingestion trials under `source='apple_app_store_web_catalog_reviews'`.
-5. Keep manual 5-app or 10-app deep runs as stress tests, not routine automation.
+5. Keep manual 5-app or 10-app deep runs as stress tests, not routine automation. Use `--stop-at-rss-parity` for routine single-app ingestion so app-country scopes can exceed the old 25-page / 500-review window when RSS already has more than 500 rows, but stop before unnecessary post-parity pagination.
 
 Current public-source readout from downloaded June 18, 2026 canary artifacts:
 
@@ -67,7 +67,8 @@ Current public-source readout from downloaded June 18, 2026 canary artifacts:
 - Rendered HTML with Playwright remains diagnostic only; repeated scrolling did not reveal more review rows or trigger deeper review network calls.
 - Controlled web catalog Postgres ingestion is now verified for the conservative single-app profile: a Venmo run fetched and inserted 500 unique web catalog reviews across 25 final-200 pages in 2m25s, with 0 fetch errors, 0 missing text/rating, and no retries needed.
 - Additional controlled ingestion trials broadened the evidence: Walmart fetched 500 reviews across 25 final-200 pages with 2 recovered retries, while Target fetched 600 reviews across 30 final-200 pages with no retries and exceeded its current RSS distinct count of 509. A fixed 25-page cap may be slightly below parity for some apps, so production parity should use adaptive stopping or a dynamic cap.
-- Web catalog can exceed the RSS-sized 500-review window: Amazon Shopping depth probes reached 3,000 distinct Postgres reviews across 150 final-200 pages. The page 101-150 continuation took 9m37s, had 0 final non-200 pages, 0 missing text/rating, and stopped at our configured page cap while Apple still returned a next link. Treat this as a lower-bound proof of depth, not a claim of full historical completeness; retry pressure increased beyond page 100.
+- Web catalog can exceed the RSS-sized 500-review window: Amazon Shopping depth probes reached 3,500 distinct Postgres reviews across 175 final-200 pages. The page 151-175 continuation inserted 500 more unique rows, had 0 final non-200 pages, 0 empty pages, 0 missing text/rating, and stopped at our configured page cap while Apple still returned a next link. Treat this as a lower-bound proof of depth, not a claim of full historical completeness; retry pressure increases during deep pagination.
+- Controlled ingestion now has adaptive RSS-parity stopping: the self-hosted workflow defaults to one app, 35 max web pages, `limit=20`, 5-second request delay, bounded 429 retry/backoff, and `--stop-at-rss-parity`. A Walmart parity smoke moved from 500 web rows vs 556 RSS rows to 560 web rows vs 556 RSS rows, stopping at `target_review_count_reached` after 28 final-200 pages. This proves the ingestion path can go past the old 25-page / 500-review ceiling when needed without making very deep post-parity pagination routine.
 
 The next contractual production path is still a licensed-provider POC:
 

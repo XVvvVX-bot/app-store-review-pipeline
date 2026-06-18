@@ -68,7 +68,7 @@ The RSS feed is recent-window based. The project treats completeness as a monito
 
 For high-volume apps, the safest response is a shorter schedule cadence or a licensed provider with stronger historical guarantees.
 
-The web catalog ingestion path uses the same review-ID overlap idea, but source identity is separate from RSS. A web catalog run can stop when it sees an already-known web catalog review ID for that app-country-sort scope. The currently validated public profile is one app per run, up to 25 web pages, `limit=20`, 5-second request delay, and bounded 429 retry/backoff.
+The web catalog ingestion path uses the same review-ID overlap idea, but source identity is separate from RSS. A web catalog run can stop when it sees an already-known web catalog review ID for that app-country-sort scope. When RSS-parity stopping is enabled, overlap stop is delayed if web catalog coverage is still below the current RSS review count for that scope. The currently validated public profile is one app per run, up to 35 web pages, `limit=20`, 5-second request delay, bounded 429 retry/backoff, and RSS-parity stopping.
 
 The `App Store Web Catalog Ingestion` workflow runs that profile as a controlled self-hosted Postgres ingestion trial. It is intentionally separate from the RSS daily workflow, so web catalog rows can be evaluated without changing the production baseline.
 
