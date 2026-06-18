@@ -139,10 +139,11 @@ If the pipeline reaches page 10 without overlap, the scope is marked `backlogged
 
 ## GitHub Actions
 
-Two workflows are included:
+Three workflows are included:
 
 - `CI`: runs unit tests on GitHub-hosted Ubuntu.
 - `App Store Review Pipeline`: runs the real daily ingestion on a self-hosted macOS ARM64 runner so it can reach the local Postgres database on this Mac.
+- `App Store Web Catalog Canary`: runs a bounded web catalog `sort=recent` probe on GitHub-hosted Ubuntu. It does not write Postgres and is used only to compare candidate source stability and review volume against RSS.
 
 The daily workflow defaults to:
 
@@ -154,3 +155,15 @@ The daily workflow defaults to:
 - overlap stop: enabled
 
 Before relying on automation, register a self-hosted runner for this GitHub repository and make sure local Postgres is running.
+
+The web catalog canary defaults to:
+
+- schedule: every 6 hours, offset 30 minutes from the RSS workflow
+- runner: GitHub-hosted Ubuntu
+- target limit: `20`
+- web catalog pages per app-country: `2`
+- sort: `recent`
+- HTTP 429 retries: `1`
+- HTTP 429 retry delay: `30` seconds
+
+Its artifact contains `data/reports/apple_web/{run_id}/web_probe_report.json`, which should be compared over several runs before promoting web catalog reviews into the production ingestion path.
