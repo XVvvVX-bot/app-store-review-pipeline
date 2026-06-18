@@ -123,6 +123,15 @@ Use the provider matrix runner when one or more licensed-provider tokens are con
 
 The matrix runner detects `APP_STORE_42MATTERS_TOKEN`, `APP_STORE_APPTWEAK_TOKEN`, and `APP_STORE_APPFIGURES_TOKEN`. It writes `data/reports/provider_matrix/provider_matrix_summary.json`, records missing-token providers as `missing_secret`, and captures each configured provider's comparison stdout/stderr. The matching GitHub Actions workflow is `App Store Provider Matrix Compare`.
 
+Read `source_decision.status` first:
+
+- `replacement_candidate_found`: at least one provider beat the RSS window with clean pages.
+- `needs_deeper_provider_run`: a provider may beat RSS, but the POC page cap was too shallow.
+- `same_order_but_not_replacement`: provider volume is useful, but not enough to replace RSS.
+- `needs_provider_secret`: no provider token is configured yet.
+- `configured_provider_runs_failed`: one or more configured provider runs failed.
+- `no_provider_met_gate`: do not replace RSS from this matrix run.
+
 ## AppTweak Probe
 
 The repository includes token-gated AppTweak probe and RSS comparison commands. They do not load Postgres.

@@ -46,6 +46,7 @@ from app_store_review_pipeline.provider_compare import (
 )
 from app_store_review_pipeline.source_compare import compare_per_scope, summarize_comparison
 from app_store_review_pipeline.targets import active_targets, load_targets, parse_countries
+from scripts.run_provider_matrix import build_source_decision
 
 
 def write_targets(path: Path):
@@ -1157,6 +1158,69 @@ def test_provider_comparison_flags_configuration_limited_gap():
     assert summary["provider_rows_with_more_available"] == 1
     assert summary["provider_reported_reviews_remaining"] == 700
     assert summary["provider_volume_gap_likely_configuration_limited"] is True
+
+
+def test_provider_matrix_decision_needs_secret():
+    decision = build_source_decision(
+        {
+            "providers": [
+                {"provider": "42matters", "secret_env": "APP_STORE_42MATTERS_TOKEN", "configured": False, "status": "missing_secret"},
+                {"provider": "apptweak", "secret_env": "APP_STORE_APPTWEAK_TOKEN", "configured": False, "status": "missing_secret"},
+            ]
+        }
+    )
+
+    assert decision["status"] == "needs_provider_secret"
+    assert decision["selected_provider"] is None
+    assert decision["missing_secret_envs"] == ["APP_STORE_42MATTERS_TOKEN", "APP_STORE_APPTWEAK_TOKEN"]
+
+
+def test_provider_matrix_decision_selects_replacement_candidate():
+    decision = build_source_decision(
+        {
+            "providers": [
+                {
+                    "provider": "42matters",
+                    "configured": True,
+                    "status": "success",
+                    "candidate_passes_replacement_gate": True,
+                    "provider_to_rss_review_ratio": 1.2,
+                },
+                {
+                    "provider": "apptweak",
+                    "configured": True,
+                    "status": "success",
+                    "candidate_passes_replacement_gate": True,
+                    "provider_to_rss_review_ratio": 1.8,
+                },
+            ]
+        }
+    )
+
+    assert decision["status"] == "replacement_candidate_found"
+    assert decision["selected_provider"] == "apptweak"
+    assert decision["replacement_candidate_count"] == 2
+
+
+def test_provider_matrix_decision_requests_deeper_run():
+    decision = build_source_decision(
+        {
+            "providers": [
+                {
+                    "provider": "appfigures",
+                    "configured": True,
+                    "status": "success",
+                    "candidate_passes_replacement_gate": False,
+                    "provider_to_rss_review_ratio": 0.6,
+                    "provider_volume_gap_likely_configuration_limited": True,
+                    "provider_additional_pages_per_row_needed_for_rss_parity": 3,
+                }
+            ]
+        }
+    )
+
+    assert decision["status"] == "needs_deeper_provider_run"
+    assert decision["selected_provider"] == "appfigures"
 
 
 def test_provider_comparison_per_app_summary():
