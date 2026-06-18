@@ -27,6 +27,8 @@ However, HTML pages are not a better primary bulk review source:
 - A single-app depth check against Amazon Shopping on June 18, 2026 reached 15 successful web catalog review pages at a fast delay and 17 successful pages with a 1-second delay before `429 API capacity exceeded`. That is materially deeper than visible HTML but still below the RSS 10-page window in review volume.
 - A later single-app backoff check reached 20 successful recent-sort web catalog review pages and 120 reviews for Amazon Shopping. Three pages initially returned `429`, then recovered after a 45-second retry delay. The 429 responses did not include a `Retry-After` header in captured response headers.
 - A 20-app recent-sort backoff check reached 40 successful web catalog pages and 240 reviews. Three pages initially returned `429`, then recovered after a 30-second retry delay. A same-target RSS fetch during the same investigation returned 50 reviews across 21 RSS pages.
+- A GitHub-hosted 5-app comparison run with 1-second web delay, one 30-second 429 retry, and 2 web pages per scope failed the single-run gate: RSS returned 50 reviews, while web catalog returned 42 reviews with 3 pages still at `429` after retry.
+- A second GitHub-hosted 5-app comparison run with 2-second web delay, three 45-second 429 retries, and the same 2 web pages per scope passed the single-run gate: RSS returned 50 reviews, while web catalog returned 60 reviews with all 10 web pages at `200`.
 - The public web catalog path is now a serious candidate for a richer recent-review acquisition path, but it is still an undocumented web surface and not yet the default production source.
 - The HTML shape is less stable than the RSS JSON structure.
 - The aggregate rating count proves review presence, but does not provide a complete review-row feed.
@@ -36,7 +38,7 @@ Use HTML, Playwright, and `probe-web` checks as diagnostics for source health an
 Run a bounded web probe with:
 
 ```bash
-.venv/bin/python app_store_pipeline.py probe-web --limit 20 --web-sort recent --attempt-pagination --max-web-pages 2 --web-429-retries 1 --web-429-retry-seconds 30
+.venv/bin/python app_store_pipeline.py probe-web --limit 20 --web-sort recent --attempt-pagination --max-web-pages 2 --request-delay-seconds 2 --web-429-retries 3 --web-429-retry-seconds 45
 ```
 
 ## Web Catalog Canary Promotion Gate

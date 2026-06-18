@@ -113,9 +113,9 @@ Compare RSS and web catalog on the same target window:
 .venv/bin/python app_store_pipeline.py compare-sources \
   --limit 20 \
   --web-max-pages 2 \
-  --web-request-delay-seconds 1 \
-  --web-429-retries 1 \
-  --web-429-retry-seconds 30 \
+  --web-request-delay-seconds 2 \
+  --web-429-retries 3 \
+  --web-429-retry-seconds 45 \
   --rss-request-delay-seconds 0.5
 ```
 
@@ -177,8 +177,9 @@ The web catalog canary defaults to:
 - target limit: `20`
 - web catalog pages per app-country: `2`
 - sort: `recent`
-- HTTP 429 retries: `1`
-- HTTP 429 retry delay: `30` seconds
+- web catalog request delay: `2` seconds
+- HTTP 429 retries: `3`
+- HTTP 429 retry delay: `45` seconds
 - RSS pages per app-country: `10`
 
 Its artifact contains `data/reports/source_compare/{run_id}/source_comparison_report.json`, plus the raw RSS comparison files under `data/raw/source_compare/{run_id}/rss/`. Compare several runs before promoting web catalog reviews into the production ingestion path.
