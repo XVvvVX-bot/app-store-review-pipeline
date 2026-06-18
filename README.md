@@ -461,6 +461,7 @@ The web catalog backfill workflow defaults to:
 - matrix target limit: `1`
 - matrix target offset: `0`
 - max parallel app jobs: `2`
+- start page: `auto`, meaning continue from the highest stored page plus one, and skip apps that already reached `no_next_href`
 - web catalog pages per app-country: `0`, meaning no page cap
 - web catalog reviews per page: `20`
 - web catalog request delay: `5` seconds
@@ -478,6 +479,7 @@ For a 200-app sweep, dispatch `App Store Web Catalog Backfill` with:
 - `target_offset`: `0`
 - `limit`: `200`
 - `max_pages_per_app_country`: `0`
+- `start_page`: `auto`
 - `max_parallel`: start with `2`
 - `web_time_budget_seconds`: start with `1800`
 - `web_scope_time_budget_seconds`: start with `1800`

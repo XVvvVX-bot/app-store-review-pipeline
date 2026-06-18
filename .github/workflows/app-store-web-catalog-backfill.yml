@@ -19,9 +19,9 @@ on:
         default: "0"
         type: string
       start_page:
-        description: "First web catalog page to fetch"
+        description: "First web catalog page to fetch, or auto to continue from Postgres max page + 1"
         required: false
-        default: "1"
+        default: "auto"
         type: string
       review_limit:
         description: "Requested web catalog reviews per page; Apple currently caps this at 20"
@@ -135,8 +135,9 @@ jobs:
       PIP_USER: "false"
       INPUT_LIMIT: "1"
       INPUT_TARGET_OFFSET: ${{ matrix.target_offset }}
+      MATRIX_APP_ID: ${{ matrix.app_id }}
       INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ inputs.max_pages_per_app_country || '0' }}
-      INPUT_START_PAGE: ${{ inputs.start_page || '1' }}
+      INPUT_START_PAGE: ${{ inputs.start_page || 'auto' }}
       INPUT_REVIEW_LIMIT: ${{ inputs.review_limit || '20' }}
       INPUT_REQUEST_DELAY_SECONDS: ${{ inputs.request_delay_seconds || '5' }}
       INPUT_WEB_429_RETRIES: ${{ inputs.web_429_retries || '5' }}
@@ -176,13 +177,27 @@ jobs:
           set -euo pipefail
           database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
           echo "Backfilling target offset $INPUT_TARGET_OFFSET: ${{ matrix.app_name }} (${{ matrix.app_id }})"
+          start_page="$INPUT_START_PAGE"
+          if [[ "$start_page" == "auto" ]]; then
+            no_next_count="$(psql "$database_url" \
+              -v app_id="$MATRIX_APP_ID" \
+              -Atc "select count(*) from app_store_review_pages where source = 'apple_app_store_web_catalog_reviews' and app_id = :'app_id' and terminal_reason = 'no_next_href';")"
+            if [[ "$no_next_count" != "0" ]]; then
+              echo "App already has a no_next_href web catalog page in Postgres; skipping completed backfill scope."
+              exit 0
+            fi
+            start_page="$(psql "$database_url" \
+              -v app_id="$MATRIX_APP_ID" \
+              -Atc "select coalesce(max(page_number) + 1, 1) from app_store_review_pages where source = 'apple_app_store_web_catalog_reviews' and app_id = :'app_id';")"
+          fi
+          echo "Using start page: $start_page"
 
           .venv/bin/python app_store_pipeline.py daily-web-catalog \
             --database-url "$database_url" \
             --limit "$INPUT_LIMIT" \
             --target-offset "$INPUT_TARGET_OFFSET" \
             --max-pages-per-app-country "$INPUT_MAX_PAGES_PER_APP_COUNTRY" \
-            --start-page "$INPUT_START_PAGE" \
+            --start-page "$start_page" \
             --review-limit "$INPUT_REVIEW_LIMIT" \
             --request-delay-seconds "$INPUT_REQUEST_DELAY_SECONDS" \
             --web-429-retries "$INPUT_WEB_429_RETRIES" \
