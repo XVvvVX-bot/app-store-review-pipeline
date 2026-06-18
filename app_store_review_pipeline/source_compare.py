@@ -174,8 +174,11 @@ def summarize_comparison(
     rss_reviews = int(rss_summary["unique_reviews_seen"] or 0)
     web_reviews = int(web_summary.get("web_catalog_page_reviews_total") or 0)
     web_to_rss_ratio = web_reviews / rss_reviews if rss_reviews else None
-    web_same_order_as_rss = web_reviews > 0 and (
-        rss_reviews == 0 or (web_to_rss_ratio is not None and web_to_rss_ratio >= 0.1)
+    web_same_order_as_rss = (
+        rss_reviews > 0
+        and web_reviews > 0
+        and web_to_rss_ratio is not None
+        and web_to_rss_ratio >= 0.1
     )
     web_page_status_counts = web_summary.get("web_catalog_page_status_counts") or {}
     web_unrecovered_429_pages = int(web_page_status_counts.get("429") or 0)
@@ -188,6 +191,8 @@ def summarize_comparison(
     web_429_attempted_recovery_pages = web_recovered_429_pages + web_unrecovered_429_pages
     summary = {
         "web_reviews_minus_rss_reviews": web_reviews - rss_reviews,
+        "rss_unique_reviews_seen": rss_reviews,
+        "web_catalog_page_reviews_total": web_reviews,
         "web_to_rss_review_ratio": web_to_rss_ratio,
         "web_reviews_same_order_as_rss": web_same_order_as_rss,
         "web_reviews_at_or_above_rss": web_reviews >= rss_reviews,
@@ -203,13 +208,15 @@ def summarize_comparison(
         ),
         "web_retried_page_count": web_summary.get("retried_page_count", 0),
         "candidate_passes_single_run_gate": (
-            web_reviews > 0
+            rss_reviews > 0
+            and web_reviews > 0
             and web_reviews >= rss_reviews
             and web_non_200_pages == 0
             and rss_summary["fetch_errors"] == 0
         ),
         "candidate_passes_same_order_stability_gate": (
-            web_same_order_as_rss
+            rss_reviews > 0
+            and web_same_order_as_rss
             and web_non_200_pages == 0
             and rss_summary["fetch_errors"] == 0
         ),
@@ -269,7 +276,9 @@ def summarize_web_capacity(
 def build_web_source_decision(report_or_metrics: dict[str, Any]) -> dict[str, Any]:
     metrics = report_or_metrics.get("comparison") if "comparison" in report_or_metrics else report_or_metrics
     metrics = metrics or {}
+    rss = report_or_metrics.get("rss") if "comparison" in report_or_metrics else {}
     rss_errors = int(metrics.get("rss_fetch_error_count") or 0)
+    rss_reviews = int(metrics.get("rss_unique_reviews_seen") or (rss or {}).get("unique_reviews_seen") or 0)
     web_non_200 = int(metrics.get("web_non_200_page_count_after_retry") or 0)
     unrecovered_429 = int(metrics.get("web_unrecovered_429_page_count") or 0)
     web_ratio = metrics.get("web_to_rss_review_ratio")
@@ -285,6 +294,17 @@ def build_web_source_decision(report_or_metrics: dict[str, Any]) -> dict[str, An
             ),
             "blocking_metric": "rss_fetch_error_count",
             "blocking_value": rss_errors,
+        }
+    if rss_reviews <= 0:
+        return {
+            "status": "rss_baseline_empty",
+            "selected_source": None,
+            "recommended_next_action": (
+                "Rerun with a target window where RSS returns nonzero reviews; a zero-review RSS baseline cannot "
+                "prove that web catalog has matched or exceeded RSS."
+            ),
+            "blocking_metric": "rss_unique_reviews_seen",
+            "blocking_value": rss_reviews,
         }
     if metrics.get("candidate_passes_single_run_gate") is True:
         return {
@@ -399,6 +419,7 @@ def render_source_markdown_report(report: dict[str, Any]) -> str:
         "- `same_order_but_not_replacement`: web catalog is stable enough to monitor but did not match RSS volume.",
         "- `web_catalog_unstable_after_retry`: final non-200 pages remain after retry, usually from deep-pagination throttling.",
         "- `rss_baseline_unreliable`: RSS fetch errors make this comparison inconclusive.",
+        "- `rss_baseline_empty`: RSS returned zero reviews, so web/RSS replacement cannot be judged.",
         "- `no_public_web_replacement_candidate`: this run does not support replacing RSS.",
         "",
     ]

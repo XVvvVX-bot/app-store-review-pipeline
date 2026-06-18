@@ -640,6 +640,46 @@ def test_source_comparison_gate_requires_web_reviews():
     assert summary["candidate_passes_single_run_gate"] is False
 
 
+def test_source_comparison_empty_rss_baseline_cannot_pass_replacement_gate():
+    rss_report = {
+        "page_reports": [{"status": "ok", "review_count": 0}],
+        "fetched_pages": 1,
+        "fetch_errors": 0,
+        "empty_pages": 1,
+        "sparse_empty_pages": 0,
+        "review_count": 0,
+        "unique_review_count": 0,
+        "warning_scopes": [],
+        "capped_scopes": [],
+    }
+    web_report = {
+        "summary": {
+            "web_catalog_page_reviews_total": 20,
+            "web_catalog_page_status_counts": {"200": 1},
+            "recovered_429_page_count": 0,
+            "retried_page_count": 0,
+        }
+    }
+
+    summary = summarize_comparison(
+        rss_report,
+        web_report,
+        scope_count=1,
+        web_max_pages=1,
+        web_review_limit=20,
+    )
+    decision = build_web_source_decision(summary)
+
+    assert summary["rss_unique_reviews_seen"] == 0
+    assert summary["web_catalog_page_reviews_total"] == 20
+    assert summary["web_reviews_at_or_above_rss"] is True
+    assert summary["web_reviews_same_order_as_rss"] is False
+    assert summary["candidate_passes_same_order_stability_gate"] is False
+    assert summary["candidate_passes_single_run_gate"] is False
+    assert decision["status"] == "rss_baseline_empty"
+    assert decision["blocking_metric"] == "rss_unique_reviews_seen"
+
+
 def test_source_comparison_same_order_gate_allows_lower_same_magnitude_volume():
     rss_report = {
         "page_reports": [{"status": "ok", "review_count": 50}],
@@ -757,6 +797,7 @@ def test_web_source_decision_selects_replacement_candidate():
             "candidate_passes_single_run_gate": True,
             "candidate_passes_same_order_stability_gate": True,
             "rss_fetch_error_count": 0,
+            "rss_unique_reviews_seen": 100,
             "web_non_200_page_count_after_retry": 0,
             "web_to_rss_review_ratio": 1.1,
         }
@@ -772,6 +813,7 @@ def test_web_source_decision_requests_deeper_configuration_limited_run():
             "candidate_passes_single_run_gate": False,
             "candidate_passes_same_order_stability_gate": True,
             "rss_fetch_error_count": 0,
+            "rss_unique_reviews_seen": 1000,
             "web_non_200_page_count_after_retry": 0,
             "web_volume_gap_likely_configuration_limited": True,
             "web_to_rss_review_ratio": 0.2,
@@ -789,6 +831,7 @@ def test_web_source_decision_blocks_unstable_final_pages():
             "candidate_passes_single_run_gate": False,
             "candidate_passes_same_order_stability_gate": False,
             "rss_fetch_error_count": 0,
+            "rss_unique_reviews_seen": 1000,
             "web_non_200_page_count_after_retry": 3,
             "web_unrecovered_429_page_count": 3,
             "web_volume_gap_likely_configuration_limited": True,
