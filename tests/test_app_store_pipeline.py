@@ -64,6 +64,7 @@ from scripts.summarize_source_comparisons import (
     render_markdown_summary,
     summarize_history_from_reports,
 )
+from scripts.summarize_source_coverage import summarize_scope_records
 from scripts.summarize_web_catalog_ingestion import (
     render_markdown_summary as render_web_ingestion_markdown_summary,
 )
@@ -1648,6 +1649,56 @@ def test_web_catalog_ingestion_history_blocks_partial_runs(tmp_path):
     assert "one_or_more_runs_not_clean" in summary["promotion_gate"]["blocking_reasons"]
     assert "one_or_more_runs_below_500_reviews" in summary["promotion_gate"]["blocking_reasons"]
     assert summary["aggregate"]["final_non_200_pages_total"] == 1
+
+
+def test_source_coverage_scorecard_marks_parity_and_gaps():
+    records = [
+        {
+            "app_name": "Amazon Shopping",
+            "rss_has_rows": True,
+            "web_has_rows": True,
+            "rss_reviews": 535,
+            "web_catalog_reviews": 3500,
+            "web_at_or_above_rss": True,
+            "web_to_rss_ratio": 3500 / 535,
+            "web_review_gap_to_rss": 0,
+        },
+        {
+            "app_name": "Walmart",
+            "rss_has_rows": True,
+            "web_has_rows": True,
+            "rss_reviews": 556,
+            "web_catalog_reviews": 500,
+            "web_at_or_above_rss": False,
+            "web_to_rss_ratio": 500 / 556,
+            "web_review_gap_to_rss": 56,
+        },
+        {
+            "app_name": "Lyft",
+            "rss_has_rows": True,
+            "web_has_rows": False,
+            "rss_reviews": 533,
+            "web_catalog_reviews": 0,
+            "web_at_or_above_rss": False,
+            "web_to_rss_ratio": 0,
+            "web_review_gap_to_rss": 533,
+        },
+    ]
+
+    summary = summarize_scope_records(records, min_parity_scopes=2)
+
+    assert summary["promotion_gate"]["status"] == "needs_more_evidence"
+    assert summary["promotion_gate"]["blocking_reasons"] == [
+        "needs_at_least_2_parity_scopes",
+        "one_or_more_web_scopes_below_rss",
+    ]
+    assert summary["aggregate"]["target_scope_count"] == 3
+    assert summary["aggregate"]["web_catalog_scope_count"] == 2
+    assert summary["aggregate"]["parity_scope_count"] == 1
+    assert summary["aggregate"]["below_rss_scope_count"] == 1
+    assert summary["aggregate"]["missing_web_scope_count"] == 1
+    assert summary["aggregate"]["web_review_gap_to_rss_total"] == 589
+    assert summary["aggregate"]["minimum_web_to_rss_ratio_for_web_scopes"] == pytest.approx(500 / 556)
 
 
 def test_web_catalog_ingestion_markdown_summary_includes_gate(tmp_path):

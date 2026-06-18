@@ -167,6 +167,18 @@ Summarize downloaded web catalog ingestion artifacts:
 
 Use `--full-single-app-only` when judging the routine single-app profile; leave it off when analyzing manual depth-limit probes.
 
+Summarize cumulative RSS vs web catalog coverage directly from Postgres:
+
+```bash
+.venv/bin/python scripts/summarize_source_coverage.py \
+  --database-url postgresql:///app_store_reviews \
+  --output-json data/reports/source_coverage_scorecard.json \
+  --output-markdown data/reports/source_coverage_scorecard.md \
+  --min-parity-scopes 20
+```
+
+Use this scorecard to track whether web catalog coverage is broad enough to replace RSS. It reports web catalog app-country scopes at or above RSS, scopes still below RSS, missing web catalog scopes, and aggregate web/RSS ratios.
+
 Probe public App Store HTML and web JSON review surfaces:
 
 ```bash
