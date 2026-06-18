@@ -19,6 +19,7 @@ def compare_sources(
     run_id: str,
     raw_root: Path,
     reports_root: Path,
+    target_offset: int = 0,
     sort_by: str = DEFAULT_SORT_BY,
     rss_max_pages_per_app_country: int = 10,
     rss_max_consecutive_empty_pages: int = 10,
@@ -91,6 +92,7 @@ def compare_sources(
         "scope_count": sum(len(target.countries) for target in targets),
         "settings": {
             "sort_by": sort_by,
+            "target_offset": target_offset,
             "rss_max_pages_per_app_country": rss_max_pages_per_app_country,
             "rss_max_consecutive_empty_pages": rss_max_consecutive_empty_pages,
             "rss_request_delay_seconds": rss_request_delay_seconds,

@@ -11,6 +11,11 @@ on:
         required: false
         default: "5"
         type: string
+      target_offset:
+        description: "Number of active targets to skip before applying limit"
+        required: false
+        default: "0"
+        type: string
       max_web_pages:
         description: "Maximum web catalog review pages per app-country scope"
         required: false
@@ -75,6 +80,7 @@ jobs:
     timeout-minutes: 60
     env:
       INPUT_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '5' }}
+      INPUT_TARGET_OFFSET: ${{ github.event_name == 'workflow_dispatch' && inputs.target_offset || '0' }}
       INPUT_MAX_WEB_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.max_web_pages || '25' }}
       INPUT_WEB_REVIEW_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.web_review_limit || '20' }}
       INPUT_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '1' }}
@@ -107,6 +113,7 @@ jobs:
           args=(
             compare-sources
             --limit "$INPUT_LIMIT"
+            --target-offset "$INPUT_TARGET_OFFSET"
             --web-max-pages "$INPUT_MAX_WEB_PAGES"
             --web-review-limit "$INPUT_WEB_REVIEW_LIMIT"
             --web-request-delay-seconds "$INPUT_REQUEST_DELAY_SECONDS"

@@ -21,6 +21,7 @@ from app_store_review_pipeline.apple_web import (
     probe_web_reviews,
     probe_web_reviews_for_scope,
 )
+from app_store_review_pipeline.cli import select_target_window
 from app_store_review_pipeline.fetcher import fetch_targets, terminal_reason_for_page
 from app_store_review_pipeline.models import AppTarget, ReviewPage
 from app_store_review_pipeline.postgres_database import mask_database_url, scope_key
@@ -221,6 +222,25 @@ def fixture_target():
         active=True,
         notes=None,
     )
+
+
+def test_select_target_window_supports_offset_and_limit():
+    targets = [
+        AppTarget(
+            app_name=f"Fixture {index}",
+            category="test",
+            apple_app_id=str(index),
+            apple_slug=f"fixture-{index}",
+            countries=("us",),
+            active=True,
+            notes=None,
+        )
+        for index in range(6)
+    ]
+
+    assert [target.apple_app_id for target in select_target_window(targets, limit=2, offset=3)] == ["3", "4"]
+    assert [target.apple_app_id for target in select_target_window(targets, limit=0, offset=4)] == ["4", "5"]
+    assert [target.apple_app_id for target in select_target_window(targets, limit=2, offset=-5)] == ["0", "1"]
 
 
 def test_load_targets_and_url(tmp_path):

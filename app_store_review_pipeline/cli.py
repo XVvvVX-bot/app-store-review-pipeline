@@ -143,6 +143,12 @@ def build_parser() -> argparse.ArgumentParser:
     compare.add_argument("--raw-root", type=Path, default=DEFAULT_COMPARE_RAW_ROOT)
     compare.add_argument("--reports-root", type=Path, default=DEFAULT_COMPARE_REPORTS_ROOT)
     compare.add_argument("--limit", type=int, default=20, help="Maximum active targets to compare. Use 0 for all.")
+    compare.add_argument(
+        "--target-offset",
+        type=int,
+        default=0,
+        help="Number of active targets to skip before applying --limit. Useful for rotating canary windows.",
+    )
     compare.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
     compare.add_argument("--rss-request-delay-seconds", type=float, default=0.5)
     compare.add_argument("--rss-max-pages-per-app-country", type=int, default=DEFAULT_MAX_PAGES_PER_APP_COUNTRY)
@@ -478,13 +484,14 @@ def command_probe_web(args: argparse.Namespace) -> int:
 
 def command_compare_sources(args: argparse.Namespace) -> int:
     targets = active_targets(load_targets(args.targets))
-    selected = targets[: args.limit] if args.limit > 0 else targets
+    selected = select_target_window(targets, limit=args.limit, offset=args.target_offset)
     run_id = make_run_id()
     report = compare_sources(
         selected,
         run_id=run_id,
         raw_root=args.raw_root,
         reports_root=args.reports_root,
+        target_offset=max(0, args.target_offset),
         rss_max_pages_per_app_country=args.rss_max_pages_per_app_country,
         rss_max_consecutive_empty_pages=args.rss_max_consecutive_empty_pages,
         rss_request_delay_seconds=args.rss_request_delay_seconds,
@@ -515,6 +522,12 @@ def command_compare_sources(args: argparse.Namespace) -> int:
         )
     )
     return 0
+
+
+def select_target_window(targets: list, *, limit: int, offset: int = 0) -> list:
+    start = max(0, offset)
+    window = targets[start:]
+    return window[:limit] if limit > 0 else window
 
 
 def command_probe_42matters(args: argparse.Namespace) -> int:
