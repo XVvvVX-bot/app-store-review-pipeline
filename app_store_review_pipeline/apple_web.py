@@ -234,51 +234,90 @@ def probe_web_reviews(
     web_429_backoff_multiplier: float = 1.0,
     include_html: bool = True,
     target_review_counts_by_scope: dict[tuple[str, str], int] | None = None,
+    time_budget_seconds: float | None = None,
     sleep_fn: Callable[[float], None] = time.sleep,
+    monotonic_fn: Callable[[], float] = time.monotonic,
     session: requests.Session | None = None,
 ) -> dict[str, Any]:
     selected = targets[:limit] if limit > 0 else targets
+    planned_scope_count = sum(len(target.countries) for target in selected)
+    deadline_monotonic = (
+        monotonic_fn() + time_budget_seconds
+        if time_budget_seconds is not None and time_budget_seconds > 0
+        else None
+    )
     owned_session = session is None
     http = session or requests.Session()
     rows: list[dict[str, Any]] = []
+    time_budget_exceeded = False
 
     try:
         for target_index, target in enumerate(selected):
+            if deadline_exceeded(deadline_monotonic, monotonic_fn):
+                time_budget_exceeded = True
+                break
             if target_index and request_delay_seconds:
-                sleep_fn(request_delay_seconds)
+                if not sleep_with_deadline(
+                    request_delay_seconds,
+                    deadline_monotonic,
+                    sleep_fn=sleep_fn,
+                    monotonic_fn=monotonic_fn,
+                ):
+                    time_budget_exceeded = True
+                    break
             for country in target.countries:
+                if deadline_exceeded(deadline_monotonic, monotonic_fn):
+                    time_budget_exceeded = True
+                    break
                 scope_key = (target.apple_app_id, country.lower())
-                rows.append(
-                    probe_web_reviews_for_scope(
-                        target,
-                        country,
-                        session=http,
-                        timeout_seconds=timeout_seconds,
-                        review_limit=review_limit,
-                        web_sort=web_sort,
-                        attempt_pagination=attempt_pagination,
-                        max_web_pages=max_web_pages if attempt_pagination else 1,
-                        request_delay_seconds=request_delay_seconds,
-                        web_429_retries=web_429_retries,
-                        web_429_retry_seconds=web_429_retry_seconds,
-                        web_429_backoff_multiplier=web_429_backoff_multiplier,
-                        include_html=include_html,
-                        target_review_count=(
-                            target_review_counts_by_scope.get(scope_key)
-                            if target_review_counts_by_scope is not None
-                            else None
-                        ),
-                        sleep_fn=sleep_fn,
-                    )
+                row = probe_web_reviews_for_scope(
+                    target,
+                    country,
+                    session=http,
+                    timeout_seconds=timeout_seconds,
+                    review_limit=review_limit,
+                    web_sort=web_sort,
+                    attempt_pagination=attempt_pagination,
+                    max_web_pages=max_web_pages if attempt_pagination else 1,
+                    request_delay_seconds=request_delay_seconds,
+                    web_429_retries=web_429_retries,
+                    web_429_retry_seconds=web_429_retry_seconds,
+                    web_429_backoff_multiplier=web_429_backoff_multiplier,
+                    include_html=include_html,
+                    target_review_count=(
+                        target_review_counts_by_scope.get(scope_key)
+                        if target_review_counts_by_scope is not None
+                        else None
+                    ),
+                    deadline_monotonic=deadline_monotonic,
+                    sleep_fn=sleep_fn,
+                    monotonic_fn=monotonic_fn,
                 )
+                rows.append(row)
+                if row.get("web_catalog_stop_reason") == "time_budget_exceeded":
+                    time_budget_exceeded = True
+                    break
+            if time_budget_exceeded:
+                break
     finally:
         if owned_session:
             http.close()
 
+    summary = summarize_web_probe(rows)
+    summary.update(
+        {
+            "planned_scope_count": planned_scope_count,
+            "completed_scope_count": len(rows),
+            "skipped_scope_count": max(0, planned_scope_count - len(rows)),
+            "time_budget_seconds": time_budget_seconds,
+            "time_budget_exceeded": time_budget_exceeded,
+        }
+    )
     report = {
         "generated_at": utc_timestamp(),
         "source": "apple_app_store_public_web_probe",
         "target_count": len(selected),
+        "planned_scope_count": planned_scope_count,
         "scope_count": len(rows),
         "attempt_pagination": attempt_pagination,
         "web_sort": web_sort,
@@ -289,7 +328,9 @@ def probe_web_reviews(
         "web_429_backoff_multiplier": web_429_backoff_multiplier,
         "include_html": include_html,
         "target_review_counts_enabled": target_review_counts_by_scope is not None,
-        "summary": summarize_web_probe(rows),
+        "time_budget_seconds": time_budget_seconds,
+        "time_budget_exceeded": time_budget_exceeded,
+        "summary": summary,
         "results": rows,
     }
     write_json(output_path, report)
@@ -313,6 +354,8 @@ def probe_web_reviews_for_scope(
     include_html: bool,
     sleep_fn: Callable[[float], None],
     target_review_count: int | None = None,
+    deadline_monotonic: float | None = None,
+    monotonic_fn: Callable[[], float] = time.monotonic,
 ) -> dict[str, Any]:
     country = country.lower()
     page_url = app_store_reviews_page_url(target, country)
@@ -350,7 +393,9 @@ def probe_web_reviews_for_scope(
         web_429_retries=web_429_retries,
         web_429_retry_seconds=web_429_retry_seconds,
         web_429_backoff_multiplier=web_429_backoff_multiplier,
+        deadline_monotonic=deadline_monotonic,
         sleep_fn=sleep_fn,
+        monotonic_fn=monotonic_fn,
     )
     catalog_status_code = catalog_response.status_code
     catalog_response_bytes = len(catalog_response.content or b"")
@@ -383,13 +428,24 @@ def probe_web_reviews_for_scope(
     ]
     next_href = catalog_review_summary.get("next_href") or serialized_next_href
     page_index = 2
+    time_budget_exceeded = final_attempt_stopped_for_time_budget(web_catalog_pages)
     while attempt_pagination and next_href and page_index <= max_web_pages:
+        if deadline_exceeded(deadline_monotonic, monotonic_fn):
+            time_budget_exceeded = True
+            break
         if target_review_count is not None and (
             target_review_count <= 0 or web_catalog_page_review_total(web_catalog_pages) >= target_review_count
         ):
             break
         if request_delay_seconds:
-            sleep_fn(request_delay_seconds)
+            if not sleep_with_deadline(
+                request_delay_seconds,
+                deadline_monotonic,
+                sleep_fn=sleep_fn,
+                monotonic_fn=monotonic_fn,
+            ):
+                time_budget_exceeded = True
+                break
         next_url = app_store_web_catalog_next_url(str(next_href), sort=web_sort, limit=review_limit)
         next_response, next_attempts = get_with_429_retries(
             session,
@@ -399,7 +455,9 @@ def probe_web_reviews_for_scope(
             web_429_retries=web_429_retries,
             web_429_retry_seconds=web_429_retry_seconds,
             web_429_backoff_multiplier=web_429_backoff_multiplier,
+            deadline_monotonic=deadline_monotonic,
             sleep_fn=sleep_fn,
+            monotonic_fn=monotonic_fn,
         )
         next_summary = {"review_count": 0, "review_ids": [], "next_href": None, "min_date": None, "max_date": None}
         next_error = None
@@ -431,6 +489,8 @@ def probe_web_reviews_for_scope(
             }
         )
         if next_response.status_code != 200 or not next_summary["next_href"]:
+            if final_attempt_stopped_for_time_budget(web_catalog_pages):
+                time_budget_exceeded = True
             break
         next_href = next_summary["next_href"]
         page_index += 1
@@ -485,6 +545,7 @@ def probe_web_reviews_for_scope(
             pages=web_catalog_pages,
             target_review_count=target_review_count,
             target_reached=target_reached,
+            time_budget_exceeded=time_budget_exceeded,
         ),
         "web_catalog_next_probe": next_probe,
     }
@@ -502,9 +563,12 @@ def web_catalog_stop_reason(
     pages: list[dict[str, Any]],
     target_review_count: int | None,
     target_reached: bool,
+    time_budget_exceeded: bool = False,
 ) -> str:
     if not attempt_pagination:
         return "not_paginated"
+    if time_budget_exceeded:
+        return "time_budget_exceeded"
     if target_review_count is not None and target_review_count <= 0:
         return "target_review_count_zero"
     if target_reached:
@@ -575,6 +639,8 @@ def get_with_429_retries(
     web_429_retry_seconds: float,
     web_429_backoff_multiplier: float,
     sleep_fn: Callable[[float], None],
+    deadline_monotonic: float | None = None,
+    monotonic_fn: Callable[[], float] = time.monotonic,
 ) -> tuple[requests.Response, list[dict[str, Any]]]:
     attempts: list[dict[str, Any]] = []
     max_attempts = max(1, web_429_retries + 1)
@@ -591,10 +657,56 @@ def get_with_429_retries(
         )
         if response.status_code != 429 or attempt_number >= max_attempts:
             break
-        sleep_fn(retry_delay_seconds(response, attempt_number, web_429_retry_seconds, web_429_backoff_multiplier))
+        delay_seconds = retry_delay_seconds(
+            response,
+            attempt_number,
+            web_429_retry_seconds,
+            web_429_backoff_multiplier,
+        )
+        if not can_sleep_before_deadline(delay_seconds, deadline_monotonic, monotonic_fn):
+            attempts[-1]["retry_skipped_reason"] = "time_budget_exceeded"
+            break
+        sleep_fn(delay_seconds)
     if response is None:
         raise RuntimeError("unreachable web request state")
     return response, attempts
+
+
+def deadline_exceeded(deadline_monotonic: float | None, monotonic_fn: Callable[[], float]) -> bool:
+    return deadline_monotonic is not None and monotonic_fn() >= deadline_monotonic
+
+
+def sleep_with_deadline(
+    seconds: float,
+    deadline_monotonic: float | None,
+    *,
+    sleep_fn: Callable[[float], None],
+    monotonic_fn: Callable[[], float],
+) -> bool:
+    if seconds <= 0:
+        return not deadline_exceeded(deadline_monotonic, monotonic_fn)
+    if not can_sleep_before_deadline(seconds, deadline_monotonic, monotonic_fn):
+        return False
+    sleep_fn(seconds)
+    return not deadline_exceeded(deadline_monotonic, monotonic_fn)
+
+
+def can_sleep_before_deadline(
+    seconds: float,
+    deadline_monotonic: float | None,
+    monotonic_fn: Callable[[], float],
+) -> bool:
+    if deadline_monotonic is None:
+        return True
+    remaining = deadline_monotonic - monotonic_fn()
+    return remaining > seconds
+
+
+def final_attempt_stopped_for_time_budget(pages: list[dict[str, Any]]) -> bool:
+    if not pages:
+        return False
+    attempts = pages[-1].get("attempts") or []
+    return bool(attempts and attempts[-1].get("retry_skipped_reason") == "time_budget_exceeded")
 
 
 def retry_delay_seconds(

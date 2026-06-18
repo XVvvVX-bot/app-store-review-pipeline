@@ -18,6 +18,7 @@ from app_store_review_pipeline.apple_web import (
     parse_serialized_next_href,
     parse_web_catalog_review_page,
     parse_web_catalog_reviews,
+    probe_web_reviews,
     probe_web_reviews_for_scope,
 )
 from app_store_review_pipeline.fetcher import fetch_targets, terminal_reason_for_page
@@ -559,6 +560,27 @@ def test_web_429_retry_uses_backoff_and_retry_after():
     assert parse_retry_after_seconds("bad") is None
 
 
+def test_web_429_retry_stops_when_time_budget_cannot_fit_next_sleep():
+    sleeps = []
+    response, attempts = get_with_429_retries(
+        FakeWebSession([FakeWebResponse(429), FakeWebResponse(200)]),
+        "https://apps.apple.com/api/apps/v1/catalog/us/apps/123/reviews",
+        headers={},
+        timeout_seconds=1,
+        web_429_retries=1,
+        web_429_retry_seconds=10,
+        web_429_backoff_multiplier=1,
+        deadline_monotonic=105,
+        sleep_fn=sleeps.append,
+        monotonic_fn=lambda: 100,
+    )
+
+    assert response.status_code == 429
+    assert [attempt["status_code"] for attempt in attempts] == [429]
+    assert attempts[-1]["retry_skipped_reason"] == "time_budget_exceeded"
+    assert sleeps == []
+
+
 def test_web_probe_can_skip_html_request():
     session = FakeWebSession([FakeWebResponse(200)])
 
@@ -583,6 +605,73 @@ def test_web_probe_can_skip_html_request():
     assert report["html_probe_enabled"] is False
     assert report["html_status_code"] is None
     assert report["web_catalog_status_code"] == 200
+
+
+def test_web_probe_scope_reports_time_budget_stop_before_next_page():
+    session = FakeWebSession(
+        [
+            FakeWebResponse(
+                200,
+                payload={
+                    "next": "/v1/catalog/us/apps/123456789/reviews?l=en-US&offset=20",
+                    "data": [{"id": "review-1", "attributes": {"date": "2026-06-18T00:00:00Z"}}],
+                },
+            )
+        ]
+    )
+
+    report = probe_web_reviews_for_scope(
+        fixture_target(),
+        "us",
+        session=session,
+        timeout_seconds=1,
+        review_limit=20,
+        web_sort="recent",
+        attempt_pagination=True,
+        max_web_pages=5,
+        request_delay_seconds=0,
+        web_429_retries=0,
+        web_429_retry_seconds=0,
+        web_429_backoff_multiplier=1,
+        include_html=False,
+        deadline_monotonic=0,
+        sleep_fn=lambda _seconds: None,
+        monotonic_fn=lambda: 0,
+    )
+
+    assert report["web_catalog_pages_fetched"] == 1
+    assert report["web_catalog_stop_reason"] == "time_budget_exceeded"
+
+
+def test_web_probe_summary_records_skipped_scopes_after_time_budget(tmp_path):
+    second_target = AppTarget(
+        app_name="Second Fixture",
+        category="test",
+        apple_app_id="987654321",
+        apple_slug="second-fixture",
+        countries=("us",),
+        active=True,
+        notes=None,
+    )
+
+    report = probe_web_reviews(
+        [fixture_target(), second_target],
+        tmp_path / "web_probe.json",
+        limit=0,
+        request_delay_seconds=2,
+        attempt_pagination=False,
+        include_html=False,
+        time_budget_seconds=1,
+        session=FakeWebSession([FakeWebResponse(200)]),
+        sleep_fn=lambda _seconds: None,
+        monotonic_fn=lambda: 0,
+    )
+
+    assert report["time_budget_exceeded"] is True
+    assert report["summary"]["planned_scope_count"] == 2
+    assert report["summary"]["completed_scope_count"] == 1
+    assert report["summary"]["skipped_scope_count"] == 1
+    assert report["summary"]["time_budget_exceeded"] is True
 
 
 def test_web_probe_stops_after_target_review_count_is_reached():
@@ -925,6 +1014,27 @@ def test_web_source_decision_blocks_unstable_final_pages():
     assert decision["status"] == "web_catalog_unstable_after_retry"
     assert decision["selected_source"] is None
     assert decision["blocking_metric"] == "web_non_200_page_count_after_retry"
+
+
+def test_web_source_decision_blocks_time_budget_exceeded_runs():
+    decision = build_web_source_decision(
+        {
+            "candidate_passes_single_run_gate": False,
+            "candidate_passes_same_order_stability_gate": False,
+            "rss_fetch_error_count": 0,
+            "rss_unique_reviews_seen": 1000,
+            "web_non_200_page_count_after_retry": 0,
+            "web_time_budget_exceeded": True,
+            "web_all_scopes_completed": False,
+            "web_completed_scope_count": 3,
+            "web_planned_scope_count": 5,
+        }
+    )
+
+    assert decision["status"] == "web_catalog_time_budget_exceeded"
+    assert decision["selected_source"] is None
+    assert decision["web_completed_scope_count"] == 3
+    assert decision["web_planned_scope_count"] == 5
 
 
 def test_web_source_markdown_report_includes_decision_and_gates():

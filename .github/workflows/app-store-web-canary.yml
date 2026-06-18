@@ -9,12 +9,12 @@ on:
       limit:
         description: "Maximum active targets to probe"
         required: false
-        default: "20"
+        default: "5"
         type: string
       max_web_pages:
         description: "Maximum web catalog review pages per app-country scope"
         required: false
-        default: "5"
+        default: "25"
         type: string
       web_review_limit:
         description: "Requested web catalog reviews per page; Apple currently caps this at 20"
@@ -24,27 +24,27 @@ on:
       request_delay_seconds:
         description: "Delay between web catalog requests"
         required: false
-        default: "2"
+        default: "1"
         type: string
       rss_request_delay_seconds:
         description: "Delay between RSS requests"
         required: false
-        default: "0.5"
+        default: "0.1"
         type: string
       web_429_retries:
         description: "Retries after HTTP 429"
         required: false
-        default: "3"
+        default: "5"
         type: string
       web_429_retry_seconds:
         description: "Delay before retrying HTTP 429"
         required: false
-        default: "45"
+        default: "20"
         type: string
       web_429_backoff_multiplier:
         description: "Multiplier applied to HTTP 429 retry delay on each additional retry"
         required: false
-        default: "1"
+        default: "1.5"
         type: string
       web_skip_html:
         description: "Skip the extra HTML page probe and compare only RSS vs web catalog JSON"
@@ -55,6 +55,11 @@ on:
         description: "Stop each web catalog scope after matching that scope's RSS review count"
         required: false
         default: "true"
+        type: string
+      web_time_budget_seconds:
+        description: "Maximum seconds to spend on the web catalog comparison path; 0 disables the budget"
+        required: false
+        default: "900"
         type: string
 
 permissions:
@@ -69,16 +74,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      INPUT_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '20' }}
-      INPUT_MAX_WEB_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.max_web_pages || '5' }}
+      INPUT_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '5' }}
+      INPUT_MAX_WEB_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.max_web_pages || '25' }}
       INPUT_WEB_REVIEW_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.web_review_limit || '20' }}
-      INPUT_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '2' }}
-      INPUT_RSS_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.rss_request_delay_seconds || '0.5' }}
-      INPUT_WEB_429_RETRIES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retries || '3' }}
-      INPUT_WEB_429_RETRY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_seconds || '45' }}
-      INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_backoff_multiplier || '1' }}
+      INPUT_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '1' }}
+      INPUT_RSS_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.rss_request_delay_seconds || '0.1' }}
+      INPUT_WEB_429_RETRIES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retries || '5' }}
+      INPUT_WEB_429_RETRY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_seconds || '20' }}
+      INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_backoff_multiplier || '1.5' }}
       INPUT_WEB_SKIP_HTML: ${{ github.event_name == 'workflow_dispatch' && inputs.web_skip_html || 'true' }}
       INPUT_WEB_STOP_AT_RSS_PARITY: ${{ github.event_name == 'workflow_dispatch' && inputs.web_stop_at_rss_parity || 'true' }}
+      INPUT_WEB_TIME_BUDGET_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_time_budget_seconds || '900' }}
 
     steps:
       - name: Check out repository
@@ -107,6 +113,7 @@ jobs:
             --web-429-retries "$INPUT_WEB_429_RETRIES"
             --web-429-retry-seconds "$INPUT_WEB_429_RETRY_SECONDS"
             --web-429-backoff-multiplier "$INPUT_WEB_429_BACKOFF_MULTIPLIER"
+            --web-time-budget-seconds "$INPUT_WEB_TIME_BUDGET_SECONDS"
             --rss-request-delay-seconds "$INPUT_RSS_REQUEST_DELAY_SECONDS"
           )
           if [[ "$INPUT_WEB_SKIP_HTML" == "true" ]]; then

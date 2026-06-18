@@ -48,6 +48,10 @@ However, HTML pages are not a better primary bulk review source:
 - A GitHub-hosted 1-app adaptive parity run on June 18, 2026 with 25 max web pages, `limit=20`, 0.2s web delay, and short 429 retry settings reached RSS parity: 500 RSS reviews vs 500 web catalog reviews, 25/25 web pages at final `200`, and stop reason `target_review_count_reached`.
 - A GitHub-hosted 3-app adaptive parity run on June 18, 2026 with 25 max web pages, `limit=20`, 0.5s web delay, and short 5s 429 retry settings did not pass replacement: 1,500 RSS reviews vs 1,120 web catalog reviews, 56 final `200` pages, 2 final `429` pages, 17 recovered 429 pages, and stop reasons `target_review_count_reached: 1` plus `non_200_page: 2`.
 - A second GitHub-hosted 3-app adaptive parity run on June 18, 2026 with more conservative settings passed replacement: 1,500 RSS reviews vs 1,500 web catalog reviews, 75/75 web pages at final `200`, 5 recovered 429 pages, 0 unrecovered 429 pages, all 3 scopes stopped on `target_review_count_reached`, and runtime was about 4m7s.
+- A GitHub-hosted 5-app adaptive parity run on June 18, 2026 without a canary-level time budget was still in the comparison step after about 25 minutes and was canceled. This showed that max page depth alone is not enough; deep web catalog tests also need a runtime budget so the workflow can upload a useful report instead of waiting for the job timeout.
+- The web catalog comparison now supports `--web-time-budget-seconds`. If the budget is exhausted, the report records planned, completed, and skipped scopes; the source decision becomes `web_catalog_time_budget_exceeded` instead of allowing a replacement decision from an incomplete target window.
+- A local 1-app adaptive parity smoke on June 18, 2026 with `--web-time-budget-seconds 15`, 25 max pages, `limit=20`, `--web-skip-html`, and `--web-stop-at-rss-parity` reached parity in about 13 seconds: 500 RSS reviews vs 500 web catalog reviews, 25/25 web pages at final `200`, 1 recovered `429`, and no skipped scopes.
+- A repeat local Playwright rendered-HTML probe on Amazon Shopping on June 18, 2026 found 6 rendered review title IDs before scrolling and 6 after scrolling. Scrolling triggered 0 review-related requests and 0 review API requests, so Playwright-rendered HTML still did not expose deeper review rows than the initial visible cards.
 - The HTML shape is less stable than the RSS JSON structure.
 - The aggregate rating count proves review presence, but does not provide a complete review-row feed.
 
@@ -60,6 +64,8 @@ Run a bounded web probe with:
 ```
 
 For conservative deep-pagination tests, raise `--web-429-backoff-multiplier` above `1`. The retry helper honors `Retry-After` if Apple returns it; otherwise each additional 429 retry waits `web_429_retry_seconds * web_429_backoff_multiplier^(attempt-1)`.
+
+Add `--web-time-budget-seconds <seconds>` to manual depth tests so a throttled run can stop cleanly and upload a partial but interpretable report. A budget-exceeded report is evidence that the profile is too heavy for routine automation, even if some earlier apps reached parity.
 
 Run a rendered HTML probe with Playwright when we need browser-level evidence:
 

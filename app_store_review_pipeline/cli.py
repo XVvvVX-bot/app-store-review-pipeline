@@ -156,6 +156,12 @@ def build_parser() -> argparse.ArgumentParser:
     compare.add_argument("--web-429-retry-seconds", type=float, default=45.0)
     compare.add_argument("--web-429-backoff-multiplier", type=float, default=1.0)
     compare.add_argument(
+        "--web-time-budget-seconds",
+        type=float,
+        default=0.0,
+        help="Optional wall-clock budget for the web catalog comparison path. Use 0 for no budget.",
+    )
+    compare.add_argument(
         "--web-skip-html",
         action="store_true",
         help="Skip the HTML page request in the web catalog comparison path.",
@@ -492,6 +498,7 @@ def command_compare_sources(args: argparse.Namespace) -> int:
         web_429_backoff_multiplier=args.web_429_backoff_multiplier,
         web_include_html=not args.web_skip_html,
         web_stop_at_rss_parity=args.web_stop_at_rss_parity,
+        web_time_budget_seconds=args.web_time_budget_seconds if args.web_time_budget_seconds > 0 else None,
         timeout_seconds=args.timeout_seconds,
     )
     print(

@@ -33,6 +33,7 @@ def compare_sources(
     web_429_backoff_multiplier: float = 1.0,
     web_include_html: bool = True,
     web_stop_at_rss_parity: bool = False,
+    web_time_budget_seconds: float | None = None,
     timeout_seconds: float = 20.0,
     sleep_fn: Callable[[float], None] = time.sleep,
 ) -> dict[str, Any]:
@@ -78,6 +79,7 @@ def compare_sources(
         web_429_backoff_multiplier=web_429_backoff_multiplier,
         include_html=web_include_html,
         target_review_counts_by_scope=rss_counts_by_scope if web_stop_at_rss_parity else None,
+        time_budget_seconds=web_time_budget_seconds,
         sleep_fn=sleep_fn,
     )
 
@@ -103,6 +105,7 @@ def compare_sources(
             "web_429_backoff_multiplier": web_429_backoff_multiplier,
             "web_include_html": web_include_html,
             "web_stop_at_rss_parity": web_stop_at_rss_parity,
+            "web_time_budget_seconds": web_time_budget_seconds,
             "timeout_seconds": timeout_seconds,
         },
         "rss": summarize_rss_report(rss_report),
@@ -201,6 +204,14 @@ def summarize_comparison(
     )
     web_recovered_429_pages = int(web_summary.get("recovered_429_page_count", 0) or 0)
     web_429_attempted_recovery_pages = web_recovered_429_pages + web_unrecovered_429_pages
+    web_time_budget_exceeded = bool(web_summary.get("time_budget_exceeded"))
+    planned_scope_count = web_summary.get("planned_scope_count")
+    completed_scope_count = web_summary.get("completed_scope_count")
+    web_all_scopes_completed = (
+        True
+        if planned_scope_count in (None, 0)
+        else int(completed_scope_count or 0) >= int(planned_scope_count or 0)
+    )
     summary = {
         "web_reviews_minus_rss_reviews": web_reviews - rss_reviews,
         "rss_unique_reviews_seen": rss_reviews,
@@ -218,6 +229,11 @@ def summarize_comparison(
             if web_429_attempted_recovery_pages
             else None
         ),
+        "web_time_budget_exceeded": web_time_budget_exceeded,
+        "web_planned_scope_count": planned_scope_count,
+        "web_completed_scope_count": completed_scope_count,
+        "web_skipped_scope_count": web_summary.get("skipped_scope_count"),
+        "web_all_scopes_completed": web_all_scopes_completed,
         "web_retried_page_count": web_summary.get("retried_page_count", 0),
         "candidate_passes_single_run_gate": (
             rss_reviews > 0
@@ -225,12 +241,16 @@ def summarize_comparison(
             and web_reviews >= rss_reviews
             and web_non_200_pages == 0
             and rss_summary["fetch_errors"] == 0
+            and not web_time_budget_exceeded
+            and web_all_scopes_completed
         ),
         "candidate_passes_same_order_stability_gate": (
             rss_reviews > 0
             and web_same_order_as_rss
             and web_non_200_pages == 0
             and rss_summary["fetch_errors"] == 0
+            and not web_time_budget_exceeded
+            and web_all_scopes_completed
         ),
     }
     summary.update(
@@ -317,6 +337,20 @@ def build_web_source_decision(report_or_metrics: dict[str, Any]) -> dict[str, An
             ),
             "blocking_metric": "rss_unique_reviews_seen",
             "blocking_value": rss_reviews,
+        }
+    if metrics.get("web_time_budget_exceeded") is True or metrics.get("web_all_scopes_completed") is False:
+        return {
+            "status": "web_catalog_time_budget_exceeded",
+            "selected_source": None,
+            "recommended_next_action": (
+                "Do not promote this web catalog profile yet; the comparison did not complete the intended "
+                "target window within its runtime budget. Reduce target count, reduce retry delay, or keep this "
+                "profile as a manual depth test."
+            ),
+            "blocking_metric": "web_time_budget_exceeded",
+            "blocking_value": bool(metrics.get("web_time_budget_exceeded")),
+            "web_completed_scope_count": metrics.get("web_completed_scope_count"),
+            "web_planned_scope_count": metrics.get("web_planned_scope_count"),
         }
     if metrics.get("candidate_passes_single_run_gate") is True:
         return {
@@ -405,6 +439,8 @@ def render_source_markdown_report(report: dict[str, Any]) -> str:
         f"| RSS fetch error count | {metrics.get('rss_fetch_error_count', 0)} |",
         f"| Web non-200 pages after retry | {metrics.get('web_non_200_page_count_after_retry', 0)} |",
         f"| Web unrecovered 429 pages | {metrics.get('web_unrecovered_429_page_count', 0)} |",
+        f"| Web time budget exceeded | {bool_label(metrics.get('web_time_budget_exceeded'))} |",
+        f"| Web all scopes completed | {bool_label(metrics.get('web_all_scopes_completed'))} |",
         "",
         "## Capacity",
         "",
@@ -416,6 +452,9 @@ def render_source_markdown_report(report: dict[str, Any]) -> str:
         f"- Web volume gap likely configuration-limited: `{bool_label(metrics.get('web_volume_gap_likely_configuration_limited'))}`",
         f"- Web targeted scopes: `{web.get('web_catalog_targeted_scopes', 0)}`",
         f"- Web target reached scopes: `{web.get('web_catalog_target_reached_scopes', 0)}`",
+        f"- Web planned scopes: `{metrics.get('web_planned_scope_count')}`",
+        f"- Web completed scopes: `{metrics.get('web_completed_scope_count')}`",
+        f"- Web skipped scopes: `{metrics.get('web_skipped_scope_count')}`",
         f"- Web stop reasons: `{web.get('web_catalog_stop_reasons', {})}`",
         "",
         "## Settings",
@@ -427,6 +466,7 @@ def render_source_markdown_report(report: dict[str, Any]) -> str:
         f"- Web 429 retry seconds: `{settings.get('web_429_retry_seconds')}`",
         f"- Web HTML probe included: `{bool_label(settings.get('web_include_html'))}`",
         f"- Web stop at RSS parity: `{bool_label(settings.get('web_stop_at_rss_parity'))}`",
+        f"- Web time budget seconds: `{settings.get('web_time_budget_seconds')}`",
         "",
         "## Decision Status Meaning",
         "",
@@ -434,6 +474,7 @@ def render_source_markdown_report(report: dict[str, Any]) -> str:
         "- `needs_deeper_web_catalog_run`: the configured web page cap was too shallow to judge replacement.",
         "- `same_order_but_not_replacement`: web catalog is stable enough to monitor but did not match RSS volume.",
         "- `web_catalog_unstable_after_retry`: final non-200 pages remain after retry, usually from deep-pagination throttling.",
+        "- `web_catalog_time_budget_exceeded`: the intended target window did not finish within the canary time budget.",
         "- `rss_baseline_unreliable`: RSS fetch errors make this comparison inconclusive.",
         "- `rss_baseline_empty`: RSS returned zero reviews, so web/RSS replacement cannot be judged.",
         "- `no_public_web_replacement_candidate`: this run does not support replacing RSS.",
