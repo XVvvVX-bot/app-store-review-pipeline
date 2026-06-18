@@ -22,6 +22,10 @@ from app_store_review_pipeline.provider_42matters import (
     parse_42matters_reviews_payload,
     redact_access_token,
 )
+from app_store_review_pipeline.provider_compare import (
+    compare_provider_per_app,
+    summarize_provider_comparison,
+)
 from app_store_review_pipeline.source_compare import compare_per_scope, summarize_comparison
 from app_store_review_pipeline.targets import active_targets, load_targets, parse_countries
 
@@ -766,3 +770,109 @@ def test_42matters_reviews_payload_summary():
     assert summary["max_date"] == "2026-06-18"
     assert len(summary["review_fingerprints"]) == 2
     assert summary["review_fingerprints"][0] != summary["review_fingerprints"][1]
+
+
+def test_provider_comparison_replacement_gate():
+    rss_report = {
+        "page_reports": [{"app_id": "123", "status": "ok", "review_count": 50}],
+        "fetched_pages": 1,
+        "fetch_errors": 0,
+        "empty_pages": 0,
+        "sparse_empty_pages": 0,
+        "review_count": 100,
+        "unique_review_count": 100,
+        "warning_scopes": [],
+        "capped_scopes": [],
+    }
+    provider_report = {
+        "summary": {
+            "reviews_seen": 125,
+            "page_success_rate": 1.0,
+            "status_counts": {"200": 2},
+        }
+    }
+
+    summary = summarize_provider_comparison(rss_report, provider_report)
+
+    assert summary["provider_reviews_minus_rss_reviews"] == 25
+    assert summary["provider_to_rss_review_ratio"] == 1.25
+    assert summary["provider_reviews_same_order_as_rss"] is True
+    assert summary["provider_reviews_at_or_above_rss"] is True
+    assert summary["provider_non_200_page_count"] == 0
+    assert summary["provider_all_pages_ok"] is True
+    assert summary["candidate_passes_same_order_stability_gate"] is True
+    assert summary["candidate_passes_replacement_gate"] is True
+
+
+def test_provider_comparison_blocks_non_200_pages():
+    rss_report = {
+        "page_reports": [{"app_id": "123", "status": "ok", "review_count": 50}],
+        "fetched_pages": 1,
+        "fetch_errors": 0,
+        "empty_pages": 0,
+        "sparse_empty_pages": 0,
+        "review_count": 100,
+        "unique_review_count": 100,
+        "warning_scopes": [],
+        "capped_scopes": [],
+    }
+    provider_report = {
+        "summary": {
+            "reviews_seen": 200,
+            "page_success_rate": 0.5,
+            "status_counts": {"200": 1, "429": 1},
+        }
+    }
+
+    summary = summarize_provider_comparison(rss_report, provider_report)
+
+    assert summary["provider_reviews_at_or_above_rss"] is True
+    assert summary["provider_non_200_page_count"] == 1
+    assert summary["provider_all_pages_ok"] is False
+    assert summary["candidate_passes_same_order_stability_gate"] is False
+    assert summary["candidate_passes_replacement_gate"] is False
+
+
+def test_provider_comparison_per_app_summary():
+    rss_report = {
+        "page_reports": [
+            {"app_id": "123", "status": "ok", "review_count": 50},
+            {"app_id": "123", "status": "ok", "review_count": 25},
+            {"app_id": "456", "status": "error", "review_count": 0},
+        ]
+    }
+    provider_report = {
+        "results": [
+            {
+                "app_id": "123",
+                "app_name": "Fixture",
+                "category": "shopping",
+                "pages": [{"page": 1}, {"page": 2}],
+                "review_count": 100,
+                "status_counts": {"200": 2},
+                "total_reviews": 300,
+                "min_date": "2026-06-01",
+                "max_date": "2026-06-18",
+            }
+        ]
+    }
+
+    rows = compare_provider_per_app(rss_report, provider_report)
+
+    assert rows == [
+        {
+            "app_id": "123",
+            "app_name": "Fixture",
+            "category": "shopping",
+            "rss_page_count": 2,
+            "rss_fetch_errors": 0,
+            "rss_review_count": 75,
+            "provider_page_count": 2,
+            "provider_review_count": 100,
+            "provider_to_rss_review_ratio": 100 / 75,
+            "provider_status_counts": {"200": 2},
+            "provider_total_reviews": 300,
+            "provider_min_date": "2026-06-01",
+            "provider_max_date": "2026-06-18",
+        }
+    ]

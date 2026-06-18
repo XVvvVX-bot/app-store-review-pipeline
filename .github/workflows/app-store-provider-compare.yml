@@ -1,0 +1,100 @@
+name: App Store Provider Compare
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Maximum active targets to compare"
+        required: false
+        default: "10"
+        type: string
+      provider_days:
+        description: "42matters rolling review window in days"
+        required: false
+        default: "30"
+        type: string
+      provider_page_limit:
+        description: "Maximum 42matters pages per app"
+        required: false
+        default: "5"
+        type: string
+      provider_request_limit:
+        description: "42matters reviews per request"
+        required: false
+        default: "100"
+        type: string
+      provider_request_delay_seconds:
+        description: "Delay between 42matters requests"
+        required: false
+        default: "0.4"
+        type: string
+      rss_request_delay_seconds:
+        description: "Delay between RSS requests"
+        required: false
+        default: "0.5"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-store-provider-compare
+  cancel-in-progress: false
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      INPUT_LIMIT: ${{ inputs.limit || '10' }}
+      INPUT_PROVIDER_DAYS: ${{ inputs.provider_days || '30' }}
+      INPUT_PROVIDER_PAGE_LIMIT: ${{ inputs.provider_page_limit || '5' }}
+      INPUT_PROVIDER_REQUEST_LIMIT: ${{ inputs.provider_request_limit || '100' }}
+      INPUT_PROVIDER_REQUEST_DELAY_SECONDS: ${{ inputs.provider_request_delay_seconds || '0.4' }}
+      INPUT_RSS_REQUEST_DELAY_SECONDS: ${{ inputs.rss_request_delay_seconds || '0.5' }}
+      APP_STORE_42MATTERS_TOKEN: ${{ secrets.APP_STORE_42MATTERS_TOKEN }}
+
+    steps:
+      - name: Check 42matters token
+        run: |
+          set -euo pipefail
+          if [ -z "${APP_STORE_42MATTERS_TOKEN:-}" ]; then
+            echo "APP_STORE_42MATTERS_TOKEN secret is not configured."
+            exit 1
+          fi
+
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Compare RSS and 42matters reviews
+        run: |
+          set -euo pipefail
+          python app_store_pipeline.py compare-42matters \
+            --limit "$INPUT_LIMIT" \
+            --provider-days "$INPUT_PROVIDER_DAYS" \
+            --provider-page-limit "$INPUT_PROVIDER_PAGE_LIMIT" \
+            --provider-request-limit "$INPUT_PROVIDER_REQUEST_LIMIT" \
+            --provider-request-delay-seconds "$INPUT_PROVIDER_REQUEST_DELAY_SECONDS" \
+            --rss-request-delay-seconds "$INPUT_RSS_REQUEST_DELAY_SECONDS"
+
+      - name: Upload provider comparison artifacts
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-store-provider-compare-${{ github.run_id }}
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            data/reports/provider_compare/
+            data/raw/provider_compare/

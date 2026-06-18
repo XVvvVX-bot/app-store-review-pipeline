@@ -137,6 +137,21 @@ APP_STORE_42MATTERS_TOKEN=... \
 
 `probe-42matters` is a provider feasibility probe only. It does not load Postgres, and it redacts the API token from saved report URLs.
 
+Compare RSS and 42matters on the same target window:
+
+```bash
+APP_STORE_42MATTERS_TOKEN=... \
+.venv/bin/python app_store_pipeline.py compare-42matters \
+  --limit 10 \
+  --provider-days 30 \
+  --provider-page-limit 5 \
+  --provider-request-limit 100 \
+  --provider-request-delay-seconds 0.4 \
+  --rss-request-delay-seconds 0.5
+```
+
+`compare-42matters` writes `provider_comparison_report.json` with RSS volume, provider volume, provider page success rate, per-app ratios, and candidate gates for same-order stability and RSS replacement.
+
 Run tests:
 
 ```bash
@@ -169,11 +184,12 @@ If the pipeline reaches page 10 without overlap, the scope is marked `backlogged
 
 ## GitHub Actions
 
-Three workflows are included:
+Four workflows are included:
 
 - `CI`: runs unit tests on GitHub-hosted Ubuntu.
 - `App Store Review Pipeline`: runs the real daily ingestion on a self-hosted macOS ARM64 runner so it can reach the local Postgres database on this Mac.
 - `App Store Web Catalog Canary`: runs a bounded RSS vs web catalog `sort=recent` comparison on GitHub-hosted Ubuntu. It does not write Postgres and is used only to compare candidate source stability and review volume against RSS.
+- `App Store Provider Compare`: manual-only RSS vs 42matters comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_42MATTERS_TOKEN` repository secret and does not write Postgres.
 
 The daily workflow defaults to:
 

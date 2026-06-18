@@ -13,6 +13,8 @@ from app_store_review_pipeline.config import (
     DEFAULT_MAX_CONSECUTIVE_EMPTY_PAGES,
     DEFAULT_MAX_ATTEMPTS,
     DEFAULT_MAX_PAGES_PER_APP_COUNTRY,
+    DEFAULT_PROVIDER_COMPARE_RAW_ROOT,
+    DEFAULT_PROVIDER_COMPARE_REPORTS_ROOT,
     DEFAULT_RAW_ROOT,
     DEFAULT_REPORTS_ROOT,
     DEFAULT_REQUEST_DELAY_SECONDS,
@@ -32,6 +34,7 @@ from app_store_review_pipeline.postgres_database import (
     mask_database_url,
     validate_postgres,
 )
+from app_store_review_pipeline.provider_compare import compare_rss_with_42matters
 from app_store_review_pipeline.provider_42matters import probe_42matters_reviews
 from app_store_review_pipeline.targets import active_targets, load_targets
 from app_store_review_pipeline.source_compare import compare_sources
@@ -157,6 +160,35 @@ def build_parser() -> argparse.ArgumentParser:
     provider_42matters.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
     provider_42matters.add_argument("--request-delay-seconds", type=float, default=DEFAULT_REQUEST_DELAY_SECONDS)
     provider_42matters.set_defaults(func=command_probe_42matters)
+
+    compare_42matters = subparsers.add_parser(
+        "compare-42matters",
+        help="Compare RSS with the licensed 42matters iOS app reviews API on the same targets.",
+    )
+    compare_42matters.add_argument("--targets", type=Path, default=DEFAULT_TARGETS)
+    compare_42matters.add_argument("--raw-root", type=Path, default=DEFAULT_PROVIDER_COMPARE_RAW_ROOT)
+    compare_42matters.add_argument("--reports-root", type=Path, default=DEFAULT_PROVIDER_COMPARE_REPORTS_ROOT)
+    compare_42matters.add_argument(
+        "--access-token",
+        default=os.environ.get("APP_STORE_42MATTERS_TOKEN"),
+        help="42matters access token. Defaults to APP_STORE_42MATTERS_TOKEN.",
+    )
+    compare_42matters.add_argument("--limit", type=int, default=10, help="Maximum active targets to compare. Use 0 for all.")
+    compare_42matters.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
+    compare_42matters.add_argument("--rss-request-delay-seconds", type=float, default=0.5)
+    compare_42matters.add_argument("--rss-max-pages-per-app-country", type=int, default=DEFAULT_MAX_PAGES_PER_APP_COUNTRY)
+    compare_42matters.add_argument("--rss-max-consecutive-empty-pages", type=int, default=DEFAULT_MAX_CONSECUTIVE_EMPTY_PAGES)
+    compare_42matters.add_argument("--rss-max-attempts", type=int, default=DEFAULT_MAX_ATTEMPTS)
+    compare_42matters.add_argument("--rss-retry-delay-seconds", type=float, default=DEFAULT_RETRY_DELAY_SECONDS)
+    compare_42matters.add_argument("--provider-days", type=int, default=30)
+    compare_42matters.add_argument("--provider-start-date")
+    compare_42matters.add_argument("--provider-end-date")
+    compare_42matters.add_argument("--provider-lang")
+    compare_42matters.add_argument("--provider-rating", type=int)
+    compare_42matters.add_argument("--provider-page-limit", type=int, default=5)
+    compare_42matters.add_argument("--provider-request-limit", type=int, default=100)
+    compare_42matters.add_argument("--provider-request-delay-seconds", type=float, default=0.4)
+    compare_42matters.set_defaults(func=command_compare_42matters)
 
     daily = subparsers.add_parser("daily", help="Fetch, load, validate, and report Apple App Store reviews.")
     add_fetch_arguments(daily)
@@ -358,6 +390,49 @@ def command_probe_42matters(args: argparse.Namespace) -> int:
             {
                 "output": str(output_path),
                 "summary": report["summary"],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+def command_compare_42matters(args: argparse.Namespace) -> int:
+    if not args.access_token:
+        print("error: missing 42matters token; pass --access-token or set APP_STORE_42MATTERS_TOKEN")
+        return 2
+    targets = active_targets(load_targets(args.targets))
+    selected = targets[: args.limit] if args.limit > 0 else targets
+    run_id = make_run_id()
+    report = compare_rss_with_42matters(
+        selected,
+        run_id=run_id,
+        raw_root=args.raw_root,
+        reports_root=args.reports_root,
+        access_token=args.access_token,
+        rss_max_pages_per_app_country=args.rss_max_pages_per_app_country,
+        rss_max_consecutive_empty_pages=args.rss_max_consecutive_empty_pages,
+        rss_request_delay_seconds=args.rss_request_delay_seconds,
+        rss_max_attempts=args.rss_max_attempts,
+        rss_retry_delay_seconds=args.rss_retry_delay_seconds,
+        provider_days=args.provider_days,
+        provider_start_date=args.provider_start_date,
+        provider_end_date=args.provider_end_date,
+        provider_lang=args.provider_lang,
+        provider_rating=args.provider_rating,
+        provider_page_limit=args.provider_page_limit,
+        provider_request_limit=args.provider_request_limit,
+        provider_request_delay_seconds=args.provider_request_delay_seconds,
+        timeout_seconds=args.timeout_seconds,
+    )
+    print(
+        json.dumps(
+            {
+                "output": report["paths"]["comparison_report_path"],
+                "comparison": report["comparison"],
+                "rss": report["rss"],
+                "provider": report["provider"],
             },
             indent=2,
             sort_keys=True,

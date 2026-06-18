@@ -66,7 +66,9 @@ The next realistic path is a licensed-provider POC:
 
 ## 42matters Probe
 
-The repository includes a token-gated probe command. It does not load Postgres and redacts the token from saved report URLs:
+The repository includes token-gated probe and comparison commands. They do not load Postgres and redact the token from saved report URLs.
+
+Single-source probe:
 
 ```bash
 APP_STORE_42MATTERS_TOKEN=... \
@@ -79,5 +81,20 @@ APP_STORE_42MATTERS_TOKEN=... \
 ```
 
 The report is written under `data/reports/provider_42matters/{run_id}/provider_probe_report.json`.
+
+RSS-vs-provider comparison:
+
+```bash
+APP_STORE_42MATTERS_TOKEN=... \
+.venv/bin/python app_store_pipeline.py compare-42matters \
+  --limit 10 \
+  --provider-days 30 \
+  --provider-page-limit 5 \
+  --provider-request-limit 100 \
+  --provider-request-delay-seconds 0.4 \
+  --rss-request-delay-seconds 0.5
+```
+
+The report is written under `data/reports/provider_compare/{run_id}/provider_comparison_report.json`. Use the replacement gate only after checking provider page success rate, review volume vs RSS, per-app ratios, and runtime.
 
 Do not commit provider API tokens or raw credentials. Use environment variables or GitHub Actions secrets only.

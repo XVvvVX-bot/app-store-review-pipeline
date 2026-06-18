@@ -11,6 +11,8 @@ DEFAULT_WEB_REPORTS_ROOT = Path("data/reports/apple_web")
 DEFAULT_COMPARE_RAW_ROOT = Path("data/raw/source_compare")
 DEFAULT_COMPARE_REPORTS_ROOT = Path("data/reports/source_compare")
 DEFAULT_42MATTERS_REPORTS_ROOT = Path("data/reports/provider_42matters")
+DEFAULT_PROVIDER_COMPARE_RAW_ROOT = Path("data/raw/provider_compare")
+DEFAULT_PROVIDER_COMPARE_REPORTS_ROOT = Path("data/reports/provider_compare")
 DEFAULT_DATABASE_URL = os.environ.get("APP_STORE_DATABASE_URL", "postgresql:///app_store_reviews")
 
 DEFAULT_COUNTRY = "us"
