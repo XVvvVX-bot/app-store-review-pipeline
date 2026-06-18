@@ -2,7 +2,7 @@ name: App Store Web Catalog Canary
 
 on:
   schedule:
-    # Bounded canary for the candidate web catalog recent-review path.
+    # Rotating single-app canary for the candidate web catalog recent-review path.
     - cron: "30 */6 * * *"
   workflow_dispatch:
     inputs:
@@ -12,7 +12,7 @@ on:
         default: "5"
         type: string
       target_offset:
-        description: "Number of active targets to skip before applying limit"
+        description: "Number of active targets to skip before applying limit, or auto for scheduled-style rotation"
         required: false
         default: "0"
         type: string
@@ -79,18 +79,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      INPUT_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '5' }}
-      INPUT_TARGET_OFFSET: ${{ github.event_name == 'workflow_dispatch' && inputs.target_offset || '0' }}
+      INPUT_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '1' }}
+      INPUT_TARGET_OFFSET: ${{ github.event_name == 'workflow_dispatch' && inputs.target_offset || 'auto' }}
       INPUT_MAX_WEB_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.max_web_pages || '25' }}
       INPUT_WEB_REVIEW_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.web_review_limit || '20' }}
-      INPUT_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '1' }}
+      INPUT_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '5' }}
       INPUT_RSS_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.rss_request_delay_seconds || '0.1' }}
       INPUT_WEB_429_RETRIES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retries || '5' }}
-      INPUT_WEB_429_RETRY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_seconds || '20' }}
+      INPUT_WEB_429_RETRY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_seconds || '60' }}
       INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_backoff_multiplier || '1.5' }}
       INPUT_WEB_SKIP_HTML: ${{ github.event_name == 'workflow_dispatch' && inputs.web_skip_html || 'true' }}
       INPUT_WEB_STOP_AT_RSS_PARITY: ${{ github.event_name == 'workflow_dispatch' && inputs.web_stop_at_rss_parity || 'true' }}
-      INPUT_WEB_TIME_BUDGET_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_time_budget_seconds || '900' }}
+      INPUT_WEB_TIME_BUDGET_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_time_budget_seconds || '1200' }}
 
     steps:
       - name: Check out repository
@@ -110,10 +110,33 @@ jobs:
       - name: Compare RSS and App Store web catalog reviews
         run: |
           set -euo pipefail
+          target_offset="$INPUT_TARGET_OFFSET"
+          if [[ "$target_offset" == "auto" ]]; then
+            target_offset="$(python - <<'PY'
+          import csv
+          import os
+          import time
+
+          limit = max(1, int(os.environ.get("INPUT_LIMIT", "1") or "1"))
+          with open("data/targets/apple_apps.csv", newline="", encoding="utf-8") as handle:
+              active_count = sum(
+                  1
+                  for row in csv.DictReader(handle)
+                  if str(row.get("active", "")).strip().lower() in {"1", "true", "yes", "y"}
+              )
+          if active_count <= 0:
+              print(0)
+          else:
+              slot = int(time.time() // (6 * 60 * 60))
+              print((slot * limit) % active_count)
+          PY
+          )"
+          fi
+          echo "Using target offset: $target_offset"
           args=(
             compare-sources
             --limit "$INPUT_LIMIT"
-            --target-offset "$INPUT_TARGET_OFFSET"
+            --target-offset "$target_offset"
             --web-max-pages "$INPUT_MAX_WEB_PAGES"
             --web-review-limit "$INPUT_WEB_REVIEW_LIMIT"
             --web-request-delay-seconds "$INPUT_REQUEST_DELAY_SECONDS"
