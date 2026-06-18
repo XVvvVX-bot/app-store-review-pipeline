@@ -8,9 +8,9 @@ Find a source that is more stable than Apple RSS while returning the same order 
 
 | Source | Result | Decision |
 | --- | --- | --- |
-| Apple iTunes customer reviews RSS | Stable enough for daily public recent-review ingestion, structured JSON, but practical window is about 10 pages x 50 reviews per app-country scope. | Keep as primary baseline. |
+| Apple iTunes customer reviews RSS | Stable enough for public recent-review baseline checks, structured JSON, but practical window is about 10 pages x 50 reviews per app-country scope. | Keep as manual legacy baseline. |
 | App Store HTML / Playwright | Public pages expose rating signals and a small visible review set. Scrolling did not load deeper review rows in browser checks. | Diagnostic only. |
-| Apple public web catalog reviews | Structured JSON and better than visible HTML. Large multi-app deep-pagination batches repeatedly hit `429` pressure and time budgets, but the conservative rotating single-app profile has matched or exceeded the RSS recent window across the current promotion gate. | Strongest public source. Run as a separate experimental ingestion mode; keep RSS as scheduled baseline until the web catalog path has more routine operational history. |
+| Apple public web catalog reviews | Structured JSON and better than visible HTML. Large multi-app deep-pagination batches repeatedly hit `429` pressure and time budgets, but the conservative rotating single-app profile has matched or exceeded the RSS recent window across the current promotion gate. | Strongest public source. Run as the scheduled primary path while using manual backfill probes to test historical completeness scope by scope. |
 | App Store Connect API | Official and stable, but scoped to apps in the authenticated developer account. | Strong for owned/partnered apps only. Not a public third-party source. |
 
 ## Official Apple Path
@@ -54,10 +54,10 @@ The current public source candidate is Apple web catalog reviews, but only with 
 
 Recommended public-source path:
 
-1. Keep RSS as the production baseline.
-2. Run the rotating single-app web catalog canary every 6 hours.
-3. Download canary artifacts periodically and run `scripts/summarize_source_comparisons.py --single-app-only --min-web-max-pages 25 --min-runs 5` to judge the full scheduled-style profile without mixing in shallow smoke runs or manual stress tests.
-4. Use `daily-web-catalog` and the `App Store Web Catalog Ingestion` workflow for controlled Postgres ingestion trials under `source='apple_app_store_web_catalog_reviews'`.
+1. Use web catalog as the scheduled primary path with one app-country scope per run, coverage-aware `target_offset=auto`, 35-page cap, and bounded retry/backoff.
+2. Keep RSS manual-only as a legacy recent-window baseline.
+3. Run manual `App Store Web Catalog Backfill` probes with `max_pages_per_app_country=0` on selected scopes to test whether Apple's web catalog pagination reaches `no_next_href`.
+4. Treat `no_next_href` as observed complete-pagination evidence for that scope; treat page-cap, parity, overlap, non-200, fetch-error, and time-budget stops as lower-bound or incremental results.
 5. Keep manual 5-app or 10-app deep runs as stress tests, not routine automation. Use `--stop-at-rss-parity` for routine single-app ingestion so app-country scopes can exceed the old 25-page / 500-review window when RSS already has more than 500 rows, but stop before unnecessary post-parity pagination.
 
 Current public-source readout from downloaded June 18, 2026 canary artifacts:

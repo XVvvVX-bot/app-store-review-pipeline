@@ -2,31 +2,76 @@ name: App Store Review Pipeline
 
 on:
   schedule:
-    # Six-hour cadence keeps the Apple RSS 500-review window safer for high-volume apps.
+    # Primary web catalog review ingestion. Keep this conservative while backfill coverage expands.
     - cron: "0 */6 * * *"
   workflow_dispatch:
     inputs:
-      max_pages_per_app_country:
-        description: "Maximum RSS pages per app-country scope"
+      limit:
+        description: "Maximum active targets to ingest"
         required: false
-        default: "10"
+        default: "1"
+        type: string
+      target_offset:
+        description: "Number of active targets to skip before applying limit, or auto for coverage-aware rotation"
+        required: false
+        default: "auto"
+        type: string
+      max_pages_per_app_country:
+        description: "Maximum web catalog pages per app-country scope; use 0 only for manual complete-backfill probes"
+        required: false
+        default: "35"
+        type: string
+      start_page:
+        description: "First web catalog page to fetch"
+        required: false
+        default: "1"
+        type: string
+      review_limit:
+        description: "Requested web catalog reviews per page; Apple currently caps this at 20"
+        required: false
+        default: "20"
+        type: string
+      request_delay_seconds:
+        description: "Delay between web catalog requests"
+        required: false
+        default: "5"
+        type: string
+      web_429_retries:
+        description: "Retries after HTTP 429"
+        required: false
+        default: "5"
+        type: string
+      web_429_retry_seconds:
+        description: "Delay before retrying HTTP 429"
+        required: false
+        default: "60"
+        type: string
+      web_429_backoff_multiplier:
+        description: "Multiplier applied to HTTP 429 retry delay on each additional retry"
+        required: false
+        default: "1.5"
+        type: string
+      web_time_budget_seconds:
+        description: "Wall-clock budget for web catalog fetching; 0 means no budget"
+        required: false
+        default: "1200"
         type: string
       disable_overlap_stop:
-        description: "Fetch to page cap even after already-known review IDs are seen"
+        description: "Fetch to page cap/no-next even after already-known web catalog review IDs are seen"
         required: false
         default: false
         type: boolean
-      max_consecutive_empty_pages:
-        description: "Continue across empty RSS pages with next links up to this streak"
+      stop_at_rss_parity:
+        description: "Migration mode: continue until web catalog reaches current RSS count, then stop"
         required: false
-        default: "10"
-        type: string
+        default: true
+        type: boolean
 
 permissions:
   contents: read
 
 concurrency:
-  group: app-store-review-pipeline
+  group: app-store-postgres-writer
   cancel-in-progress: false
 
 jobs:
@@ -36,6 +81,18 @@ jobs:
     env:
       PIP_CONFIG_FILE: /dev/null
       PIP_USER: "false"
+      INPUT_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '1' }}
+      INPUT_TARGET_OFFSET: ${{ github.event_name == 'workflow_dispatch' && inputs.target_offset || 'auto' }}
+      INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ github.event_name == 'workflow_dispatch' && inputs.max_pages_per_app_country || '35' }}
+      INPUT_START_PAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.start_page || '1' }}
+      INPUT_REVIEW_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.review_limit || '20' }}
+      INPUT_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '5' }}
+      INPUT_WEB_429_RETRIES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retries || '5' }}
+      INPUT_WEB_429_RETRY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_seconds || '60' }}
+      INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_backoff_multiplier || '1.5' }}
+      INPUT_WEB_TIME_BUDGET_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_time_budget_seconds || '1200' }}
+      INPUT_DISABLE_OVERLAP_STOP: ${{ github.event_name == 'workflow_dispatch' && inputs.disable_overlap_stop || 'false' }}
+      INPUT_STOP_AT_RSS_PARITY: ${{ github.event_name != 'workflow_dispatch' || inputs.stop_at_rss_parity }}
 
     steps:
       - name: Check out repository
@@ -61,27 +118,45 @@ jobs:
       - name: Run tests
         run: .venv/bin/python -m pytest -q
 
-      - name: Run App Store review pipeline
+      - name: Run primary web catalog review pipeline
         env:
           DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
-          INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ github.event_name == 'workflow_dispatch' && inputs.max_pages_per_app_country || '10' }}
-          INPUT_MAX_CONSECUTIVE_EMPTY_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.max_consecutive_empty_pages || '10' }}
-          INPUT_DISABLE_OVERLAP_STOP: ${{ github.event_name == 'workflow_dispatch' && inputs.disable_overlap_stop || 'false' }}
         run: |
           set -euo pipefail
           database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          target_offset="$INPUT_TARGET_OFFSET"
+          if [[ "$target_offset" == "auto" ]]; then
+            target_offset="$(.venv/bin/python scripts/summarize_source_coverage.py \
+              --database-url "$database_url" \
+              --targets data/targets/apple_apps.csv \
+              --max-pages-per-app-country "$INPUT_MAX_PAGES_PER_APP_COUNTRY" \
+              --review-limit "$INPUT_REVIEW_LIMIT" \
+              --print-next-target-offset)"
+          fi
+          echo "Using target offset: $target_offset"
+
           overlap_flag=""
           if [ "$INPUT_DISABLE_OVERLAP_STOP" = "true" ]; then
             overlap_flag="--disable-overlap-stop"
           fi
+          parity_flag=""
+          if [ "$INPUT_STOP_AT_RSS_PARITY" = "true" ]; then
+            parity_flag="--stop-at-rss-parity"
+          fi
 
-          .venv/bin/python app_store_pipeline.py daily \
+          .venv/bin/python app_store_pipeline.py daily-web-catalog \
             --database-url "$database_url" \
+            --limit "$INPUT_LIMIT" \
+            --target-offset "$target_offset" \
             --max-pages-per-app-country "$INPUT_MAX_PAGES_PER_APP_COUNTRY" \
-            --max-consecutive-empty-pages "$INPUT_MAX_CONSECUTIVE_EMPTY_PAGES" \
-            --request-delay-seconds 1 \
-            --max-attempts 3 \
-            --retry-delay-seconds 10 \
+            --start-page "$INPUT_START_PAGE" \
+            --review-limit "$INPUT_REVIEW_LIMIT" \
+            --request-delay-seconds "$INPUT_REQUEST_DELAY_SECONDS" \
+            --web-429-retries "$INPUT_WEB_429_RETRIES" \
+            --web-429-retry-seconds "$INPUT_WEB_429_RETRY_SECONDS" \
+            --web-429-backoff-multiplier "$INPUT_WEB_429_BACKOFF_MULTIPLIER" \
+            --web-time-budget-seconds "$INPUT_WEB_TIME_BUDGET_SECONDS" \
+            $parity_flag \
             $overlap_flag
 
       - name: Upload App Store daily artifacts
@@ -92,5 +167,5 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
           path: |
-            data/raw/apple_rss/
-            data/reports/apple_rss/
+            data/raw/apple_web_catalog/
+            data/reports/apple_web_catalog/

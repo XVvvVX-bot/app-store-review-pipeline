@@ -143,7 +143,9 @@ Run a controlled web catalog ingestion trial with:
   --stop-at-rss-parity
 ```
 
-The matching `App Store Web Catalog Ingestion` workflow runs this conservative profile on the self-hosted macOS ARM64 runner every 6 hours at `15 3,9,15,21 * * *`. It writes to the local Postgres database, stores rows with `source='apple_app_store_web_catalog_reviews'`, and uploads `data/raw/apple_web_catalog/` plus `data/reports/apple_web_catalog/` as audit artifacts. Keep `limit=1`, `target_offset=auto`, and RSS-parity stopping as the routine setting until the web catalog path has more operational history.
+The primary `App Store Review Pipeline` workflow now runs this conservative web catalog profile on the self-hosted macOS ARM64 runner every 6 hours. It writes to the local Postgres database, stores rows with `source='apple_app_store_web_catalog_reviews'`, and uploads `data/raw/apple_web_catalog/` plus `data/reports/apple_web_catalog/` as audit artifacts. Keep `limit=1`, `target_offset=auto`, and RSS-parity stopping as the routine scheduled setting until the web catalog path has more operational history.
+
+The manual `App Store Web Catalog Backfill` workflow is for complete-backfill probes. Its default `max_pages_per_app_country=0` disables page cap and follows web catalog `next` links until `no_next_href`, fetch error, non-200 response, or wall-clock budget. A `no_next_href` stop is the strongest public-path evidence that the observed catalog pagination is exhausted for that app-country scope; any other stop reason is a lower-bound result.
 
 Use the web catalog ingestion `daily_report.json` stability fields to judge each scheduled trial: `status_code_counts`, `attempt_counts`, `retried_pages`, `final_non_200_pages`, `missing_text`, `missing_rating`, and `all_pages_ok_after_retry`.
 

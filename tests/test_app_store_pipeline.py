@@ -442,6 +442,33 @@ def test_fetch_web_catalog_targets_follows_next_pages_and_preserves_source(tmp_p
     assert len(session.calls) == 2
 
 
+def test_fetch_web_catalog_targets_zero_page_cap_follows_until_no_next(tmp_path):
+    session = FakeWebSession(
+        [
+            FakeWebResponse(200, payload=web_catalog_payload(start=1, count=2, has_next=True)),
+            FakeWebResponse(200, payload=web_catalog_payload(start=3, count=2, has_next=True)),
+            FakeWebResponse(200, payload=web_catalog_payload(start=5, count=1, has_next=False)),
+        ]
+    )
+
+    report = fetch_web_catalog_targets(
+        [fixture_target()],
+        tmp_path,
+        "run",
+        max_pages_per_app_country=0,
+        review_limit=2,
+        request_delay_seconds=0,
+        web_429_retries=0,
+        session=session,
+    )
+
+    assert report["page_cap_enabled"] is False
+    assert report["fetched_pages"] == 3
+    assert report["review_count"] == 5
+    assert report["page_reports"][-1]["terminal_reason"] == "no_next_href"
+    assert len(session.calls) == 3
+
+
 def test_fetch_web_catalog_targets_can_start_from_deeper_page(tmp_path):
     session = FakeWebSession(
         [
@@ -518,6 +545,7 @@ def test_daily_web_catalog_passes_start_page_to_fetcher(tmp_path, monkeypatch):
 
     def fake_fetch_web_catalog_targets(*args, **kwargs):
         observed["start_page"] = kwargs["start_page"]
+        observed["time_budget_seconds"] = kwargs["time_budget_seconds"]
         return {
             "page_reports": [],
             "reviews": [],
@@ -548,11 +576,13 @@ def test_daily_web_catalog_passes_start_page_to_fetcher(tmp_path, monkeypatch):
         web_429_retries=0,
         web_429_retry_seconds=0.0,
         web_429_backoff_multiplier=1.0,
+        web_time_budget_seconds=120.0,
         disable_overlap_stop=True,
     )
 
     assert command_daily_web_catalog(args) == 0
     assert observed["start_page"] == 51
+    assert observed["time_budget_seconds"] == 120.0
 
 
 def test_daily_web_catalog_can_pass_rss_parity_targets_to_fetcher(tmp_path, monkeypatch):
@@ -603,6 +633,7 @@ def test_daily_web_catalog_can_pass_rss_parity_targets_to_fetcher(tmp_path, monk
         web_429_retries=0,
         web_429_retry_seconds=0.0,
         web_429_backoff_multiplier=1.0,
+        web_time_budget_seconds=0.0,
         disable_overlap_stop=False,
         stop_at_rss_parity=True,
     )

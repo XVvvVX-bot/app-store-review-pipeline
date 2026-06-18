@@ -427,6 +427,12 @@ def add_web_catalog_fetch_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--web-429-retry-seconds", type=float, default=60.0)
     parser.add_argument("--web-429-backoff-multiplier", type=float, default=1.5)
     parser.add_argument(
+        "--web-time-budget-seconds",
+        type=float,
+        default=0.0,
+        help="Optional wall-clock budget for web catalog fetching. Use 0 for no budget.",
+    )
+    parser.add_argument(
         "--stop-at-rss-parity",
         action="store_true",
         help=(
@@ -937,6 +943,7 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         web_429_retries=args.web_429_retries,
         web_429_retry_seconds=args.web_429_retry_seconds,
         web_429_backoff_multiplier=args.web_429_backoff_multiplier,
+        time_budget_seconds=args.web_time_budget_seconds,
         known_review_ids_by_scope=known_ids,
         target_review_counts_by_scope=target_review_counts,
         use_overlap_stop=use_overlap_stop,
@@ -966,6 +973,7 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         "max_pages_per_app_country": args.max_pages_per_app_country,
         "start_page": args.start_page,
         "review_limit": args.review_limit,
+        "web_time_budget_seconds": args.web_time_budget_seconds,
         "overlap_stop_enabled": use_overlap_stop,
         "stop_at_rss_parity": bool(getattr(args, "stop_at_rss_parity", False)),
         "rss_parity_source": SOURCE if getattr(args, "stop_at_rss_parity", False) else None,

@@ -2,13 +2,13 @@
 
 ## Current Decision
 
-Use Apple App Store public RSS as the current production pipeline source for this repository.
+Use Apple App Store public web catalog reviews as the current scheduled pipeline source for this repository.
 
-Apple public web catalog reviews have passed the current conservative single-app promotion gate and are now available as an experimental separate ingestion mode. Do not silently replace the scheduled RSS workflow yet; keep RSS as the production baseline while running web catalog as a controlled single-app rotating path.
+Apple public web catalog reviews have passed the current conservative single-app promotion gate. The scheduled workflow now uses the web catalog path on a single-app rotating profile, while RSS remains manual-only as a recent-window baseline and diagnostic source.
 
-## Why Apple RSS
+## Why Web Catalog
 
-Apple RSS gives us:
+Apple web catalog gives us:
 
 - public third-party app access
 - structured JSON
@@ -16,25 +16,28 @@ Apple RSS gives us:
 - rating
 - title
 - updated timestamp
-- app version
 - country storefront
 - stable observed review ID
+- pagination via returned `next` href
+- substantially deeper observed review depth than RSS for tested apps
 
-This is enough to build a useful recent-review analytics pipeline.
+This is enough to build a useful public app-review analytics pipeline and to test deeper backfill behavior app by app.
 
 ## Limits
 
-Apple RSS should not be treated as full historical coverage. The practical source window is about 10 pages x 50 reviews per app-country-sort scope. The pipeline therefore measures overlap and marks scopes as backlogged when the source window may have moved too quickly.
+Apple web catalog should not be treated as a contractual production API. It is a public Apple-hosted catalog JSON path, not the formal App Store Connect customer reviews API. Complete historical coverage is only proven for a scope when a backfill run reaches `no_next_href`; page-cap, RSS-parity, overlap, error, or time-budget stops are lower-bound or incremental results.
+
+Apple RSS also remains limited. Its practical source window is about 10 pages x 50 reviews per app-country-sort scope, so it is useful as a baseline but not as a full historical source.
 
 ## Production Caveat
 
 For stronger completeness, cross-platform coverage, contractual access, or historical backfill, evaluate a licensed app-review provider. This repo is designed so a provider source could later plug into the same target, normalize, Postgres upsert, validate, and report architecture.
 
-The current best public replacement-source candidate is Apple public web catalog reviews with single-app rotating fetch. The current best contractual production path is still a licensed provider API. See [source_replacement_options.md](source_replacement_options.md).
+The current best public path is Apple public web catalog reviews with single-app rotating fetch plus controlled manual backfills. The current best contractual production path is still a licensed provider API. See [source_replacement_options.md](source_replacement_options.md).
 
-## Web Catalog Candidate
+## Web Catalog Primary Path
 
-The web catalog endpoint returns structured JSON review pages and can match the RSS 500-review recent window for tested apps when run conservatively:
+The web catalog endpoint returns structured JSON review pages and can match or exceed the RSS recent-review window for tested apps when run conservatively:
 
 - one app per run
 - `limit=20`
@@ -55,3 +58,5 @@ The web catalog endpoint has been verified to return full review text rows, not 
 As of the June 18, 2026 Postgres scorecard, web catalog controlled ingestion is `ready_for_controlled_promotion`: 20 web catalog scopes have data, all 20 are at or above RSS parity, no tested web scope is below RSS, and the cumulative web catalog table holds 15,962 reviews. This is enough to keep proving the source in controlled production-style runs, but it is not yet a claim that the undocumented web catalog endpoint is a contractual production source or that all 200 target scopes have been covered.
 
 The downloaded workflow-artifact history also supports the controlled-promotion call: 21 clean full single-app runs, all 21 at or above 500 reviews, 673 final `200` pages, 0 final non-200 pages, 0 fetch errors, 0 missing text/rating, and 8 recovered retry pages. This is stronger operational evidence than the RSS path for the tested scopes because the web catalog runs reached equal or higher per-app volume while preserving complete text/rating rows and clean final page status.
+
+The next source decision question is whether complete backfill can be proven beyond RSS parity. Use the manual `App Store Web Catalog Backfill` workflow with `max_pages_per_app_country=0` for selected scopes. A complete result requires `no_next_href`; if the run stops on budget or throttling, continue later from the reported `start_page` and treat the total as a lower bound until the terminal no-next page is observed.

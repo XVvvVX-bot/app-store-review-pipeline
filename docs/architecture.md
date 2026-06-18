@@ -2,13 +2,13 @@
 
 ## Source
 
-The scheduled production source is Apple's public iTunes customer reviews RSS JSON feed. It returns structured public review rows for an app, country storefront, page number, and sort order.
-
-The experimental public-source candidate is Apple's App Store web catalog reviews JSON endpoint. It also returns structured public review rows, including review ID, date, rating, title, text, and user name. The web catalog source is stored separately as:
+The scheduled primary source is Apple's public App Store web catalog reviews JSON path. It returns structured public review rows, including review ID, date, rating, title, text, and user name. The web catalog source is stored as:
 
 ```text
 apple_app_store_web_catalog_reviews
 ```
+
+Apple's legacy public iTunes customer reviews RSS JSON feed remains in the repository as a manual-only baseline. It returns structured recent-review rows for an app, country storefront, page number, and sort order, but it should not be treated as a complete historical source.
 
 This project does not use Apple App Store Connect API credentials. That official API is useful for owned or authorized apps, but this pipeline is for public third-party app-review monitoring.
 
@@ -30,19 +30,19 @@ Columns:
 
 ## Fetch
 
-For each active scope, the fetcher reads pages `1..10` by default. It saves raw JSON files under:
-
-```text
-data/raw/apple_rss/{run_id}/
-```
-
-The web catalog fetcher uses conservative single-app windows by default and saves raw JSON files under:
+For each active scope, the scheduled fetcher reads web catalog pages from page 1 with `sort=recent`, `limit=20`, bounded 429 retry/backoff, and a wall-clock budget. It saves raw JSON files under:
 
 ```text
 data/raw/apple_web_catalog/{run_id}/
 ```
 
-It also writes:
+The manual legacy RSS fetcher saves raw JSON files under:
+
+```text
+data/raw/apple_rss/{run_id}/
+```
+
+The web catalog fetcher also writes:
 
 - `review_pages.jsonl`
 - `reviews.jsonl`
@@ -60,17 +60,24 @@ This means repeated daily runs do not duplicate old reviews. If Apple changes a 
 
 ## Incremental Completeness
 
-The RSS feed is recent-window based. The project treats completeness as a monitored property:
+The primary web catalog path is sorted by recent reviews. The project treats completeness in two separate ways:
 
-- If overlap with known review IDs is found before page 10, the scope is considered caught up.
-- If page 10 is reached with no overlap, the scope is marked `backlogged`.
-- Backlogged scopes are warnings that the schedule may be too slow for that app-country volume.
+- Daily incremental completeness: once the run has reached its configured coverage target and then sees already-known web catalog review IDs, the scope is considered caught up.
+- Backfill completeness: a manual backfill can disable page cap with `--max-pages-per-app-country 0` and disable overlap stop. The strongest completion signal is `no_next_href`, meaning Apple's returned page did not advertise another page.
 
-For high-volume apps, the safest response is a shorter schedule cadence or a licensed provider with stronger historical guarantees.
+Other stop reasons are intentionally weaker:
 
-The web catalog ingestion path uses the same review-ID overlap idea, but source identity is separate from RSS. A web catalog run can stop when it sees an already-known web catalog review ID for that app-country-sort scope. When RSS-parity stopping is enabled, overlap stop is delayed if web catalog coverage is still below the current RSS review count for that scope. The currently validated public profile is one app per run, up to 35 web pages, `limit=20`, 5-second request delay, bounded 429 retry/backoff, and RSS-parity stopping.
+- `target_review_count_reached`: enough for migration parity, not historical exhaustion.
+- `caught_up_to_existing_reviews`: enough for daily incremental, not historical exhaustion.
+- `page_cap`: lower-bound depth only.
+- `time_budget_exceeded`: profile too heavy for that budget.
+- `non_200_page` or `fetch_error`: incomplete and should be retried or continued later.
 
-The `App Store Web Catalog Ingestion` workflow runs that profile as a controlled self-hosted Postgres ingestion trial. It is intentionally separate from the RSS daily workflow, so web catalog rows can be evaluated without changing the production baseline.
+For high-volume apps, the safest response is a controlled backfill plan with continuations via `start_page`, or a licensed provider with stronger historical guarantees if the public path becomes unstable.
+
+The legacy RSS path still uses review-ID overlap as a recent-window monitor. If RSS reaches page 10 without overlap, the scope is marked `backlogged`.
+
+The `App Store Review Pipeline` workflow runs the scheduled web catalog profile on the self-hosted runner. The `App Store Web Catalog Backfill` workflow is manual-only and is used for complete-backfill probes.
 
 ## Storage
 

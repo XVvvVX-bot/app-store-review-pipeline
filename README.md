@@ -2,18 +2,18 @@
 
 Apple App Store public-review ingestion pipeline for mainstream app-review analytics.
 
-The scheduled production pipeline uses Apple's public iTunes customer reviews RSS JSON feed, stores cumulative review data in Postgres, and keeps each daily run incremental by stopping when already-known review IDs appear in the recent-review window.
+The scheduled pipeline now uses Apple's public App Store web catalog reviews JSON path, stores cumulative review data in Postgres, and keeps each daily run incremental by stopping when already-known web catalog review IDs appear after the current coverage target is met.
 
-The repository also includes an experimental Apple public web catalog ingestion mode. It uses the structured App Store web catalog reviews JSON endpoint, stores rows with `source='apple_app_store_web_catalog_reviews'`, and is intended for conservative single-app rotating trials before any production source switch.
+The legacy Apple public iTunes customer reviews RSS JSON feed remains available as a manual baseline and diagnostic source. It is useful for comparing recent-review windows, but it is no longer the scheduled primary ingestion path.
 
 ## Boundaries
 
 - Apple App Store only.
-- Scheduled production ingestion uses public iTunes customer reviews RSS.
-- Experimental web catalog ingestion is available as a separate source; it is not yet the scheduled production default.
+- Scheduled primary ingestion uses public App Store web catalog review JSON.
+- Legacy RSS ingestion is manual-only and used as a recent-window baseline.
 - No login, cookies, CAPTCHA solving, proxy rotation, hidden endpoints, or App Store Connect credentials.
 - No routine CSV export; Postgres is the cumulative store.
-- The RSS feed is a recent-review source, not a guaranteed all-history source.
+- Web catalog backfill is judged by terminal evidence. A run that stops on `no_next_href` has exhausted the observed catalog pagination for that app-country scope; a run that stops on page cap, parity target, overlap, error, or time budget is only a lower-bound depth result.
 - HTML App Store pages are used only for source-health diagnostics, not as the main ingestion path. See [docs/source_notes.md](docs/source_notes.md).
 - Replacement-source evaluation is tracked in [docs/source_replacement_options.md](docs/source_replacement_options.md).
 
@@ -21,28 +21,37 @@ The repository also includes an experimental Apple public web catalog ingestion 
 
 ```mermaid
 flowchart LR
-    A["data/targets/apple_apps.csv"] --> B["Fetch Apple RSS pages"]
-    B --> C["Raw JSON under data/raw/apple_rss/{run_id}"]
+    A["data/targets/apple_apps.csv"] --> B["Fetch App Store web catalog review JSON"]
+    B --> C["Raw JSON under data/raw/apple_web_catalog/{run_id}"]
     C --> D["Normalize review rows"]
     D --> E["Postgres upsert"]
     E --> F["Validation + daily_report.json"]
     F --> G["GitHub Actions artifact"]
 ```
 
-The experimental web catalog path follows the same storage shape:
+The legacy RSS path follows the same storage shape when run manually:
 
 ```mermaid
 flowchart LR
-    A["data/targets/apple_apps.csv"] --> B["Fetch App Store web catalog review JSON"]
-    B --> C["Raw JSON under data/raw/apple_web_catalog/{run_id}"]
-    C --> D["Normalize web catalog review rows"]
-    D --> E["Postgres upsert with source=apple_app_store_web_catalog_reviews"]
+    A["data/targets/apple_apps.csv"] --> B["Fetch Apple RSS pages"]
+    B --> C["Raw JSON under data/raw/apple_rss/{run_id}"]
+    C --> D["Normalize RSS review rows"]
+    D --> E["Postgres upsert with source=apple_itunes_customerreviews_rss"]
     E --> F["Validation + daily_report.json"]
 ```
 
 Daily automation checks each active `app_id` and country in `data/targets/apple_apps.csv`. The current seed list contains 200 US App Store apps: the original benchmark set plus Apple US top free, top grossing, and top paid chart entries.
 
-For each app-country scope it requests pages `1..10` from:
+For each app-country scope the primary pipeline requests web catalog review pages from Apple's public catalog JSON path. The client preserves `sort=recent` and `limit=20` while following Apple's returned `next` href.
+
+Manual complete-backfill probes set `--max-pages-per-app-country 0`, which means follow `next` links until one of these happens:
+
+- Apple stops returning a next link: `no_next_href`, the strongest observed completion signal.
+- A fetch error or final non-200 response occurs.
+- The configured wall-clock budget is exhausted.
+- Incremental overlap or RSS-parity stopping is enabled and the run has reached its intended daily target.
+
+Legacy RSS requests pages `1..10` from:
 
 ```text
 https://itunes.apple.com/{country}/rss/customerreviews/page={page}/id={app_id}/sortby=mostrecent/json
@@ -90,7 +99,7 @@ Fetch raw RSS pages only:
   --request-delay-seconds 0.5
 ```
 
-Run the full daily pipeline:
+Run the manual legacy RSS pipeline locally:
 
 ```bash
 .venv/bin/python app_store_pipeline.py daily \
@@ -114,7 +123,7 @@ Fetch public web catalog review rows only:
   --web-429-backoff-multiplier 1.5
 ```
 
-Run the experimental web catalog ingestion path into Postgres:
+Run the primary web catalog ingestion path into Postgres:
 
 ```bash
 .venv/bin/python app_store_pipeline.py daily-web-catalog \
@@ -132,7 +141,24 @@ Run the experimental web catalog ingestion path into Postgres:
 
 Keep this path conservative: one app per run is the profile that has passed the current public-source gate. Larger web catalog batches are stress tests, not the routine default.
 
-For manual depth-limit probes, use `--start-page` to continue beyond the routine 25-page window without re-fetching earlier pages:
+For manual complete-backfill probes, set `--max-pages-per-app-country 0` and disable overlap stopping. A successful complete probe must stop with `no_next_href`; otherwise the result is a lower-bound depth measurement:
+
+```bash
+.venv/bin/python app_store_pipeline.py daily-web-catalog \
+  --database-url postgresql:///app_store_reviews \
+  --limit 1 \
+  --target-offset 0 \
+  --max-pages-per-app-country 0 \
+  --review-limit 20 \
+  --request-delay-seconds 5 \
+  --web-429-retries 5 \
+  --web-429-retry-seconds 60 \
+  --web-429-backoff-multiplier 1.5 \
+  --web-time-budget-seconds 1800 \
+  --disable-overlap-stop
+```
+
+For manual depth-limit probes, use `--start-page` to continue beyond an earlier window without re-fetching earlier pages:
 
 ```bash
 .venv/bin/python app_store_pipeline.py daily-web-catalog \
@@ -143,10 +169,11 @@ For manual depth-limit probes, use `--start-page` to continue beyond the routine
   --max-pages-per-app-country 100 \
   --review-limit 20 \
   --request-delay-seconds 5 \
+  --web-time-budget-seconds 1800 \
   --disable-overlap-stop
 ```
 
-Apple currently caps each web catalog review page at `20` rows. The known depth lower bound from live testing is at least 175 pages / 3,500 reviews for Amazon Shopping; that run stopped at our configured page cap while the response still advertised a next page, not at an Apple no-next or final non-200 response. Deeper offsets showed more retry pressure, so keep depth probes controlled and documented rather than making very deep pagination routine.
+Apple currently caps each web catalog review page at `20` rows. The known depth lower bound from live testing is above 5,000 reviews for Amazon Shopping; that run stopped at our configured page cap while the response still advertised a next page, not at an Apple no-next or final non-200 response. Deeper offsets showed more retry pressure, so keep depth probes controlled and documented rather than making very deep pagination routine.
 
 Validate the cumulative database:
 
@@ -344,21 +371,23 @@ The main Postgres tables are:
 The pipeline stores every review by a deterministic key:
 
 ```text
-apple_app_store:apple_itunes_customerreviews_rss:{country}:{app_id}:{review_id}
+apple_app_store:apple_app_store_web_catalog_reviews:{country}:{app_id}:{review_id}
 ```
 
-On the next run it loads known review IDs for each app-country scope. Because the feed is sorted by recent reviews, once a fetched page overlaps known IDs, later pages should be older, so the run stops for that scope.
+On the next run it loads known web catalog review IDs for each app-country scope. Because the web catalog path is requested with `sort=recent`, once a fetched page overlaps known IDs after the intended coverage target is met, later pages should be older, so the run stops for that scope.
 
-If the pipeline reaches page 10 without overlap, the scope is marked `backlogged`. That means the source window may be moving faster than the current schedule can cover, and the fix is to run more frequently or split countries/apps more carefully.
+If a manual backfill run uses `--max-pages-per-app-country 0`, page cap is disabled and the fetcher follows Apple's `next` links until `no_next_href`, a non-200/error, the wall-clock budget, or a configured stop rule. Only `no_next_href` is evidence that the observed web catalog pagination has been exhausted for that app-country scope.
 
 ## GitHub Actions
 
-Eight workflows are included:
+Ten workflows are included:
 
 - `CI`: runs unit tests on GitHub-hosted Ubuntu.
-- `App Store Review Pipeline`: runs the real daily ingestion on a self-hosted macOS ARM64 runner so it can reach the local Postgres database on this Mac.
+- `App Store Review Pipeline`: runs the primary scheduled web catalog ingestion on a self-hosted macOS ARM64 runner so it can reach the local Postgres database on this Mac.
+- `Legacy App Store RSS Pipeline`: manual-only RSS ingestion for baseline checks and historical comparison.
 - `App Store Web Catalog Canary`: runs a bounded RSS vs web catalog `sort=recent` comparison on GitHub-hosted Ubuntu. It does not write Postgres and is used only to compare candidate source stability and review volume against RSS.
-- `App Store Web Catalog Ingestion`: runs the experimental web catalog ingestion on the self-hosted macOS ARM64 runner and writes rows to local Postgres under `source='apple_app_store_web_catalog_reviews'`.
+- `App Store Web Catalog Ingestion`: manual-only web catalog ingestion for controlled probes that should not change the scheduled workflow.
+- `App Store Web Catalog Backfill`: manual-only complete-backfill probe. The default `max_pages_per_app_country=0` follows web catalog `next` links until terminal evidence, error, or budget.
 - `App Store Provider Compare`: manual-only RSS vs 42matters comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_42MATTERS_TOKEN` repository secret and does not write Postgres.
 - `App Store AppTweak Compare`: manual-only RSS vs AppTweak comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_APPTWEAK_TOKEN` repository secret and does not write Postgres.
 - `App Store Appfigures Compare`: manual-only RSS vs Appfigures Public Data comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_APPFIGURES_TOKEN` repository secret and does not write Postgres.
@@ -367,11 +396,21 @@ Eight workflows are included:
 The daily workflow defaults to:
 
 - schedule: every 6 hours
+- source: web catalog reviews JSON
 - database: `postgresql:///app_store_reviews`
 - secret override: `APP_STORE_DATABASE_URL`
-- max pages per app-country: `10`
-- max consecutive empty RSS pages with `next` links: `10`
+- target limit: `1`
+- target offset: `auto`, selected from Postgres coverage gaps
+- web catalog pages per app-country: `35`
+- start page: `1`
+- web catalog reviews per page: `20`
+- web catalog request delay: `5` seconds
+- HTTP 429 retries: `5`
+- HTTP 429 retry delay: `60` seconds
+- HTTP 429 backoff multiplier: `1.5`
+- web time budget: `1200` seconds
 - overlap stop: enabled
+- RSS-parity stopping during migration: enabled by default
 
 Before relying on automation, register a self-hosted runner for this GitHub repository and make sure local Postgres is running.
 
@@ -398,7 +437,7 @@ Its artifact contains `data/reports/source_compare/{run_id}/source_comparison_re
 
 The web catalog ingestion workflow defaults to:
 
-- schedule: every 6 hours, offset 15 minutes from the RSS workflow and 15 minutes before the canary
+- schedule: manual-only
 - runner: self-hosted macOS ARM64
 - database: `postgresql:///app_store_reviews`
 - secret override: `APP_STORE_DATABASE_URL`
@@ -413,7 +452,24 @@ The web catalog ingestion workflow defaults to:
 - overlap stop: enabled
 - stop after each app-country matches its current RSS review count: enabled by default
 
-This workflow is a controlled ingestion trial, not a replacement of the RSS daily workflow. It stores web catalog rows with a separate source key, so analysts can compare RSS and web catalog coverage in the same Postgres database without overwriting RSS rows. The scheduled profile uses RSS-parity stopping so high-volume apps can go beyond the old 25-page / 500-review ceiling when needed, while still stopping early once web catalog has matched the RSS-sized current window. When `target_offset=auto`, the workflow asks the source coverage scorecard for the highest-priority app-country scope below RSS parity, preferring scopes that can reach parity within the configured page cap.
+This workflow is a manual control surface for the same web catalog source used by the primary daily workflow. It stores web catalog rows with a separate source key, so analysts can compare legacy RSS and web catalog coverage in the same Postgres database without overwriting rows. The scheduled profile uses RSS-parity stopping during migration so high-volume apps can go beyond the old 25-page / 500-review ceiling when needed, while still stopping early once web catalog has matched the RSS-sized current window. When `target_offset=auto`, the workflow asks the source coverage scorecard for the highest-priority app-country scope below RSS parity, preferring scopes that can reach parity within the configured page cap.
+
+The web catalog backfill workflow defaults to:
+
+- schedule: manual-only
+- runner: self-hosted macOS ARM64
+- target limit: `1`
+- target offset: `0`
+- web catalog pages per app-country: `0`, meaning no page cap
+- web catalog reviews per page: `20`
+- web catalog request delay: `5` seconds
+- HTTP 429 retries: `5`
+- HTTP 429 retry delay: `60` seconds
+- HTTP 429 backoff multiplier: `1.5`
+- web time budget: `1800` seconds
+- overlap stop: disabled
+
+Use the backfill workflow to test whether a given app-country scope can be exhausted. If the final page report stops on `no_next_href`, the run found the observed end of Apple's web catalog pagination for that scope. If it stops on `time_budget_exceeded`, `page_cap`, `non_200_page`, or `fetch_error`, treat the row count as a lower bound and continue later with `start_page`.
 
 The web catalog `daily_report.json` includes stability fields in `fetch_summary`, including `status_code_counts`, `attempt_counts`, `retried_pages`, `final_non_200_pages`, `missing_text`, `missing_rating`, and `all_pages_ok_after_retry`. For source decisions, read these fields together with `reviews`, `unique_reviews`, and the Postgres row counts by `source`.
 The ingestion history summary adds cumulative depth evidence such as max page reached, apps at or above 500 unique web catalog reviews, final non-200 pages, and whether the terminal page still had a `next` link.

@@ -1,25 +1,25 @@
-name: App Store Web Catalog Ingestion
+name: App Store Web Catalog Backfill
 
 on:
   workflow_dispatch:
     inputs:
       limit:
-        description: "Maximum active targets to ingest"
+        description: "Maximum active targets to backfill"
         required: false
         default: "1"
         type: string
       target_offset:
-        description: "Number of active targets to skip before applying limit, or auto for scheduled-style rotation"
+        description: "Number of active targets to skip before applying limit"
         required: false
-        default: "auto"
+        default: "0"
         type: string
       max_pages_per_app_country:
-        description: "Maximum web catalog review pages per app-country scope"
+        description: "Maximum web catalog pages per app-country scope; 0 follows next links until no-next/error/budget"
         required: false
-        default: "35"
+        default: "0"
         type: string
       start_page:
-        description: "First web catalog page to fetch; use values above 1 for manual depth probes"
+        description: "First web catalog page to fetch"
         required: false
         default: "1"
         type: string
@@ -51,18 +51,8 @@ on:
       web_time_budget_seconds:
         description: "Wall-clock budget for web catalog fetching; 0 means no budget"
         required: false
-        default: "1200"
+        default: "1800"
         type: string
-      disable_overlap_stop:
-        description: "Fetch to page cap even after already-known web catalog review IDs are seen"
-        required: false
-        default: false
-        type: boolean
-      stop_at_rss_parity:
-        description: "Continue past overlap until web catalog reaches the current RSS review count, then stop"
-        required: false
-        default: true
-        type: boolean
 
 permissions:
   contents: read
@@ -72,24 +62,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  web-catalog:
+  backfill:
     runs-on: [self-hosted, macOS, ARM64]
-    timeout-minutes: 60
+    timeout-minutes: 180
     env:
       PIP_CONFIG_FILE: /dev/null
       PIP_USER: "false"
-      INPUT_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '1' }}
-      INPUT_TARGET_OFFSET: ${{ github.event_name == 'workflow_dispatch' && inputs.target_offset || 'auto' }}
-      INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ github.event_name == 'workflow_dispatch' && inputs.max_pages_per_app_country || '35' }}
-      INPUT_START_PAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.start_page || '1' }}
-      INPUT_REVIEW_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.review_limit || '20' }}
-      INPUT_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '5' }}
-      INPUT_WEB_429_RETRIES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retries || '5' }}
-      INPUT_WEB_429_RETRY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_seconds || '60' }}
-      INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_backoff_multiplier || '1.5' }}
-      INPUT_WEB_TIME_BUDGET_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_time_budget_seconds || '1200' }}
-      INPUT_DISABLE_OVERLAP_STOP: ${{ github.event_name == 'workflow_dispatch' && inputs.disable_overlap_stop || 'false' }}
-      INPUT_STOP_AT_RSS_PARITY: ${{ github.event_name != 'workflow_dispatch' || inputs.stop_at_rss_parity }}
+      INPUT_LIMIT: ${{ inputs.limit || '1' }}
+      INPUT_TARGET_OFFSET: ${{ inputs.target_offset || '0' }}
+      INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ inputs.max_pages_per_app_country || '0' }}
+      INPUT_START_PAGE: ${{ inputs.start_page || '1' }}
+      INPUT_REVIEW_LIMIT: ${{ inputs.review_limit || '20' }}
+      INPUT_REQUEST_DELAY_SECONDS: ${{ inputs.request_delay_seconds || '5' }}
+      INPUT_WEB_429_RETRIES: ${{ inputs.web_429_retries || '5' }}
+      INPUT_WEB_429_RETRY_SECONDS: ${{ inputs.web_429_retry_seconds || '60' }}
+      INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ inputs.web_429_backoff_multiplier || '1.5' }}
+      INPUT_WEB_TIME_BUDGET_SECONDS: ${{ inputs.web_time_budget_seconds || '1800' }}
 
     steps:
       - name: Check out repository
@@ -115,36 +103,17 @@ jobs:
       - name: Run tests
         run: .venv/bin/python -m pytest -q
 
-      - name: Run web catalog ingestion
+      - name: Run complete web catalog backfill probe
         env:
           DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
         run: |
           set -euo pipefail
           database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
-          target_offset="$INPUT_TARGET_OFFSET"
-          if [[ "$target_offset" == "auto" ]]; then
-            target_offset="$(.venv/bin/python scripts/summarize_source_coverage.py \
-              --database-url "$database_url" \
-              --targets data/targets/apple_apps.csv \
-              --max-pages-per-app-country "$INPUT_MAX_PAGES_PER_APP_COUNTRY" \
-              --review-limit "$INPUT_REVIEW_LIMIT" \
-              --print-next-target-offset)"
-          fi
-          echo "Using target offset: $target_offset"
-
-          overlap_flag=""
-          if [ "$INPUT_DISABLE_OVERLAP_STOP" = "true" ]; then
-            overlap_flag="--disable-overlap-stop"
-          fi
-          parity_flag=""
-          if [ "$INPUT_STOP_AT_RSS_PARITY" = "true" ]; then
-            parity_flag="--stop-at-rss-parity"
-          fi
 
           .venv/bin/python app_store_pipeline.py daily-web-catalog \
             --database-url "$database_url" \
             --limit "$INPUT_LIMIT" \
-            --target-offset "$target_offset" \
+            --target-offset "$INPUT_TARGET_OFFSET" \
             --max-pages-per-app-country "$INPUT_MAX_PAGES_PER_APP_COUNTRY" \
             --start-page "$INPUT_START_PAGE" \
             --review-limit "$INPUT_REVIEW_LIMIT" \
@@ -153,14 +122,13 @@ jobs:
             --web-429-retry-seconds "$INPUT_WEB_429_RETRY_SECONDS" \
             --web-429-backoff-multiplier "$INPUT_WEB_429_BACKOFF_MULTIPLIER" \
             --web-time-budget-seconds "$INPUT_WEB_TIME_BUDGET_SECONDS" \
-            $parity_flag \
-            $overlap_flag
+            --disable-overlap-stop
 
-      - name: Upload web catalog ingestion artifacts
+      - name: Upload web catalog backfill artifacts
         if: ${{ always() && !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: app-store-web-catalog-ingestion-${{ github.run_id }}
+          name: app-store-web-catalog-backfill-${{ github.run_id }}
           retention-days: 14
           if-no-files-found: ignore
           path: |

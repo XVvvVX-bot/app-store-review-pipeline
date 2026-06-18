@@ -1,0 +1,93 @@
+name: Legacy App Store RSS Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_pages_per_app_country:
+        description: "Maximum RSS pages per app-country scope"
+        required: false
+        default: "10"
+        type: string
+      disable_overlap_stop:
+        description: "Fetch to page cap even after already-known review IDs are seen"
+        required: false
+        default: false
+        type: boolean
+      max_consecutive_empty_pages:
+        description: "Continue across empty RSS pages with next links up to this streak"
+        required: false
+        default: "10"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-store-postgres-writer
+  cancel-in-progress: false
+
+jobs:
+  rss:
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 120
+    env:
+      PIP_CONFIG_FILE: /dev/null
+      PIP_USER: "false"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Create Python virtualenv
+        run: |
+          set -euo pipefail
+          python3.12 -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+
+      - name: Install dependencies
+        run: .venv/bin/python -m pip install -r requirements.txt
+
+      - name: Check local Postgres
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          .venv/bin/python app_store_pipeline.py init-postgres --database-url "$database_url"
+
+      - name: Run tests
+        run: .venv/bin/python -m pytest -q
+
+      - name: Run legacy RSS pipeline
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+          INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ inputs.max_pages_per_app_country || '10' }}
+          INPUT_MAX_CONSECUTIVE_EMPTY_PAGES: ${{ inputs.max_consecutive_empty_pages || '10' }}
+          INPUT_DISABLE_OVERLAP_STOP: ${{ inputs.disable_overlap_stop || 'false' }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          overlap_flag=""
+          if [ "$INPUT_DISABLE_OVERLAP_STOP" = "true" ]; then
+            overlap_flag="--disable-overlap-stop"
+          fi
+
+          .venv/bin/python app_store_pipeline.py daily \
+            --database-url "$database_url" \
+            --max-pages-per-app-country "$INPUT_MAX_PAGES_PER_APP_COUNTRY" \
+            --max-consecutive-empty-pages "$INPUT_MAX_CONSECUTIVE_EMPTY_PAGES" \
+            --request-delay-seconds 1 \
+            --max-attempts 3 \
+            --retry-delay-seconds 10 \
+            $overlap_flag
+
+      - name: Upload legacy RSS artifacts
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: legacy-app-store-rss-pipeline-${{ github.run_id }}
+          retention-days: 14
+          if-no-files-found: ignore
+          path: |
+            data/raw/apple_rss/
+            data/reports/apple_rss/

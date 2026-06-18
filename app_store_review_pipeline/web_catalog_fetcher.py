@@ -13,10 +13,12 @@ from app_store_review_pipeline.apple_web import (
     app_store_reviews_page_url,
     app_store_web_catalog_next_url,
     app_store_web_reviews_url,
+    deadline_exceeded,
     final_attempt_stopped_for_time_budget,
     get_with_429_retries,
     parse_web_catalog_review_page,
     parse_web_catalog_review_rows,
+    sleep_with_deadline,
 )
 from app_store_review_pipeline.config import PLATFORM, WEB_CATALOG_SORT_BY, WEB_CATALOG_SOURCE
 from app_store_review_pipeline.files import write_json
@@ -38,14 +40,18 @@ def fetch_web_catalog_targets(
     web_429_retries: int = 5,
     web_429_retry_seconds: float = 60.0,
     web_429_backoff_multiplier: float = 1.5,
+    time_budget_seconds: float = 0.0,
     known_review_ids_by_scope: dict[tuple[str, str, str], set[str]] | None = None,
     target_review_counts_by_scope: dict[tuple[str, str, str], int] | None = None,
     use_overlap_stop: bool = True,
     sleep_fn: Callable[[float], None] = time.sleep,
+    monotonic_fn: Callable[[], float] = time.monotonic,
     session: requests.Session | None = None,
 ) -> dict[str, Any]:
     raw_dir.mkdir(parents=True, exist_ok=True)
     start_page = max(1, start_page)
+    page_cap = max_pages_per_app_country if max_pages_per_app_country > 0 else None
+    deadline_monotonic = monotonic_fn() + time_budget_seconds if time_budget_seconds and time_budget_seconds > 0 else None
     known_review_ids_by_scope = known_review_ids_by_scope or {}
     target_review_counts_by_scope = target_review_counts_by_scope or {}
     page_reports: list[dict[str, Any]] = []
@@ -66,9 +72,36 @@ def fetch_web_catalog_targets(
                 target_review_count = target_review_counts_by_scope.get(scope)
                 scope_review_total = 0
                 next_href: str | None = None
-                for page_number in range(start_page, max_pages_per_app_country + 1):
+                page_number = start_page
+                while page_cap is None or page_number <= page_cap:
+                    if deadline_exceeded(deadline_monotonic, monotonic_fn):
+                        warning_scopes.append(
+                            {
+                                "app_id": target.apple_app_id,
+                                "app_name": target.app_name,
+                                "country": country.lower(),
+                                "sort_by": sort_by,
+                                "reason": "time_budget_exceeded",
+                            }
+                        )
+                        break
                     if page_number > start_page and request_delay_seconds:
-                        sleep_fn(request_delay_seconds)
+                        if not sleep_with_deadline(
+                            request_delay_seconds,
+                            deadline_monotonic,
+                            sleep_fn=sleep_fn,
+                            monotonic_fn=monotonic_fn,
+                        ):
+                            warning_scopes.append(
+                                {
+                                    "app_id": target.apple_app_id,
+                                    "app_name": target.app_name,
+                                    "country": country.lower(),
+                                    "sort_by": sort_by,
+                                    "reason": "time_budget_exceeded",
+                                }
+                            )
+                            break
                     page_report, reviews, next_href = fetch_web_catalog_page(
                         target,
                         raw_dir,
@@ -84,6 +117,8 @@ def fetch_web_catalog_targets(
                         web_429_retries=web_429_retries,
                         web_429_retry_seconds=web_429_retry_seconds,
                         web_429_backoff_multiplier=web_429_backoff_multiplier,
+                        deadline_monotonic=deadline_monotonic,
+                        monotonic_fn=monotonic_fn,
                         sleep_fn=sleep_fn,
                     )
                     overlap_count = sum(1 for review in reviews if review.review_id in known_review_ids)
@@ -91,7 +126,7 @@ def fetch_web_catalog_targets(
                     terminal_reason = web_terminal_reason_for_page(
                         page_report,
                         page_number=page_number,
-                        max_pages_per_app_country=max_pages_per_app_country,
+                        max_pages_per_app_country=page_cap,
                         overlap_count=overlap_count,
                         known_review_count=len(known_review_ids),
                         page_review_total=scope_review_total,
@@ -139,6 +174,7 @@ def fetch_web_catalog_targets(
                                 }
                             )
                         break
+                    page_number += 1
     finally:
         if owned_session:
             http.close()
@@ -149,6 +185,9 @@ def fetch_web_catalog_targets(
         "platform": PLATFORM,
         "sort_by": sort_by,
         "start_page": start_page,
+        "max_pages_per_app_country": max_pages_per_app_country,
+        "page_cap_enabled": page_cap is not None,
+        "time_budget_seconds": time_budget_seconds,
         "page_reports": page_reports,
         "reviews": review_rows,
         "fetched_pages": sum(1 for page in page_reports if page.get("status") == "ok"),
@@ -180,6 +219,8 @@ def fetch_web_catalog_page(
     web_429_retries: int,
     web_429_retry_seconds: float,
     web_429_backoff_multiplier: float,
+    deadline_monotonic: float | None,
+    monotonic_fn: Callable[[], float],
     sleep_fn: Callable[[float], None],
 ) -> tuple[ReviewPage, list[AppReview], str | None]:
     country = country.lower()
@@ -212,6 +253,8 @@ def fetch_web_catalog_page(
             web_429_retries=web_429_retries,
             web_429_retry_seconds=web_429_retry_seconds,
             web_429_backoff_multiplier=web_429_backoff_multiplier,
+            deadline_monotonic=deadline_monotonic,
+            monotonic_fn=monotonic_fn,
             sleep_fn=sleep_fn,
         )
         payload = response.json()
@@ -282,7 +325,7 @@ def web_terminal_reason_for_page(
     page_report: ReviewPage,
     *,
     page_number: int,
-    max_pages_per_app_country: int,
+    max_pages_per_app_country: int | None,
     overlap_count: int,
     known_review_count: int,
     page_review_total: int,
@@ -305,7 +348,7 @@ def web_terminal_reason_for_page(
     if use_overlap_stop and known_review_count > 0 and overlap_count > 0:
         if target_review_count is None or known_review_count >= target_review_count:
             return "caught_up_to_existing_reviews"
-    if page_number >= max_pages_per_app_country:
+    if max_pages_per_app_country is not None and page_number >= max_pages_per_app_country:
         return "page_cap"
     if not next_href:
         return "no_next_href"
