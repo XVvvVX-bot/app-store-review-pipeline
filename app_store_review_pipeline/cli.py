@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 from app_store_review_pipeline.config import (
+    DEFAULT_42MATTERS_REPORTS_ROOT,
     DEFAULT_COMPARE_RAW_ROOT,
     DEFAULT_COMPARE_REPORTS_ROOT,
     DEFAULT_DATABASE_URL,
@@ -30,6 +32,7 @@ from app_store_review_pipeline.postgres_database import (
     mask_database_url,
     validate_postgres,
 )
+from app_store_review_pipeline.provider_42matters import probe_42matters_reviews
 from app_store_review_pipeline.targets import active_targets, load_targets
 from app_store_review_pipeline.source_compare import compare_sources
 from app_store_review_pipeline.utils import make_run_id
@@ -130,6 +133,30 @@ def build_parser() -> argparse.ArgumentParser:
     compare.add_argument("--web-429-retries", type=int, default=3)
     compare.add_argument("--web-429-retry-seconds", type=float, default=45.0)
     compare.set_defaults(func=command_compare_sources)
+
+    provider_42matters = subparsers.add_parser(
+        "probe-42matters",
+        help="Probe the licensed 42matters iOS app reviews API without loading Postgres.",
+    )
+    provider_42matters.add_argument("--targets", type=Path, default=DEFAULT_TARGETS)
+    provider_42matters.add_argument("--reports-root", type=Path, default=DEFAULT_42MATTERS_REPORTS_ROOT)
+    provider_42matters.add_argument("--output", type=Path)
+    provider_42matters.add_argument(
+        "--access-token",
+        default=os.environ.get("APP_STORE_42MATTERS_TOKEN"),
+        help="42matters access token. Defaults to APP_STORE_42MATTERS_TOKEN.",
+    )
+    provider_42matters.add_argument("--limit", type=int, default=5, help="Maximum active targets to probe. Use 0 for all.")
+    provider_42matters.add_argument("--days", type=int, default=30)
+    provider_42matters.add_argument("--start-date")
+    provider_42matters.add_argument("--end-date")
+    provider_42matters.add_argument("--lang")
+    provider_42matters.add_argument("--rating", type=int)
+    provider_42matters.add_argument("--page-limit", type=int, default=2)
+    provider_42matters.add_argument("--request-limit", type=int, default=100)
+    provider_42matters.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
+    provider_42matters.add_argument("--request-delay-seconds", type=float, default=DEFAULT_REQUEST_DELAY_SECONDS)
+    provider_42matters.set_defaults(func=command_probe_42matters)
 
     daily = subparsers.add_parser("daily", help="Fetch, load, validate, and report Apple App Store reviews.")
     add_fetch_arguments(daily)
@@ -297,6 +324,40 @@ def command_compare_sources(args: argparse.Namespace) -> int:
                 "comparison": report["comparison"],
                 "rss": report["rss"],
                 "web_catalog": report["web_catalog"],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+def command_probe_42matters(args: argparse.Namespace) -> int:
+    if not args.access_token:
+        print("error: missing 42matters token; pass --access-token or set APP_STORE_42MATTERS_TOKEN")
+        return 2
+    targets = active_targets(load_targets(args.targets))
+    output_path = args.output or (args.reports_root / make_run_id() / "provider_probe_report.json")
+    report = probe_42matters_reviews(
+        targets,
+        output_path,
+        access_token=args.access_token,
+        limit=args.limit,
+        days=args.days,
+        start_date=args.start_date,
+        end_date=args.end_date,
+        lang=args.lang,
+        rating=args.rating,
+        page_limit=args.page_limit,
+        request_limit=args.request_limit,
+        timeout_seconds=args.timeout_seconds,
+        request_delay_seconds=args.request_delay_seconds,
+    )
+    print(
+        json.dumps(
+            {
+                "output": str(output_path),
+                "summary": report["summary"],
             },
             indent=2,
             sort_keys=True,

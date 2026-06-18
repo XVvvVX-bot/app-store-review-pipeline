@@ -17,6 +17,11 @@ from app_store_review_pipeline.apple_web import (
 from app_store_review_pipeline.fetcher import fetch_targets, terminal_reason_for_page
 from app_store_review_pipeline.models import AppTarget, ReviewPage
 from app_store_review_pipeline.postgres_database import mask_database_url, scope_key
+from app_store_review_pipeline.provider_42matters import (
+    build_42matters_reviews_url,
+    parse_42matters_reviews_payload,
+    redact_access_token,
+)
 from app_store_review_pipeline.source_compare import compare_per_scope, summarize_comparison
 from app_store_review_pipeline.targets import active_targets, load_targets, parse_countries
 
@@ -695,3 +700,69 @@ def test_source_comparison_per_scope():
             "web_max_date": "2026-06-10T01:00:00Z",
         }
     ]
+
+
+def test_42matters_reviews_url_and_redaction():
+    url = build_42matters_reviews_url(
+        "284882215",
+        access_token="secret-token",
+        days=30,
+        lang="en",
+        rating=5,
+        limit=100,
+        page=2,
+    )
+
+    assert url.startswith("https://data.42matters.com/api/v5.0/ios/apps/reviews.json?")
+    assert "id=284882215" in url
+    assert "access_token=secret-token" in url
+    assert "days=30" in url
+    assert "lang=en" in url
+    assert "rating=5" in url
+    assert "limit=100" in url
+    assert "page=2" in url
+    assert "access_token=%2A%2A%2A" in redact_access_token(url)
+    assert "secret-token" not in redact_access_token(url)
+
+
+def test_42matters_reviews_payload_summary():
+    payload = {
+        "number_reviews": 2,
+        "total_reviews": 2500,
+        "number_reviews_remaining": 2498,
+        "page": 1,
+        "limit": 100,
+        "total_pages": 25,
+        "reviews": [
+            {
+                "author_hash": "author-a",
+                "title": "Useful",
+                "rating": 5,
+                "content": "Works well",
+                "date": "2026-06-17",
+                "app_version": "1.0",
+            },
+            {
+                "author_hash": "author-b",
+                "title": "Bug",
+                "rating": 2,
+                "date": "2026-06-18",
+                "app_version": "1.1",
+            },
+        ],
+    }
+
+    summary = parse_42matters_reviews_payload(payload)
+
+    assert summary["number_reviews"] == 2
+    assert summary["total_reviews"] == 2500
+    assert summary["number_reviews_remaining"] == 2498
+    assert summary["page"] == 1
+    assert summary["limit"] == 100
+    assert summary["total_pages"] == 25
+    assert summary["review_count"] == 2
+    assert summary["missing_content_count"] == 1
+    assert summary["min_date"] == "2026-06-17"
+    assert summary["max_date"] == "2026-06-18"
+    assert len(summary["review_fingerprints"]) == 2
+    assert summary["review_fingerprints"][0] != summary["review_fingerprints"][1]

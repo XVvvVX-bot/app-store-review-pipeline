@@ -27,3 +27,5 @@ Apple RSS should not be treated as full historical coverage. The practical sourc
 ## Production Caveat
 
 For stronger completeness, cross-platform coverage, contractual access, or historical backfill, evaluate a licensed app-review provider. This repo is designed so a provider source could later plug into the same target, normalize, Postgres upsert, validate, and report architecture.
+
+The current best replacement-source candidate is a licensed provider API, not App Store HTML or the public web catalog endpoint. See [source_replacement_options.md](source_replacement_options.md).

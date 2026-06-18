@@ -12,6 +12,7 @@ The pipeline uses Apple's public iTunes customer reviews RSS JSON feed, stores c
 - No routine CSV export; Postgres is the cumulative store.
 - The RSS feed is a recent-review source, not a guaranteed all-history source.
 - HTML App Store pages are used only for source-health diagnostics, not as the main ingestion path. See [docs/source_notes.md](docs/source_notes.md).
+- Replacement-source evaluation is tracked in [docs/source_replacement_options.md](docs/source_replacement_options.md).
 
 ## Architecture
 
@@ -121,6 +122,20 @@ Compare RSS and web catalog on the same target window:
 ```
 
 `compare-sources` writes `source_comparison_report.json` with RSS volume, web catalog volume, 429 recovery counts, capacity/parity metrics, a same-order stability gate, and the stricter RSS-replacement gate.
+
+Probe the licensed 42matters candidate when an access token is available:
+
+```bash
+APP_STORE_42MATTERS_TOKEN=... \
+.venv/bin/python app_store_pipeline.py probe-42matters \
+  --limit 10 \
+  --days 30 \
+  --page-limit 5 \
+  --request-limit 100 \
+  --request-delay-seconds 0.4
+```
+
+`probe-42matters` is a provider feasibility probe only. It does not load Postgres, and it redacts the API token from saved report URLs.
 
 Run tests:
 
