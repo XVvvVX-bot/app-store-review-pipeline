@@ -932,6 +932,7 @@ def test_provider_comparison_replacement_gate():
         "capped_scopes": [],
     }
     provider_report = {
+        "settings": {"page_limit": 2, "request_limit": 100},
         "summary": {
             "reviews_seen": 125,
             "page_success_rate": 1.0,
@@ -949,6 +950,8 @@ def test_provider_comparison_replacement_gate():
     assert summary["provider_all_pages_ok"] is True
     assert summary["candidate_passes_same_order_stability_gate"] is True
     assert summary["candidate_passes_replacement_gate"] is True
+    assert summary["provider_configured_review_ceiling"] is None
+    assert summary["provider_reported_total_reviews"] is None
 
 
 def test_provider_comparison_blocks_non_200_pages():
@@ -980,6 +983,51 @@ def test_provider_comparison_blocks_non_200_pages():
     assert summary["candidate_passes_replacement_gate"] is False
 
 
+def test_provider_comparison_flags_configuration_limited_gap():
+    rss_report = {
+        "page_reports": [{"app_id": "123", "status": "ok", "review_count": 500}],
+        "fetched_pages": 1,
+        "fetch_errors": 0,
+        "empty_pages": 0,
+        "sparse_empty_pages": 0,
+        "review_count": 500,
+        "unique_review_count": 500,
+        "warning_scopes": [],
+        "capped_scopes": [],
+    }
+    provider_report = {
+        "settings": {"page_limit": 2, "request_limit": 100},
+        "summary": {
+            "reviews_seen": 200,
+            "page_success_rate": 1.0,
+            "status_counts": {"200": 2},
+        },
+        "results": [
+            {
+                "app_id": "123",
+                "pages": [{"page": 1}, {"page": 2}],
+                "review_count": 200,
+                "total_reviews": 900,
+                "status_counts": {"200": 2},
+            }
+        ],
+    }
+
+    summary = summarize_provider_comparison(rss_report, provider_report)
+
+    assert summary["provider_reviews_at_or_above_rss"] is False
+    assert summary["provider_configured_review_ceiling"] == 200
+    assert summary["provider_configured_ceiling_hit"] is True
+    assert summary["provider_pages_per_row_needed_for_rss_parity"] == 5
+    assert summary["provider_additional_pages_per_row_needed_for_rss_parity"] == 3
+    assert summary["provider_page_depth_can_reach_rss_parity"] is False
+    assert summary["provider_reported_total_reviews"] == 900
+    assert summary["provider_reported_total_reviews_at_or_above_rss"] is True
+    assert summary["provider_rows_with_more_available"] == 1
+    assert summary["provider_reported_reviews_remaining"] == 700
+    assert summary["provider_volume_gap_likely_configuration_limited"] is True
+
+
 def test_provider_comparison_per_app_summary():
     rss_report = {
         "page_reports": [
@@ -989,6 +1037,7 @@ def test_provider_comparison_per_app_summary():
         ]
     }
     provider_report = {
+        "settings": {"page_limit": 2, "request_limit": 50},
         "results": [
             {
                 "app_id": "123",
@@ -1020,6 +1069,11 @@ def test_provider_comparison_per_app_summary():
             "provider_to_rss_review_ratio": 100 / 75,
             "provider_status_counts": {"200": 2},
             "provider_total_reviews": 300,
+            "provider_reported_reviews_remaining": 200,
+            "provider_more_available": True,
+            "provider_configured_review_ceiling": 100,
+            "provider_configured_ceiling_hit": True,
+            "provider_reviews_at_or_above_rss": True,
             "provider_min_date": "2026-06-01",
             "provider_max_date": "2026-06-18",
         }

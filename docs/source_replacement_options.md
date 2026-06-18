@@ -58,6 +58,7 @@ The next realistic path is a licensed-provider POC:
    - provider page success rate
    - provider review count vs RSS unique reviews
    - total reviews available
+   - configured provider fetch ceiling and whether the POC page cap, not the provider source, caused a lower fetched count
    - stable review identity or deterministic dedupe quality
    - country/language semantics
    - runtime and rate-limit behavior
@@ -95,7 +96,15 @@ APP_STORE_42MATTERS_TOKEN=... \
   --rss-request-delay-seconds 0.5
 ```
 
-The report is written under `data/reports/provider_compare/{run_id}/provider_comparison_report.json`. Use the replacement gate only after checking provider page success rate, review volume vs RSS, per-app ratios, and runtime.
+The report is written under `data/reports/provider_compare/{run_id}/provider_comparison_report.json`. Use the replacement gate only after checking provider page success rate, review volume vs RSS, per-app ratios, capacity diagnostics, and runtime.
+
+Important fields:
+
+- `comparison.candidate_passes_replacement_gate`: provider fetched at least as many reviews as RSS, with no provider non-200 pages and no RSS fetch errors.
+- `comparison.provider_volume_gap_likely_configuration_limited`: provider returned fewer reviews than RSS, but the report suggests the POC page/request cap or remaining provider inventory caused the gap.
+- `comparison.provider_reported_total_reviews`: provider-reported available review inventory across sampled rows, when available.
+- `comparison.provider_additional_pages_per_row_needed_for_rss_parity`: approximate extra provider pages per app or app-country row needed to match the RSS window.
+- `per_app[].provider_more_available`: this app or app-country has provider-reported inventory beyond what the POC fetched.
 
 Do not commit provider API tokens or raw credentials. Use environment variables or GitHub Actions secrets only.
 
@@ -128,4 +137,4 @@ APP_STORE_APPTWEAK_TOKEN=... \
   --rss-request-delay-seconds 0.5
 ```
 
-The report is written under `data/reports/provider_compare/{run_id}/provider_comparison_report.json`. Judge it with the same replacement gate as 42matters: provider page success rate, provider review volume vs RSS, per-app or app-country ratios, and runtime.
+The report is written under `data/reports/provider_compare/{run_id}/provider_comparison_report.json`. Judge it with the same replacement gate as 42matters: provider page success rate, provider review volume vs RSS, per-app or app-country ratios, capacity diagnostics, and runtime.

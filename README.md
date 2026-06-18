@@ -168,7 +168,7 @@ APP_STORE_42MATTERS_TOKEN=... \
   --rss-request-delay-seconds 0.5
 ```
 
-`compare-42matters` writes `provider_comparison_report.json` with RSS volume, provider volume, provider page success rate, per-app ratios, and candidate gates for same-order stability and RSS replacement.
+`compare-42matters` writes `provider_comparison_report.json` with RSS volume, provider volume, provider page success rate, per-app ratios, configured fetch ceiling, reported provider inventory, and candidate gates for same-order stability and RSS replacement. If provider volume is below RSS, check `provider_volume_gap_likely_configuration_limited`, `provider_reported_total_reviews`, and `provider_additional_pages_per_row_needed_for_rss_parity` before deciding the provider itself is too shallow.
 
 Probe the licensed AppTweak candidate when an API token is available:
 
@@ -193,7 +193,7 @@ APP_STORE_APPTWEAK_TOKEN=... \
   --rss-request-delay-seconds 0.5
 ```
 
-`compare-apptweak` writes the same `provider_comparison_report.json` shape as `compare-42matters`, so the two licensed providers can be judged against RSS using the same gates.
+`compare-apptweak` writes the same `provider_comparison_report.json` shape as `compare-42matters`, so the two licensed providers can be judged against RSS using the same gates and capacity diagnostics.
 
 Run tests:
 
