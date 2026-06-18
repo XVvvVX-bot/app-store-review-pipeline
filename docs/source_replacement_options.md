@@ -63,7 +63,7 @@ Recommended public-source path:
 Current public-source readout from downloaded June 18, 2026 canary artifacts:
 
 - All web canary reports are **not ready** for promotion because the history includes a failed multi-app offset window with time-budget exhaustion and final 429s.
-- Full single-app canary reports are **promising but need more evidence**: 2/2 full single-app runs matched RSS parity cleanly, but the promotion gate requires at least 5 clean full-profile runs.
+- Full single-app canary reports are **promising but need more evidence**: 3/3 full single-app runs matched RSS parity cleanly, but the promotion gate requires at least 5 clean full-profile runs.
 - Rendered HTML with Playwright remains diagnostic only; repeated scrolling did not reveal more review rows or trigger deeper review network calls.
 
 The next contractual production path is still a licensed-provider POC:

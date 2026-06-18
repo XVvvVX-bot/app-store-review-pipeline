@@ -46,4 +46,4 @@ The web catalog endpoint returns structured JSON review pages and can match the 
 
 This profile has passed replacement gates for sampled apps, including Amazon Shopping, Walmart, Target, Uber, Lyft, DoorDash, and American Airlines. Larger multi-app deep-pagination batches are not stable enough yet because they hit 429 pressure and time budgets.
 
-Use `scripts/summarize_source_comparisons.py` to judge promotion from repeated canary artifacts. As of the June 18, 2026 downloaded canary set, the full single-app profile has 2 clean replacement-candidate runs and needs at least 5 clean runs before promotion; the mixed all-run history is not ready because it includes an incomplete multi-app run.
+Use `scripts/summarize_source_comparisons.py` to judge promotion from repeated canary artifacts. As of the June 18, 2026 downloaded canary set, the full single-app profile has 3 clean replacement-candidate runs and needs at least 5 clean runs before promotion; the mixed all-run history is not ready because it includes an incomplete multi-app run.
