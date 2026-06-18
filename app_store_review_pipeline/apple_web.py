@@ -233,6 +233,7 @@ def probe_web_reviews(
     web_429_retry_seconds: float = 30.0,
     web_429_backoff_multiplier: float = 1.0,
     include_html: bool = True,
+    target_review_counts_by_scope: dict[tuple[str, str], int] | None = None,
     sleep_fn: Callable[[float], None] = time.sleep,
     session: requests.Session | None = None,
 ) -> dict[str, Any]:
@@ -246,6 +247,7 @@ def probe_web_reviews(
             if target_index and request_delay_seconds:
                 sleep_fn(request_delay_seconds)
             for country in target.countries:
+                scope_key = (target.apple_app_id, country.lower())
                 rows.append(
                     probe_web_reviews_for_scope(
                         target,
@@ -261,6 +263,11 @@ def probe_web_reviews(
                         web_429_retry_seconds=web_429_retry_seconds,
                         web_429_backoff_multiplier=web_429_backoff_multiplier,
                         include_html=include_html,
+                        target_review_count=(
+                            target_review_counts_by_scope.get(scope_key)
+                            if target_review_counts_by_scope is not None
+                            else None
+                        ),
                         sleep_fn=sleep_fn,
                     )
                 )
@@ -281,6 +288,7 @@ def probe_web_reviews(
         "web_429_retry_seconds": web_429_retry_seconds,
         "web_429_backoff_multiplier": web_429_backoff_multiplier,
         "include_html": include_html,
+        "target_review_counts_enabled": target_review_counts_by_scope is not None,
         "summary": summarize_web_probe(rows),
         "results": rows,
     }
@@ -304,6 +312,7 @@ def probe_web_reviews_for_scope(
     web_429_backoff_multiplier: float,
     include_html: bool,
     sleep_fn: Callable[[float], None],
+    target_review_count: int | None = None,
 ) -> dict[str, Any]:
     country = country.lower()
     page_url = app_store_reviews_page_url(target, country)
@@ -375,6 +384,10 @@ def probe_web_reviews_for_scope(
     next_href = catalog_review_summary.get("next_href") or serialized_next_href
     page_index = 2
     while attempt_pagination and next_href and page_index <= max_web_pages:
+        if target_review_count is not None and (
+            target_review_count <= 0 or web_catalog_page_review_total(web_catalog_pages) >= target_review_count
+        ):
+            break
         if request_delay_seconds:
             sleep_fn(request_delay_seconds)
         next_url = app_store_web_catalog_next_url(str(next_href), sort=web_sort, limit=review_limit)
@@ -422,6 +435,10 @@ def probe_web_reviews_for_scope(
         next_href = next_summary["next_href"]
         page_index += 1
 
+    page_review_total = web_catalog_page_review_total(web_catalog_pages)
+    target_reached = (
+        target_review_count is not None and target_review_count > 0 and page_review_total >= target_review_count
+    )
     next_probe = None
     if len(web_catalog_pages) > 1:
         second_page = web_catalog_pages[1]
@@ -458,17 +475,58 @@ def probe_web_reviews_for_scope(
         "web_catalog_max_date": catalog_review_summary["max_date"],
         "web_catalog_pages": web_catalog_pages,
         "web_catalog_pages_fetched": len(web_catalog_pages),
-        "web_catalog_page_reviews_total": sum(int(page.get("review_count") or 0) for page in web_catalog_pages),
+        "web_catalog_page_reviews_total": page_review_total,
+        "web_catalog_target_review_count": target_review_count,
+        "web_catalog_target_reached": target_reached,
+        "web_catalog_stop_reason": web_catalog_stop_reason(
+            attempt_pagination=attempt_pagination,
+            max_web_pages=max_web_pages,
+            next_href=next_href,
+            pages=web_catalog_pages,
+            target_review_count=target_review_count,
+            target_reached=target_reached,
+        ),
         "web_catalog_next_probe": next_probe,
     }
+
+
+def web_catalog_page_review_total(pages: list[dict[str, Any]]) -> int:
+    return sum(int(page.get("review_count") or 0) for page in pages)
+
+
+def web_catalog_stop_reason(
+    *,
+    attempt_pagination: bool,
+    max_web_pages: int,
+    next_href: str | None,
+    pages: list[dict[str, Any]],
+    target_review_count: int | None,
+    target_reached: bool,
+) -> str:
+    if not attempt_pagination:
+        return "not_paginated"
+    if target_review_count is not None and target_review_count <= 0:
+        return "target_review_count_zero"
+    if target_reached:
+        return "target_review_count_reached"
+    if pages and pages[-1].get("status_code") != 200:
+        return "non_200_page"
+    if not next_href:
+        return "no_next_href"
+    if len(pages) >= max_web_pages:
+        return "max_pages"
+    return "unknown"
 
 
 def summarize_web_probe(rows: list[dict[str, Any]]) -> dict[str, Any]:
     pagination_status_counts: dict[str, int] = {}
     page_status_counts: dict[str, int] = {}
+    stop_reasons: dict[str, int] = {}
     retried_page_count = 0
     recovered_429_page_count = 0
     for row in rows:
+        stop_reason = str(row.get("web_catalog_stop_reason") or "unknown")
+        stop_reasons[stop_reason] = stop_reasons.get(stop_reason, 0) + 1
         probe = row.get("web_catalog_next_probe") or {}
         status = probe.get("status_code")
         if status is not None:
@@ -494,6 +552,9 @@ def summarize_web_probe(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "web_catalog_reviews_total": sum(int(row.get("web_catalog_review_count") or 0) for row in rows),
         "web_catalog_pages_total": sum(int(row.get("web_catalog_pages_fetched") or 0) for row in rows),
         "web_catalog_page_reviews_total": sum(int(row.get("web_catalog_page_reviews_total") or 0) for row in rows),
+        "web_catalog_targeted_scopes": sum(1 for row in rows if row.get("web_catalog_target_review_count") is not None),
+        "web_catalog_target_reached_scopes": sum(1 for row in rows if row.get("web_catalog_target_reached") is True),
+        "web_catalog_stop_reasons": stop_reasons,
         "next_href_scopes": sum(
             1 for row in rows if row.get("web_catalog_next_href") or row.get("html_serialized_next_href")
         ),

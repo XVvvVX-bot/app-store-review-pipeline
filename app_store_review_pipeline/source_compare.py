@@ -32,6 +32,7 @@ def compare_sources(
     web_429_retry_seconds: float = 45.0,
     web_429_backoff_multiplier: float = 1.0,
     web_include_html: bool = True,
+    web_stop_at_rss_parity: bool = False,
     timeout_seconds: float = 20.0,
     sleep_fn: Callable[[float], None] = time.sleep,
 ) -> dict[str, Any]:
@@ -61,6 +62,7 @@ def compare_sources(
     write_json(raw_dir / "rss" / "fetch_report.json", rss_report)
 
     web_report_path = report_dir / "web_probe_report.json"
+    rss_counts_by_scope = rss_review_counts_by_scope(rss_report)
     web_report = probe_web_reviews(
         targets,
         web_report_path,
@@ -75,6 +77,7 @@ def compare_sources(
         web_429_retry_seconds=web_429_retry_seconds,
         web_429_backoff_multiplier=web_429_backoff_multiplier,
         include_html=web_include_html,
+        target_review_counts_by_scope=rss_counts_by_scope if web_stop_at_rss_parity else None,
         sleep_fn=sleep_fn,
     )
 
@@ -99,6 +102,7 @@ def compare_sources(
             "web_429_retry_seconds": web_429_retry_seconds,
             "web_429_backoff_multiplier": web_429_backoff_multiplier,
             "web_include_html": web_include_html,
+            "web_stop_at_rss_parity": web_stop_at_rss_parity,
             "timeout_seconds": timeout_seconds,
         },
         "rss": summarize_rss_report(rss_report),
@@ -125,6 +129,14 @@ def compare_sources(
         encoding="utf-8",
     )
     return comparison
+
+
+def rss_review_counts_by_scope(report: dict[str, Any]) -> dict[tuple[str, str], int]:
+    counts: dict[tuple[str, str], int] = {}
+    for page in report.get("page_reports") or []:
+        key = (str(page.get("app_id")), str(page.get("country", "")).lower())
+        counts[key] = counts.get(key, 0) + int(page.get("review_count") or 0)
+    return counts
 
 
 def summarize_rss_report(report: dict[str, Any]) -> dict[str, Any]:
@@ -402,6 +414,9 @@ def render_source_markdown_report(report: dict[str, Any]) -> str:
         f"- Additional pages per scope needed for RSS parity: `{metrics.get('web_additional_pages_per_scope_needed_for_rss_parity')}`",
         f"- Web page depth can reach RSS parity: `{bool_label(metrics.get('web_page_depth_can_reach_rss_parity'))}`",
         f"- Web volume gap likely configuration-limited: `{bool_label(metrics.get('web_volume_gap_likely_configuration_limited'))}`",
+        f"- Web targeted scopes: `{web.get('web_catalog_targeted_scopes', 0)}`",
+        f"- Web target reached scopes: `{web.get('web_catalog_target_reached_scopes', 0)}`",
+        f"- Web stop reasons: `{web.get('web_catalog_stop_reasons', {})}`",
         "",
         "## Settings",
         "",
@@ -411,6 +426,7 @@ def render_source_markdown_report(report: dict[str, Any]) -> str:
         f"- Web 429 retries: `{settings.get('web_429_retries')}`",
         f"- Web 429 retry seconds: `{settings.get('web_429_retry_seconds')}`",
         f"- Web HTML probe included: `{bool_label(settings.get('web_include_html'))}`",
+        f"- Web stop at RSS parity: `{bool_label(settings.get('web_stop_at_rss_parity'))}`",
         "",
         "## Decision Status Meaning",
         "",

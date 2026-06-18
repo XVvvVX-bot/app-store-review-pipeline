@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import json
 from pathlib import Path
 
 import pytest
@@ -48,6 +49,7 @@ from app_store_review_pipeline.source_compare import (
     build_web_source_decision,
     compare_per_scope,
     render_source_markdown_report,
+    rss_review_counts_by_scope,
     summarize_comparison,
 )
 from app_store_review_pipeline.targets import active_targets, load_targets, parse_countries
@@ -154,14 +156,23 @@ class FakeSession:
 
 
 class FakeWebResponse:
-    def __init__(self, status_code: int, headers: dict | None = None, content: bytes = b"{}"):
+    def __init__(
+        self,
+        status_code: int,
+        headers: dict | None = None,
+        content: bytes = b"{}",
+        payload: dict | None = None,
+    ):
         self.status_code = status_code
         self.headers = headers or {}
-        self.content = content
-        self.text = content.decode("utf-8", errors="replace")
+        self.payload = payload
+        self.content = json.dumps(payload).encode("utf-8") if payload is not None else content
+        self.text = self.content.decode("utf-8", errors="replace")
 
     def json(self):
-        return {}
+        if self.payload is not None:
+            return self.payload
+        return json.loads(self.text or "{}")
 
 
 class FakeWebSession:
@@ -572,6 +583,79 @@ def test_web_probe_can_skip_html_request():
     assert report["html_probe_enabled"] is False
     assert report["html_status_code"] is None
     assert report["web_catalog_status_code"] == 200
+
+
+def test_web_probe_stops_after_target_review_count_is_reached():
+    session = FakeWebSession(
+        [
+            FakeWebResponse(
+                200,
+                payload={
+                    "next": "/v1/catalog/us/apps/123456789/reviews?l=en-US&offset=20",
+                    "data": [
+                        {"id": "review-1", "attributes": {"date": "2026-06-18T00:00:00Z"}},
+                        {"id": "review-2", "attributes": {"date": "2026-06-18T00:00:01Z"}},
+                    ],
+                },
+            ),
+            FakeWebResponse(
+                200,
+                payload={
+                    "next": "/v1/catalog/us/apps/123456789/reviews?l=en-US&offset=40",
+                    "data": [
+                        {"id": "review-3", "attributes": {"date": "2026-06-18T00:00:02Z"}},
+                        {"id": "review-4", "attributes": {"date": "2026-06-18T00:00:03Z"}},
+                    ],
+                },
+            ),
+            FakeWebResponse(
+                200,
+                payload={
+                    "next": None,
+                    "data": [{"id": "review-5", "attributes": {"date": "2026-06-18T00:00:04Z"}}],
+                },
+            ),
+        ]
+    )
+
+    report = probe_web_reviews_for_scope(
+        fixture_target(),
+        "us",
+        session=session,
+        timeout_seconds=1,
+        review_limit=2,
+        web_sort="recent",
+        attempt_pagination=True,
+        max_web_pages=5,
+        request_delay_seconds=0,
+        web_429_retries=0,
+        web_429_retry_seconds=0,
+        web_429_backoff_multiplier=1,
+        include_html=False,
+        target_review_count=4,
+        sleep_fn=lambda _seconds: None,
+    )
+
+    assert len(session.calls) == 2
+    assert report["web_catalog_pages_fetched"] == 2
+    assert report["web_catalog_page_reviews_total"] == 4
+    assert report["web_catalog_target_review_count"] == 4
+    assert report["web_catalog_target_reached"] is True
+    assert report["web_catalog_stop_reason"] == "target_review_count_reached"
+
+
+def test_rss_review_counts_by_scope():
+    report = {
+        "page_reports": [
+            {"app_id": "123", "country": "US", "review_count": 20},
+            {"app_id": "123", "country": "us", "review_count": 30},
+            {"app_id": "456", "country": "CA", "review_count": 10},
+        ]
+    }
+
+    counts = rss_review_counts_by_scope(report)
+
+    assert counts == {("123", "us"): 50, ("456", "ca"): 10}
 
 
 def test_source_comparison_summary_gate():

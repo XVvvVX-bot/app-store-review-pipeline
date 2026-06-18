@@ -160,6 +160,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Skip the HTML page request in the web catalog comparison path.",
     )
+    compare.add_argument(
+        "--web-stop-at-rss-parity",
+        action="store_true",
+        help="Stop each web catalog scope once fetched web reviews match that scope's RSS review count.",
+    )
     compare.set_defaults(func=command_compare_sources)
 
     provider_42matters = subparsers.add_parser(
@@ -486,6 +491,7 @@ def command_compare_sources(args: argparse.Namespace) -> int:
         web_429_retry_seconds=args.web_429_retry_seconds,
         web_429_backoff_multiplier=args.web_429_backoff_multiplier,
         web_include_html=not args.web_skip_html,
+        web_stop_at_rss_parity=args.web_stop_at_rss_parity,
         timeout_seconds=args.timeout_seconds,
     )
     print(
@@ -493,6 +499,7 @@ def command_compare_sources(args: argparse.Namespace) -> int:
             {
                 "output": report["paths"]["comparison_report_path"],
                 "comparison": report["comparison"],
+                "source_decision": report["source_decision"],
                 "rss": report["rss"],
                 "web_catalog": report["web_catalog"],
             },

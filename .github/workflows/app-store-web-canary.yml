@@ -51,6 +51,11 @@ on:
         required: false
         default: "true"
         type: string
+      web_stop_at_rss_parity:
+        description: "Stop each web catalog scope after matching that scope's RSS review count"
+        required: false
+        default: "true"
+        type: string
 
 permissions:
   contents: read
@@ -73,6 +78,7 @@ jobs:
       INPUT_WEB_429_RETRY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_seconds || '45' }}
       INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_backoff_multiplier || '1' }}
       INPUT_WEB_SKIP_HTML: ${{ github.event_name == 'workflow_dispatch' && inputs.web_skip_html || 'true' }}
+      INPUT_WEB_STOP_AT_RSS_PARITY: ${{ github.event_name == 'workflow_dispatch' && inputs.web_stop_at_rss_parity || 'true' }}
 
     steps:
       - name: Check out repository
@@ -105,6 +111,9 @@ jobs:
           )
           if [[ "$INPUT_WEB_SKIP_HTML" == "true" ]]; then
             args+=(--web-skip-html)
+          fi
+          if [[ "$INPUT_WEB_STOP_AT_RSS_PARITY" == "true" ]]; then
+            args+=(--web-stop-at-rss-parity)
           fi
           python app_store_pipeline.py "${args[@]}"
 

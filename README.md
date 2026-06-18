@@ -122,10 +122,11 @@ Compare RSS and web catalog on the same target window:
   --web-429-retry-seconds 45 \
   --web-429-backoff-multiplier 1 \
   --web-skip-html \
+  --web-stop-at-rss-parity \
   --rss-request-delay-seconds 0.5
 ```
 
-`compare-sources` writes `source_comparison_report.json` and the human-readable `source_comparison_report.md` with RSS volume, web catalog volume, 429 recovery counts, capacity/parity metrics, a same-order stability gate, the stricter RSS-replacement gate, and `source_decision.status`. Use `--web-skip-html` for canary and replacement-source testing so the result measures the JSON review endpoint without an extra HTML request. The web catalog retry path honors `Retry-After` when Apple provides it; otherwise it uses `--web-429-retry-seconds` with the optional `--web-429-backoff-multiplier` for conservative depth tests.
+`compare-sources` writes `source_comparison_report.json` and the human-readable `source_comparison_report.md` with RSS volume, web catalog volume, 429 recovery counts, capacity/parity metrics, a same-order stability gate, the stricter RSS-replacement gate, and `source_decision.status`. Use `--web-skip-html` for canary and replacement-source testing so the result measures the JSON review endpoint without an extra HTML request. Use `--web-stop-at-rss-parity` for deeper tests so each app-country web crawl stops once it has matched that scope's RSS review count, reducing unnecessary deep-pagination requests. The web catalog retry path honors `Retry-After` when Apple provides it; otherwise it uses `--web-429-retry-seconds` with the optional `--web-429-backoff-multiplier` for conservative depth tests.
 
 Probe rendered App Store HTML with Playwright:
 
@@ -299,9 +300,10 @@ The web catalog canary defaults to:
 - HTTP 429 retry delay: `45` seconds
 - HTTP 429 backoff multiplier: `1`
 - HTML page probe: skipped by default
+- stop after each app-country matches its RSS review count: enabled by default
 - RSS pages per app-country: `10`
 
-Its artifact contains `data/reports/source_compare/{run_id}/source_comparison_report.json`, the readable `source_comparison_report.md`, plus the raw RSS comparison files under `data/raw/source_compare/{run_id}/rss/`. Compare several runs before promoting web catalog reviews into the production ingestion path. The canary is intentionally a capacity-and-stability comparison, not a tiny liveness probe: RSS can return up to 50 reviews on one page while web catalog currently accepts `limit=20` per page, so web catalog must prove it can add enough value at predictable runtime. Use manual runs with higher `max_web_pages` only for deeper stress tests. The comparison section includes `web_configured_review_ceiling`, `web_pages_per_scope_needed_for_rss_parity`, `web_volume_gap_likely_configuration_limited`, and `web_unrecovered_429_page_count` to show whether a lower web count is caused by the configured page cap or deep-pagination instability. Read `source_decision.status` first: `web_catalog_replacement_candidate` is the only public-web result that can justify repeated promotion testing; `rss_baseline_empty`, `needs_deeper_web_catalog_run`, `same_order_but_not_replacement`, and `web_catalog_unstable_after_retry` are not production replacement outcomes.
+Its artifact contains `data/reports/source_compare/{run_id}/source_comparison_report.json`, the readable `source_comparison_report.md`, plus the raw RSS comparison files under `data/raw/source_compare/{run_id}/rss/`. Compare several runs before promoting web catalog reviews into the production ingestion path. The canary is intentionally a capacity-and-stability comparison, not a tiny liveness probe: RSS can return up to 50 reviews on one page while web catalog currently accepts `limit=20` per page, so web catalog must prove it can add enough value at predictable runtime. Use manual runs with higher `max_web_pages` only for deeper stress tests; keep RSS-parity stopping enabled unless you are deliberately stress-testing post-parity pagination. The comparison section includes `web_configured_review_ceiling`, `web_pages_per_scope_needed_for_rss_parity`, `web_volume_gap_likely_configuration_limited`, `web_unrecovered_429_page_count`, `web_catalog_target_reached_scopes`, and `web_catalog_stop_reasons` to show whether a lower web count is caused by the configured page cap, successful parity stopping, or deep-pagination instability. Read `source_decision.status` first: `web_catalog_replacement_candidate` is the only public-web result that can justify repeated promotion testing; `rss_baseline_empty`, `needs_deeper_web_catalog_run`, `same_order_but_not_replacement`, and `web_catalog_unstable_after_retry` are not production replacement outcomes.
 
 A conservative manual deep profile for replacement-source testing is:
 
@@ -312,3 +314,4 @@ A conservative manual deep profile for replacement-source testing is:
 - `web_429_retries`: `5`
 - `web_429_retry_seconds`: `20`
 - `web_429_backoff_multiplier`: `1.5`
+- `web_stop_at_rss_parity`: `true`

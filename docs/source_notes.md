@@ -82,6 +82,7 @@ Do not promote web catalog reviews into the production ingestion path until seve
 - `recovered_429_page_count` stays small enough that the workflow runtime remains predictable.
 - `comparison.web_reviews_same_order_as_rss` is consistently true for the same target window. `comparison.web_reviews_at_or_above_rss` remains the stronger bar for a true RSS replacement.
 - `comparison.web_page_depth_can_reach_rss_parity` is true for any run used to judge RSS replacement, or `comparison.web_volume_gap_likely_configuration_limited` is false when web volume is lower than RSS.
+- `web_catalog.web_catalog_target_reached_scopes` increases during deeper tests with RSS-parity stopping enabled, and `web_catalog.web_catalog_stop_reasons` distinguishes parity stops from `max_pages` or `non_200_page` stops.
 - `source_decision.status` is `web_catalog_replacement_candidate` across repeated canary windows. Treat `rss_baseline_empty`, `needs_deeper_web_catalog_run`, `same_order_but_not_replacement`, and `web_catalog_unstable_after_retry` as evidence against immediate promotion.
 - `web_catalog.web_catalog_page_reviews_total` is nonzero and commercially useful for the sampled target set.
 - `comparison.web_all_pages_ok_after_retry` is consistently true.
