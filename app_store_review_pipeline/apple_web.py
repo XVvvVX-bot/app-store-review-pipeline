@@ -42,6 +42,7 @@ def app_store_web_reviews_url(
     offset: int = 0,
     sort: str = "recent",
     platform: str = "iphone",
+    limit: int | None = 20,
 ) -> str:
     params = {
         "l": language,
@@ -49,15 +50,25 @@ def app_store_web_reviews_url(
         "platform": platform,
         "sort": sort,
     }
+    if limit is not None:
+        params["limit"] = str(limit)
     return f"https://apps.apple.com/api/apps/v1/catalog/{country.lower()}/apps/{app_id}/reviews?{urlencode(params)}"
 
 
-def app_store_web_catalog_next_url(next_href: str, *, platform: str = "iphone", sort: str = "recent") -> str:
+def app_store_web_catalog_next_url(
+    next_href: str,
+    *,
+    platform: str = "iphone",
+    sort: str = "recent",
+    limit: int | None = 20,
+) -> str:
     url = next_href if next_href.startswith("https://") else f"https://apps.apple.com/api/apps{next_href}"
     parts = urlsplit(url)
     params = dict(parse_qsl(parts.query, keep_blank_values=True))
     params.setdefault("platform", platform)
     params.setdefault("sort", sort)
+    if limit is not None:
+        params.setdefault("limit", str(limit))
     return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(params), parts.fragment))
 
 
@@ -258,6 +269,7 @@ def probe_web_reviews(
         "scope_count": len(rows),
         "attempt_pagination": attempt_pagination,
         "web_sort": web_sort,
+        "web_review_limit": review_limit,
         "max_web_pages": max_web_pages if attempt_pagination else 1,
         "web_429_retries": web_429_retries,
         "web_429_retry_seconds": web_429_retry_seconds,
@@ -285,7 +297,7 @@ def probe_web_reviews_for_scope(
 ) -> dict[str, Any]:
     country = country.lower()
     page_url = app_store_reviews_page_url(target, country)
-    catalog_url = app_store_web_reviews_url(target.apple_app_id, country, sort=web_sort)
+    catalog_url = app_store_web_reviews_url(target.apple_app_id, country, sort=web_sort, limit=review_limit)
     headers = {"User-Agent": WEB_USER_AGENT, "Accept": "text/html,application/xhtml+xml"}
 
     page_response = session.get(page_url, headers=headers, timeout=timeout_seconds)
@@ -347,7 +359,7 @@ def probe_web_reviews_for_scope(
     while attempt_pagination and next_href and page_index <= max_web_pages:
         if request_delay_seconds:
             sleep_fn(request_delay_seconds)
-        next_url = app_store_web_catalog_next_url(str(next_href), sort=web_sort)
+        next_url = app_store_web_catalog_next_url(str(next_href), sort=web_sort, limit=review_limit)
         next_response, next_attempts = get_with_429_retries(
             session,
             next_url,

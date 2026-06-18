@@ -77,7 +77,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--review-limit",
         type=int,
         default=20,
-        help="Requested sparse review limit for the legacy app-include catalog lookup.",
+        help="Requested review page size for the public web catalog reviews endpoint. Apple currently caps this at 20.",
     )
     probe_web.add_argument(
         "--web-sort",
@@ -126,6 +126,7 @@ def build_parser() -> argparse.ArgumentParser:
     compare.add_argument("--rss-retry-delay-seconds", type=float, default=DEFAULT_RETRY_DELAY_SECONDS)
     compare.add_argument("--web-request-delay-seconds", type=float, default=2.0)
     compare.add_argument("--web-max-pages", type=int, default=5)
+    compare.add_argument("--web-review-limit", type=int, default=20)
     compare.add_argument("--web-429-retries", type=int, default=3)
     compare.add_argument("--web-429-retry-seconds", type=float, default=45.0)
     compare.set_defaults(func=command_compare_sources)
@@ -283,6 +284,7 @@ def command_compare_sources(args: argparse.Namespace) -> int:
         rss_max_attempts=args.rss_max_attempts,
         rss_retry_delay_seconds=args.rss_retry_delay_seconds,
         web_max_pages=args.web_max_pages,
+        web_review_limit=args.web_review_limit,
         web_request_delay_seconds=args.web_request_delay_seconds,
         web_429_retries=args.web_429_retries,
         web_429_retry_seconds=args.web_429_retry_seconds,

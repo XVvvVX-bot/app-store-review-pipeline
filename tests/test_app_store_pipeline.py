@@ -367,11 +367,11 @@ def test_web_probe_url_helpers():
     )
     assert (
         app_store_web_catalog_next_url("/v1/catalog/us/apps/1508186374/reviews?l=en-US&offset=6")
-        == "https://apps.apple.com/api/apps/v1/catalog/us/apps/1508186374/reviews?l=en-US&offset=6&platform=iphone&sort=recent"
+        == "https://apps.apple.com/api/apps/v1/catalog/us/apps/1508186374/reviews?l=en-US&offset=6&platform=iphone&sort=recent&limit=20"
     )
     assert (
         app_store_web_reviews_url("1508186374", "US")
-        == "https://apps.apple.com/api/apps/v1/catalog/us/apps/1508186374/reviews?l=en-US&offset=0&platform=iphone&sort=recent"
+        == "https://apps.apple.com/api/apps/v1/catalog/us/apps/1508186374/reviews?l=en-US&offset=0&platform=iphone&sort=recent&limit=20"
     )
 
 

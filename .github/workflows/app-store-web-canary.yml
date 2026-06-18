@@ -16,6 +16,11 @@ on:
         required: false
         default: "5"
         type: string
+      web_review_limit:
+        description: "Requested web catalog reviews per page; Apple currently caps this at 20"
+        required: false
+        default: "20"
+        type: string
       request_delay_seconds:
         description: "Delay between web catalog requests"
         required: false
@@ -51,6 +56,7 @@ jobs:
     env:
       INPUT_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '20' }}
       INPUT_MAX_WEB_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.max_web_pages || '5' }}
+      INPUT_WEB_REVIEW_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.web_review_limit || '20' }}
       INPUT_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '2' }}
       INPUT_RSS_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.rss_request_delay_seconds || '0.5' }}
       INPUT_WEB_429_RETRIES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retries || '3' }}
@@ -77,6 +83,7 @@ jobs:
           python app_store_pipeline.py compare-sources \
             --limit "$INPUT_LIMIT" \
             --web-max-pages "$INPUT_MAX_WEB_PAGES" \
+            --web-review-limit "$INPUT_WEB_REVIEW_LIMIT" \
             --web-request-delay-seconds "$INPUT_REQUEST_DELAY_SECONDS" \
             --web-429-retries "$INPUT_WEB_429_RETRIES" \
             --web-429-retry-seconds "$INPUT_WEB_429_RETRY_SECONDS" \
