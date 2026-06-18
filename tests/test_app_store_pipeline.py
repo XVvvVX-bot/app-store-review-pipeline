@@ -44,7 +44,12 @@ from app_store_review_pipeline.provider_compare import (
     compare_provider_per_app,
     summarize_provider_comparison,
 )
-from app_store_review_pipeline.source_compare import compare_per_scope, summarize_comparison
+from app_store_review_pipeline.source_compare import (
+    build_web_source_decision,
+    compare_per_scope,
+    render_source_markdown_report,
+    summarize_comparison,
+)
 from app_store_review_pipeline.targets import active_targets, load_targets, parse_countries
 from scripts.run_provider_matrix import build_source_decision, render_markdown_report
 
@@ -744,6 +749,99 @@ def test_source_comparison_reports_unrecovered_429_rate():
     assert summary["web_recovered_429_page_count"] == 2
     assert summary["web_429_recovery_rate_after_retry"] == 0.4
     assert summary["web_all_pages_ok_after_retry"] is False
+
+
+def test_web_source_decision_selects_replacement_candidate():
+    decision = build_web_source_decision(
+        {
+            "candidate_passes_single_run_gate": True,
+            "candidate_passes_same_order_stability_gate": True,
+            "rss_fetch_error_count": 0,
+            "web_non_200_page_count_after_retry": 0,
+            "web_to_rss_review_ratio": 1.1,
+        }
+    )
+
+    assert decision["status"] == "web_catalog_replacement_candidate"
+    assert decision["selected_source"] == "apple_web_catalog_reviews"
+
+
+def test_web_source_decision_requests_deeper_configuration_limited_run():
+    decision = build_web_source_decision(
+        {
+            "candidate_passes_single_run_gate": False,
+            "candidate_passes_same_order_stability_gate": True,
+            "rss_fetch_error_count": 0,
+            "web_non_200_page_count_after_retry": 0,
+            "web_volume_gap_likely_configuration_limited": True,
+            "web_to_rss_review_ratio": 0.2,
+            "web_additional_pages_per_scope_needed_for_rss_parity": 20,
+        }
+    )
+
+    assert decision["status"] == "needs_deeper_web_catalog_run"
+    assert decision["web_additional_pages_per_scope_needed_for_rss_parity"] == 20
+
+
+def test_web_source_decision_blocks_unstable_final_pages():
+    decision = build_web_source_decision(
+        {
+            "candidate_passes_single_run_gate": False,
+            "candidate_passes_same_order_stability_gate": False,
+            "rss_fetch_error_count": 0,
+            "web_non_200_page_count_after_retry": 3,
+            "web_unrecovered_429_page_count": 3,
+            "web_volume_gap_likely_configuration_limited": True,
+        }
+    )
+
+    assert decision["status"] == "web_catalog_unstable_after_retry"
+    assert decision["selected_source"] is None
+    assert decision["blocking_metric"] == "web_non_200_page_count_after_retry"
+
+
+def test_web_source_markdown_report_includes_decision_and_gates():
+    report = {
+        "source_decision": {
+            "status": "same_order_but_not_replacement",
+            "selected_source": "apple_web_catalog_reviews",
+            "recommended_next_action": "Keep monitoring.",
+        },
+        "rss": {"unique_reviews_seen": 1000},
+        "web_catalog": {"web_catalog_page_reviews_total": 200},
+        "comparison": {
+            "web_to_rss_review_ratio": 0.2,
+            "web_reviews_minus_rss_reviews": -800,
+            "candidate_passes_single_run_gate": False,
+            "candidate_passes_same_order_stability_gate": True,
+            "web_all_pages_ok_after_retry": True,
+            "rss_fetch_error_count": 0,
+            "web_non_200_page_count_after_retry": 0,
+            "web_unrecovered_429_page_count": 0,
+            "web_configured_review_ceiling": 200,
+            "web_configured_ceiling_hit": True,
+            "web_pages_per_scope_needed_for_rss_parity": 25,
+            "web_additional_pages_per_scope_needed_for_rss_parity": 20,
+            "web_page_depth_can_reach_rss_parity": False,
+            "web_volume_gap_likely_configuration_limited": True,
+        },
+        "settings": {
+            "web_max_pages": 5,
+            "web_review_limit": 20,
+            "web_request_delay_seconds": 2,
+            "web_429_retries": 3,
+            "web_429_retry_seconds": 45,
+            "web_include_html": False,
+        },
+    }
+
+    markdown = render_source_markdown_report(report)
+
+    assert "Decision: **same_order_but_not_replacement**" in markdown
+    assert "Selected source: `apple_web_catalog_reviews`" in markdown
+    assert "| Replacement gate | no |" in markdown
+    assert "| Same-order stability gate | yes |" in markdown
+    assert "Web/RSS ratio: `0.200`" in markdown
 
 
 def test_source_comparison_per_scope():

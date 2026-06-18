@@ -115,9 +115,15 @@ def compare_sources(
             "rss_raw_dir": str(raw_dir / "rss"),
             "web_report_path": str(web_report_path),
             "comparison_report_path": str(report_dir / "source_comparison_report.json"),
+            "markdown_report_path": str(report_dir / "source_comparison_report.md"),
         },
     }
+    comparison["source_decision"] = build_web_source_decision(comparison)
     write_json(report_dir / "source_comparison_report.json", comparison)
+    (report_dir / "source_comparison_report.md").write_text(
+        render_source_markdown_report(comparison),
+        encoding="utf-8",
+    )
     return comparison
 
 
@@ -258,6 +264,162 @@ def summarize_web_capacity(
         }
     )
     return empty
+
+
+def build_web_source_decision(report_or_metrics: dict[str, Any]) -> dict[str, Any]:
+    metrics = report_or_metrics.get("comparison") if "comparison" in report_or_metrics else report_or_metrics
+    metrics = metrics or {}
+    rss_errors = int(metrics.get("rss_fetch_error_count") or 0)
+    web_non_200 = int(metrics.get("web_non_200_page_count_after_retry") or 0)
+    unrecovered_429 = int(metrics.get("web_unrecovered_429_page_count") or 0)
+    web_ratio = metrics.get("web_to_rss_review_ratio")
+    selected_source = "apple_web_catalog_reviews"
+
+    if rss_errors:
+        return {
+            "status": "rss_baseline_unreliable",
+            "selected_source": None,
+            "recommended_next_action": (
+                "Rerun the comparison after RSS fetch errors clear; the baseline window is not reliable enough "
+                "to judge a replacement source."
+            ),
+            "blocking_metric": "rss_fetch_error_count",
+            "blocking_value": rss_errors,
+        }
+    if metrics.get("candidate_passes_single_run_gate") is True:
+        return {
+            "status": "web_catalog_replacement_candidate",
+            "selected_source": selected_source,
+            "recommended_next_action": (
+                "Repeat this web catalog profile across several scheduled canary windows before promoting it "
+                "into a separate ingestion mode."
+            ),
+            "web_to_rss_review_ratio": web_ratio,
+        }
+    if web_non_200:
+        return {
+            "status": "web_catalog_unstable_after_retry",
+            "selected_source": None,
+            "recommended_next_action": (
+                "Do not promote web catalog as the primary source; final non-200 pages after retry show that "
+                "deep pagination is not stable enough for routine ingestion."
+            ),
+            "blocking_metric": "web_non_200_page_count_after_retry",
+            "blocking_value": web_non_200,
+            "web_unrecovered_429_page_count": unrecovered_429,
+        }
+    if metrics.get("web_volume_gap_likely_configuration_limited") is True:
+        return {
+            "status": "needs_deeper_web_catalog_run",
+            "selected_source": selected_source,
+            "recommended_next_action": (
+                "Rerun manually with higher web_max_pages; this run's web volume gap is likely caused by the "
+                "configured page cap rather than proven source insufficiency."
+            ),
+            "web_to_rss_review_ratio": web_ratio,
+            "web_additional_pages_per_scope_needed_for_rss_parity": metrics.get(
+                "web_additional_pages_per_scope_needed_for_rss_parity"
+            ),
+        }
+    if metrics.get("candidate_passes_same_order_stability_gate") is True:
+        return {
+            "status": "same_order_but_not_replacement",
+            "selected_source": selected_source,
+            "recommended_next_action": (
+                "Keep web catalog as a supplemental diagnostic source, but do not replace RSS without stronger "
+                "volume parity across repeated canary runs."
+            ),
+            "web_to_rss_review_ratio": web_ratio,
+        }
+    return {
+        "status": "no_public_web_replacement_candidate",
+        "selected_source": None,
+        "recommended_next_action": (
+            "Do not replace RSS from this run; continue with RSS plus licensed-provider evaluation."
+        ),
+        "web_to_rss_review_ratio": web_ratio,
+    }
+
+
+def render_source_markdown_report(report: dict[str, Any]) -> str:
+    decision = report.get("source_decision") or build_web_source_decision(report)
+    metrics = report.get("comparison") or {}
+    rss = report.get("rss") or {}
+    web = report.get("web_catalog") or {}
+    settings = report.get("settings") or {}
+    lines = [
+        "# App Store Web Catalog Source Report",
+        "",
+        f"Decision: **{decision.get('status', 'unknown')}**",
+        "",
+        f"Selected source: `{decision.get('selected_source') or 'none'}`",
+        "",
+        f"Recommended next action: {decision.get('recommended_next_action') or 'Review the comparison metrics.'}",
+        "",
+        "## Volume",
+        "",
+        f"- RSS unique reviews: `{rss.get('unique_reviews_seen', 0)}`",
+        f"- Web catalog page reviews: `{web.get('web_catalog_page_reviews_total', 0)}`",
+        f"- Web/RSS ratio: `{format_ratio(metrics.get('web_to_rss_review_ratio'))}`",
+        f"- Web minus RSS reviews: `{metrics.get('web_reviews_minus_rss_reviews', 0)}`",
+        "",
+        "## Gates",
+        "",
+        "| Gate | Value |",
+        "| --- | --- |",
+        f"| Replacement gate | {bool_label(metrics.get('candidate_passes_single_run_gate'))} |",
+        f"| Same-order stability gate | {bool_label(metrics.get('candidate_passes_same_order_stability_gate'))} |",
+        f"| Web all pages OK after retry | {bool_label(metrics.get('web_all_pages_ok_after_retry'))} |",
+        f"| RSS fetch error count | {metrics.get('rss_fetch_error_count', 0)} |",
+        f"| Web non-200 pages after retry | {metrics.get('web_non_200_page_count_after_retry', 0)} |",
+        f"| Web unrecovered 429 pages | {metrics.get('web_unrecovered_429_page_count', 0)} |",
+        "",
+        "## Capacity",
+        "",
+        f"- Web configured review ceiling: `{metrics.get('web_configured_review_ceiling')}`",
+        f"- Web configured ceiling hit: `{bool_label(metrics.get('web_configured_ceiling_hit'))}`",
+        f"- Pages per scope needed for RSS parity: `{metrics.get('web_pages_per_scope_needed_for_rss_parity')}`",
+        f"- Additional pages per scope needed for RSS parity: `{metrics.get('web_additional_pages_per_scope_needed_for_rss_parity')}`",
+        f"- Web page depth can reach RSS parity: `{bool_label(metrics.get('web_page_depth_can_reach_rss_parity'))}`",
+        f"- Web volume gap likely configuration-limited: `{bool_label(metrics.get('web_volume_gap_likely_configuration_limited'))}`",
+        "",
+        "## Settings",
+        "",
+        f"- Web max pages per app-country: `{settings.get('web_max_pages')}`",
+        f"- Web review limit per page: `{settings.get('web_review_limit')}`",
+        f"- Web request delay seconds: `{settings.get('web_request_delay_seconds')}`",
+        f"- Web 429 retries: `{settings.get('web_429_retries')}`",
+        f"- Web 429 retry seconds: `{settings.get('web_429_retry_seconds')}`",
+        f"- Web HTML probe included: `{bool_label(settings.get('web_include_html'))}`",
+        "",
+        "## Decision Status Meaning",
+        "",
+        "- `web_catalog_replacement_candidate`: web catalog matched or exceeded RSS volume with clean final pages.",
+        "- `needs_deeper_web_catalog_run`: the configured web page cap was too shallow to judge replacement.",
+        "- `same_order_but_not_replacement`: web catalog is stable enough to monitor but did not match RSS volume.",
+        "- `web_catalog_unstable_after_retry`: final non-200 pages remain after retry, usually from deep-pagination throttling.",
+        "- `rss_baseline_unreliable`: RSS fetch errors make this comparison inconclusive.",
+        "- `no_public_web_replacement_candidate`: this run does not support replacing RSS.",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def bool_label(value: Any) -> str:
+    if value is True:
+        return "yes"
+    if value is False:
+        return "no"
+    return ""
+
+
+def format_ratio(value: Any) -> str:
+    if value is None:
+        return ""
+    try:
+        return f"{float(value):.3f}"
+    except (TypeError, ValueError):
+        return str(value)
 
 
 def compare_per_scope(rss_report: dict[str, Any], web_report: dict[str, Any]) -> list[dict[str, Any]]:

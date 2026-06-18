@@ -48,7 +48,7 @@ References:
 
 ## Recommendation
 
-Do not keep searching for a hidden public Apple endpoint as the main plan. We have enough evidence that public HTML and web catalog paths are either shallow or unstable under deep pagination.
+Do not keep searching for a hidden public Apple endpoint as the main plan. We have enough evidence that public HTML and web catalog paths are either shallow or unstable under deep pagination. The web catalog canary now writes `source_decision.status`; only `web_catalog_replacement_candidate` should trigger repeated promotion testing. `needs_deeper_web_catalog_run`, `same_order_but_not_replacement`, and `web_catalog_unstable_after_retry` keep web catalog in diagnostic or supplemental territory.
 
 The next realistic path is a licensed-provider POC:
 
