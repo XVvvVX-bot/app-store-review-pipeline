@@ -57,7 +57,10 @@ However, HTML pages are not a better primary bulk review source:
 - The same `target_offset=5` window became stable when reduced to a single app. A DoorDash-only canary with 5-second page delay, 60-second 429 retry delay, and 1,200-second budget reached 500 RSS reviews vs 500 web catalog reviews, 25/25 final `200` pages, 0 retries, and stop reason `target_review_count_reached`.
 - The canary schedule now uses a rotating single-app profile by default: one active target per run, auto-computed target offset, 25 max web pages, `limit=20`, 5-second page delay, 60-second 429 retry delay, 1.5x backoff, RSS-parity stopping, and a 1,200-second web budget. Manual workflow dispatch can still run larger fixed windows as stress tests.
 - A manual full-profile `target_offset=auto` canary verified the scheduled-style rotation path: it selected American Airlines at offset 90 and reached 500 RSS reviews vs 500 web catalog reviews, 25/25 final `200` pages, 2 recovered `429` pages, and stop reason `target_review_count_reached` in about 3m23s.
-- A source-comparison history summarizer now aggregates `source_comparison_report.json` artifacts across runs. On seven downloaded GitHub web canary reports from June 18, 2026, the all-run summary was still `not_ready`: five replacement-candidate runs were offset by one `web_catalog_time_budget_exceeded` run, one shallow `needs_deeper_web_catalog_run` smoke, 26 recovered `429` pages, and 2 unrecovered `429` pages. Filtering to the full single-app profile (`--single-app-only --min-web-max-pages 25`) produced `needs_more_evidence`: 3/3 full single-app runs were replacement candidates, 1,500 RSS reviews vs 1,500 web catalog reviews, 2 recovered `429` pages, and 0 unrecovered `429` pages.
+- A source-comparison history summarizer now aggregates `source_comparison_report.json` artifacts across runs. On nine downloaded GitHub web canary reports from June 18, 2026, the all-run summary was still `not_ready`: seven replacement-candidate runs were offset by one `web_catalog_time_budget_exceeded` run, one shallow `needs_deeper_web_catalog_run` smoke, 32 recovered `429` pages, and 2 unrecovered `429` pages. Filtering to the full single-app profile (`--single-app-only --min-web-max-pages 25`) produced `ready_for_promotion`: 5/5 full single-app runs were replacement candidates, 2,479 RSS reviews vs 2,500 web catalog reviews, 8 recovered `429` pages, and 0 unrecovered `429` pages.
+- A live web catalog payload check confirmed that review rows contain `id`, `date`, `rating`, `review`, `title`, and `userName`. The repository now includes `fetch-web-catalog` and `daily-web-catalog` commands that normalize these rows into the existing Postgres schema under `source='apple_app_store_web_catalog_reviews'`.
+- A local `daily-web-catalog` smoke run against a temporary Postgres database loaded 20 PayPal web catalog review rows with 0 fetch errors and stored the run source correctly as `apple_app_store_web_catalog_reviews`.
+- A second local `daily-web-catalog` overlap smoke against the same temporary database inserted 20 rows on the first run, then skipped 20 duplicates on the second run and left the cumulative review row count at 20. The second page row stopped with `caught_up_to_existing_reviews`, confirming incremental duplicate handling for the web catalog source.
 - A repeat local Playwright rendered-HTML probe on Amazon Shopping on June 18, 2026 found 6 rendered review title IDs before scrolling and 6 after scrolling. Scrolling triggered 0 review-related requests and 0 review API requests, so Playwright-rendered HTML still did not expose deeper review rows than the initial visible cards.
 - The HTML shape is less stable than the RSS JSON structure.
 - The aggregate rating count proves review presence, but does not provide a complete review-row feed.
@@ -92,6 +95,21 @@ For the scheduled-style conservative profile, filter to full single-app parity r
   --single-app-only \
   --min-web-max-pages 25 \
   --min-runs 5
+```
+
+Run a controlled web catalog ingestion trial with:
+
+```bash
+.venv/bin/python app_store_pipeline.py daily-web-catalog \
+  --database-url postgresql:///app_store_reviews \
+  --limit 1 \
+  --target-offset 10 \
+  --max-pages-per-app-country 25 \
+  --review-limit 20 \
+  --request-delay-seconds 5 \
+  --web-429-retries 5 \
+  --web-429-retry-seconds 60 \
+  --web-429-backoff-multiplier 1.5
 ```
 
 Run a rendered HTML probe with Playwright when we need browser-level evidence:

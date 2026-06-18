@@ -2,12 +2,15 @@
 
 Apple App Store public-review ingestion pipeline for mainstream app-review analytics.
 
-The pipeline uses Apple's public iTunes customer reviews RSS JSON feed, stores cumulative review data in Postgres, and keeps each daily run incremental by stopping when already-known review IDs appear in the recent-review window.
+The scheduled production pipeline uses Apple's public iTunes customer reviews RSS JSON feed, stores cumulative review data in Postgres, and keeps each daily run incremental by stopping when already-known review IDs appear in the recent-review window.
+
+The repository also includes an experimental Apple public web catalog ingestion mode. It uses the structured App Store web catalog reviews JSON endpoint, stores rows with `source='apple_app_store_web_catalog_reviews'`, and is intended for conservative single-app rotating trials before any production source switch.
 
 ## Boundaries
 
 - Apple App Store only.
-- Public iTunes customer reviews RSS only.
+- Scheduled production ingestion uses public iTunes customer reviews RSS.
+- Experimental web catalog ingestion is available as a separate source; it is not yet the scheduled production default.
 - No login, cookies, CAPTCHA solving, proxy rotation, hidden endpoints, or App Store Connect credentials.
 - No routine CSV export; Postgres is the cumulative store.
 - The RSS feed is a recent-review source, not a guaranteed all-history source.
@@ -24,6 +27,17 @@ flowchart LR
     D --> E["Postgres upsert"]
     E --> F["Validation + daily_report.json"]
     F --> G["GitHub Actions artifact"]
+```
+
+The experimental web catalog path follows the same storage shape:
+
+```mermaid
+flowchart LR
+    A["data/targets/apple_apps.csv"] --> B["Fetch App Store web catalog review JSON"]
+    B --> C["Raw JSON under data/raw/apple_web_catalog/{run_id}"]
+    C --> D["Normalize web catalog review rows"]
+    D --> E["Postgres upsert with source=apple_app_store_web_catalog_reviews"]
+    E --> F["Validation + daily_report.json"]
 ```
 
 Daily automation checks each active `app_id` and country in `data/targets/apple_apps.csv`. The current seed list contains 200 US App Store apps: the original benchmark set plus Apple US top free, top grossing, and top paid chart entries.
@@ -85,6 +99,37 @@ Run the full daily pipeline:
   --max-consecutive-empty-pages 10 \
   --request-delay-seconds 1
 ```
+
+Fetch public web catalog review rows only:
+
+```bash
+.venv/bin/python app_store_pipeline.py fetch-web-catalog \
+  --limit 1 \
+  --target-offset 10 \
+  --max-pages-per-app-country 25 \
+  --review-limit 20 \
+  --request-delay-seconds 5 \
+  --web-429-retries 5 \
+  --web-429-retry-seconds 60 \
+  --web-429-backoff-multiplier 1.5
+```
+
+Run the experimental web catalog ingestion path into Postgres:
+
+```bash
+.venv/bin/python app_store_pipeline.py daily-web-catalog \
+  --database-url postgresql:///app_store_reviews \
+  --limit 1 \
+  --target-offset 10 \
+  --max-pages-per-app-country 25 \
+  --review-limit 20 \
+  --request-delay-seconds 5 \
+  --web-429-retries 5 \
+  --web-429-retry-seconds 60 \
+  --web-429-backoff-multiplier 1.5
+```
+
+Keep this path conservative: one app per run is the profile that has passed the current public-source gate. Larger web catalog batches are stress tests, not the routine default.
 
 Validate the cumulative database:
 

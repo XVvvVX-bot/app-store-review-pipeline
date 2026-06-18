@@ -2,7 +2,13 @@
 
 ## Source
 
-The current source is Apple's public iTunes customer reviews RSS JSON feed. It returns structured public review rows for an app, country storefront, page number, and sort order.
+The scheduled production source is Apple's public iTunes customer reviews RSS JSON feed. It returns structured public review rows for an app, country storefront, page number, and sort order.
+
+The experimental public-source candidate is Apple's App Store web catalog reviews JSON endpoint. It also returns structured public review rows, including review ID, date, rating, title, text, and user name. The web catalog source is stored separately as:
+
+```text
+apple_app_store_web_catalog_reviews
+```
 
 This project does not use Apple App Store Connect API credentials. That official API is useful for owned or authorized apps, but this pipeline is for public third-party app-review monitoring.
 
@@ -30,6 +36,12 @@ For each active scope, the fetcher reads pages `1..10` by default. It saves raw 
 data/raw/apple_rss/{run_id}/
 ```
 
+The web catalog fetcher uses conservative single-app windows by default and saves raw JSON files under:
+
+```text
+data/raw/apple_web_catalog/{run_id}/
+```
+
 It also writes:
 
 - `review_pages.jsonl`
@@ -55,6 +67,8 @@ The RSS feed is recent-window based. The project treats completeness as a monito
 - Backlogged scopes are warnings that the schedule may be too slow for that app-country volume.
 
 For high-volume apps, the safest response is a shorter schedule cadence or a licensed provider with stronger historical guarantees.
+
+The web catalog ingestion path uses the same review-ID overlap idea, but source identity is separate from RSS. A web catalog run can stop when it sees an already-known web catalog review ID for that app-country-sort scope. The currently validated public profile is one app per run, up to 25 web pages, `limit=20`, 5-second request delay, and bounded 429 retry/backoff.
 
 ## Storage
 

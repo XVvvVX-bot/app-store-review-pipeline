@@ -12,9 +12,10 @@ from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
 import requests
 
+from app_store_review_pipeline.config import PLATFORM, WEB_CATALOG_SOURCE
 from app_store_review_pipeline.files import write_json
-from app_store_review_pipeline.models import AppTarget
-from app_store_review_pipeline.utils import utc_timestamp
+from app_store_review_pipeline.models import AppReview, AppTarget, make_review_key
+from app_store_review_pipeline.utils import clean_text, iso_to_epoch_seconds, utc_timestamp
 
 
 WEB_USER_AGENT = (
@@ -200,6 +201,75 @@ def parse_web_catalog_review_page(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def parse_web_catalog_review_rows(
+    payload: dict[str, Any],
+    target: AppTarget,
+    *,
+    country: str,
+    page_number: int,
+    page_key: str,
+    collected_at: str,
+) -> list[AppReview]:
+    rows = payload.get("data")
+    if not isinstance(rows, list):
+        return []
+    reviews: list[AppReview] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        review = parse_web_catalog_review_row(
+            row,
+            target,
+            country=country,
+            page_number=page_number,
+            page_key=page_key,
+            collected_at=collected_at,
+        )
+        if review:
+            reviews.append(review)
+    return reviews
+
+
+def parse_web_catalog_review_row(
+    row: dict[str, Any],
+    target: AppTarget,
+    *,
+    country: str,
+    page_number: int,
+    page_key: str,
+    collected_at: str,
+) -> AppReview | None:
+    review_id = row.get("id")
+    if review_id is None:
+        return None
+    attrs = row.get("attributes")
+    if not isinstance(attrs, dict):
+        attrs = {}
+    review_id = str(review_id)
+    updated_at = string_or_none(attrs.get("date"))
+    return AppReview(
+        review_key=make_review_key(target.apple_app_id, country, review_id, source=WEB_CATALOG_SOURCE),
+        platform=PLATFORM,
+        source=WEB_CATALOG_SOURCE,
+        app_id=target.apple_app_id,
+        app_name=target.app_name,
+        country=country.lower(),
+        review_id=review_id,
+        author_name=clean_text(string_or_none(attrs.get("userName"))),
+        updated_at=updated_at,
+        updated_epoch_seconds=iso_to_epoch_seconds(updated_at),
+        rating=parse_int(attrs.get("rating")),
+        version=None,
+        title=clean_text(string_or_none(attrs.get("title"))),
+        content=clean_text(string_or_none(attrs.get("review"))),
+        vote_sum=None,
+        vote_count=None,
+        page_number=page_number,
+        source_page_key=page_key,
+        collected_at=collected_at,
+    )
+
+
 def parse_int(value: Any) -> int | None:
     if value is None:
         return None
@@ -207,6 +277,12 @@ def parse_int(value: Any) -> int | None:
         return int(str(value).replace(",", ""))
     except ValueError:
         return None
+
+
+def string_or_none(value: Any) -> str | None:
+    if value is None:
+        return None
+    return str(value)
 
 
 def parse_float(value: Any) -> float | None:

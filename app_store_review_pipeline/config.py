@@ -8,6 +8,8 @@ DEFAULT_TARGETS = Path("data/targets/apple_apps.csv")
 DEFAULT_RAW_ROOT = Path("data/raw/apple_rss")
 DEFAULT_REPORTS_ROOT = Path("data/reports/apple_rss")
 DEFAULT_WEB_REPORTS_ROOT = Path("data/reports/apple_web")
+DEFAULT_WEB_CATALOG_RAW_ROOT = Path("data/raw/apple_web_catalog")
+DEFAULT_WEB_CATALOG_REPORTS_ROOT = Path("data/reports/apple_web_catalog")
 DEFAULT_COMPARE_RAW_ROOT = Path("data/raw/source_compare")
 DEFAULT_COMPARE_REPORTS_ROOT = Path("data/reports/source_compare")
 DEFAULT_42MATTERS_REPORTS_ROOT = Path("data/reports/provider_42matters")
@@ -28,3 +30,5 @@ DEFAULT_RETRY_DELAY_SECONDS = 5.0
 
 PLATFORM = "apple_app_store"
 SOURCE = "apple_itunes_customerreviews_rss"
+WEB_CATALOG_SOURCE = "apple_app_store_web_catalog_reviews"
+WEB_CATALOG_SORT_BY = "recent"

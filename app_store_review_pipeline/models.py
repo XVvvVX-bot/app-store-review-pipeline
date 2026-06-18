@@ -77,8 +77,8 @@ class ReviewPage:
     overlap_review_count: int
 
 
-def make_review_key(app_id: str, country: str, review_id: str) -> str:
-    return f"{PLATFORM}:{SOURCE}:{country.lower()}:{app_id}:{review_id}"
+def make_review_key(app_id: str, country: str, review_id: str, *, source: str = SOURCE) -> str:
+    return f"{PLATFORM}:{source}:{country.lower()}:{app_id}:{review_id}"
 
 
 def make_page_key(run_id: str, app_id: str, country: str, sort_by: str, page_number: int) -> str:

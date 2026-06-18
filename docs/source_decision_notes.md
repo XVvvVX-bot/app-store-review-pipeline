@@ -4,7 +4,7 @@
 
 Use Apple App Store public RSS as the current production pipeline source for this repository.
 
-Continue evaluating Apple public web catalog reviews as the strongest public replacement candidate, using the rotating single-app canary profile. Do not silently replace RSS until repeated scheduled canaries show clean parity across more target windows.
+Apple public web catalog reviews have passed the current conservative single-app promotion gate and are now available as an experimental separate ingestion mode. Do not silently replace the scheduled RSS workflow yet; keep RSS as the production baseline while running web catalog as a controlled single-app rotating path.
 
 ## Why Apple RSS
 
@@ -44,6 +44,8 @@ The web catalog endpoint returns structured JSON review pages and can match the 
 - stop once the web catalog reaches RSS parity
 - hard web time budget
 
-This profile has passed replacement gates for sampled apps, including Amazon Shopping, Walmart, Target, Uber, Lyft, DoorDash, and American Airlines. Larger multi-app deep-pagination batches are not stable enough yet because they hit 429 pressure and time budgets.
+This profile has passed replacement gates for sampled apps, including Amazon Shopping, Walmart, Target, Uber, Lyft, DoorDash, American Airlines, PayPal, and Canva. Larger multi-app deep-pagination batches are not stable enough yet because they hit 429 pressure and time budgets.
 
-Use `scripts/summarize_source_comparisons.py` to judge promotion from repeated canary artifacts. As of the June 18, 2026 downloaded canary set, the full single-app profile has 3 clean replacement-candidate runs and needs at least 5 clean runs before promotion; the mixed all-run history is not ready because it includes an incomplete multi-app run.
+Use `scripts/summarize_source_comparisons.py` to judge promotion from repeated canary artifacts. As of the June 18, 2026 downloaded canary set, the full single-app profile has 5 clean replacement-candidate runs and passes the current promotion gate: 2,479 RSS reviews vs 2,500 web catalog reviews, 8 recovered `429` pages, 0 unrecovered `429` pages, and 0 incomplete scopes. The mixed all-run history is still not ready because it includes an incomplete multi-app run.
+
+The web catalog endpoint has been verified to return full review text rows, not only review IDs. A local smoke run fetched PayPal web catalog rows with review ID, user name, rating, title, review text, and date, then loaded 20 rows into a temporary Postgres database under `source='apple_app_store_web_catalog_reviews'`.

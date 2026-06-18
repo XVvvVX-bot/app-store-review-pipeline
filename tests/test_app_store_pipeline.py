@@ -17,14 +17,16 @@ from app_store_review_pipeline.apple_web import (
     parse_retry_after_seconds,
     parse_serialized_next_href,
     parse_web_catalog_review_page,
+    parse_web_catalog_review_rows,
     parse_web_catalog_reviews,
     probe_web_reviews,
     probe_web_reviews_for_scope,
 )
 from app_store_review_pipeline.cli import select_target_window
+from app_store_review_pipeline.config import WEB_CATALOG_SOURCE
 from app_store_review_pipeline.fetcher import fetch_targets, terminal_reason_for_page
 from app_store_review_pipeline.models import AppTarget, ReviewPage
-from app_store_review_pipeline.postgres_database import mask_database_url, scope_key
+from app_store_review_pipeline.postgres_database import infer_field_value, mask_database_url, scope_key
 from app_store_review_pipeline.provider_apptweak import (
     apptweak_headers,
     build_apptweak_reviews_url,
@@ -55,6 +57,7 @@ from app_store_review_pipeline.source_compare import (
     summarize_comparison,
 )
 from app_store_review_pipeline.targets import active_targets, load_targets, parse_countries
+from app_store_review_pipeline.web_catalog_fetcher import fetch_web_catalog_targets
 from scripts.run_provider_matrix import build_source_decision, render_markdown_report
 from scripts.summarize_source_comparisons import (
     render_markdown_summary,
@@ -216,6 +219,28 @@ def review_payload(review_id="review-1", has_next=True):
     }
 
 
+def web_catalog_payload(start=1, count=2, has_next=True):
+    rows = []
+    for index in range(start, start + count):
+        rows.append(
+            {
+                "id": f"web-review-{index}",
+                "type": "user-reviews",
+                "attributes": {
+                    "date": f"2026-06-17T10:0{index}:00Z",
+                    "rating": 5 - (index % 2),
+                    "review": f"Web catalog review text {index}",
+                    "title": f"Web title {index}",
+                    "userName": f"web-user-{index}",
+                },
+            }
+        )
+    return {
+        "next": "/v1/catalog/us/apps/123456789/reviews?l=en-US&offset=2" if has_next else None,
+        "data": rows,
+    }
+
+
 def fixture_target():
     return AppTarget(
         app_name="Fixture",
@@ -352,6 +377,71 @@ def test_source_comparison_history_blocks_mixed_or_incomplete_runs(tmp_path):
     assert "not_all_runs_are_replacement_candidates" in summary["promotion_gate"]["blocking_reasons"]
     assert "one_or_more_runs_exceeded_time_budget" in summary["promotion_gate"]["blocking_reasons"]
     assert summary["aggregate"]["runs_with_final_non_200_pages"] == 1
+
+
+def test_parse_web_catalog_review_rows_returns_full_review_rows():
+    collected_at = "2026-06-18T00:00:00+00:00"
+    reviews = parse_web_catalog_review_rows(
+        web_catalog_payload(start=1, count=1, has_next=False),
+        fixture_target(),
+        country="US",
+        page_number=1,
+        page_key="run:123456789:us:recent:1",
+        collected_at=collected_at,
+    )
+
+    assert len(reviews) == 1
+    review = reviews[0]
+    assert review.source == WEB_CATALOG_SOURCE
+    assert review.review_key == "apple_app_store:apple_app_store_web_catalog_reviews:us:123456789:web-review-1"
+    assert review.author_name == "web-user-1"
+    assert review.rating == 4
+    assert review.title == "Web title 1"
+    assert review.content == "Web catalog review text 1"
+    assert review.updated_epoch_seconds is not None
+    assert review.version is None
+
+
+def test_fetch_web_catalog_targets_follows_next_pages_and_preserves_source(tmp_path):
+    session = FakeWebSession(
+        [
+            FakeWebResponse(200, payload=web_catalog_payload(start=1, count=2, has_next=True)),
+            FakeWebResponse(200, payload=web_catalog_payload(start=3, count=2, has_next=False)),
+        ]
+    )
+
+    report = fetch_web_catalog_targets(
+        [fixture_target()],
+        tmp_path,
+        "run",
+        max_pages_per_app_country=2,
+        review_limit=2,
+        request_delay_seconds=0,
+        web_429_retries=0,
+        session=session,
+    )
+
+    assert report["source"] == WEB_CATALOG_SOURCE
+    assert report["fetched_pages"] == 2
+    assert report["review_count"] == 4
+    assert report["unique_review_count"] == 4
+    assert report["page_reports"][0]["source"] == WEB_CATALOG_SOURCE
+    assert report["page_reports"][1]["terminal_reason"] == "page_cap"
+    assert report["reviews"][0]["content"] == "Web catalog review text 1"
+    assert report["reviews"][0]["source_page_key"] == "run:123456789:us:recent:1"
+    assert len(session.calls) == 2
+
+
+def test_load_source_inference_prefers_raw_row_source():
+    assert (
+        infer_field_value(
+            [{"source": WEB_CATALOG_SOURCE}],
+            [{"source": "apple_itunes_customerreviews_rss"}],
+            "source",
+            "fallback",
+        )
+        == WEB_CATALOG_SOURCE
+    )
 
 
 def test_load_targets_and_url(tmp_path):

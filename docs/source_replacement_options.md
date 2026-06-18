@@ -10,7 +10,7 @@ Find a source that is more stable than Apple RSS while returning the same order 
 | --- | --- | --- |
 | Apple iTunes customer reviews RSS | Stable enough for daily public recent-review ingestion, structured JSON, but practical window is about 10 pages x 50 reviews per app-country scope. | Keep as primary baseline. |
 | App Store HTML / Playwright | Public pages expose rating signals and a small visible review set. Scrolling did not load deeper review rows in browser checks. | Diagnostic only. |
-| Apple public web catalog reviews | Structured JSON and better than visible HTML. Large multi-app deep-pagination batches repeatedly hit `429` pressure and time budgets, but the conservative rotating single-app profile has matched the RSS 500-review window for multiple tested apps on GitHub-hosted runners. | Strongest public replacement candidate. Keep RSS primary until repeated scheduled rotating canaries prove stability across more target windows. |
+| Apple public web catalog reviews | Structured JSON and better than visible HTML. Large multi-app deep-pagination batches repeatedly hit `429` pressure and time budgets, but the conservative rotating single-app profile has matched or exceeded the RSS recent window across the current promotion gate. | Strongest public source. Run as a separate experimental ingestion mode; keep RSS as scheduled baseline until the web catalog path has more routine operational history. |
 | App Store Connect API | Official and stable, but scoped to apps in the authenticated developer account. | Strong for owned/partnered apps only. Not a public third-party source. |
 
 ## Official Apple Path
@@ -50,20 +50,20 @@ References:
 
 Do not use rendered App Store HTML as the main plan. Browser checks show the visible review page is shallow and scrolling does not expose deeper review rows.
 
-The current public candidate is Apple web catalog reviews, but only with a conservative single-app rotating profile. Batch deep-pagination runs are not stable enough yet. Treat `web_catalog_replacement_candidate` from repeated rotating scheduled canaries as promotion evidence; treat `needs_deeper_web_catalog_run`, `same_order_but_not_replacement`, `web_catalog_unstable_after_retry`, and `web_catalog_time_budget_exceeded` as evidence against immediate promotion.
+The current public source candidate is Apple web catalog reviews, but only with a conservative single-app rotating profile. Batch deep-pagination runs are not stable enough yet. Treat `web_catalog_replacement_candidate` from repeated rotating scheduled canaries as promotion evidence; treat `needs_deeper_web_catalog_run`, `same_order_but_not_replacement`, `web_catalog_unstable_after_retry`, and `web_catalog_time_budget_exceeded` as evidence against broad batch promotion.
 
 Recommended public-source path:
 
 1. Keep RSS as the production baseline.
 2. Run the rotating single-app web catalog canary every 6 hours.
 3. Download canary artifacts periodically and run `scripts/summarize_source_comparisons.py --single-app-only --min-web-max-pages 25 --min-runs 5` to judge the full scheduled-style profile without mixing in shallow smoke runs or manual stress tests.
-4. Promote web catalog into a separate ingestion mode only after repeated scheduled canaries show clean parity across varied app categories and offsets.
+4. Use `daily-web-catalog` for controlled Postgres ingestion trials under `source='apple_app_store_web_catalog_reviews'`.
 5. Keep manual 5-app or 10-app deep runs as stress tests, not routine automation.
 
 Current public-source readout from downloaded June 18, 2026 canary artifacts:
 
 - All web canary reports are **not ready** for promotion because the history includes a failed multi-app offset window with time-budget exhaustion and final 429s.
-- Full single-app canary reports are **promising but need more evidence**: 3/3 full single-app runs matched RSS parity cleanly, but the promotion gate requires at least 5 clean full-profile runs.
+- Full single-app canary reports are **ready for controlled ingestion trials**: 5/5 full single-app runs matched or exceeded RSS parity cleanly, with 2,479 RSS reviews vs 2,500 web catalog reviews, 8 recovered 429 pages, and 0 unrecovered 429 pages.
 - Rendered HTML with Playwright remains diagnostic only; repeated scrolling did not reveal more review rows or trigger deeper review network calls.
 
 The next contractual production path is still a licensed-provider POC:

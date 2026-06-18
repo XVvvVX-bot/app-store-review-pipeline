@@ -24,13 +24,18 @@ from app_store_review_pipeline.config import (
     DEFAULT_SORT_BY,
     DEFAULT_TARGETS,
     DEFAULT_TIMEOUT_SECONDS,
+    DEFAULT_WEB_CATALOG_RAW_ROOT,
+    DEFAULT_WEB_CATALOG_REPORTS_ROOT,
     DEFAULT_WEB_REPORTS_ROOT,
+    WEB_CATALOG_SORT_BY,
+    WEB_CATALOG_SOURCE,
 )
 from app_store_review_pipeline.apple_web import probe_web_reviews
 from app_store_review_pipeline.daily import run_daily_pipeline
 from app_store_review_pipeline.fetcher import fetch_targets
 from app_store_review_pipeline.files import write_json, write_jsonl
 from app_store_review_pipeline.postgres_database import (
+    existing_review_ids_by_scope,
     initialize_postgres,
     load_pipeline_run_postgres,
     mask_database_url,
@@ -46,7 +51,8 @@ from app_store_review_pipeline.provider_compare import (
 from app_store_review_pipeline.provider_42matters import probe_42matters_reviews
 from app_store_review_pipeline.targets import active_targets, load_targets
 from app_store_review_pipeline.source_compare import compare_sources
-from app_store_review_pipeline.utils import make_run_id
+from app_store_review_pipeline.utils import make_run_id, utc_timestamp
+from app_store_review_pipeline.web_catalog_fetcher import fetch_web_catalog_targets
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -60,6 +66,13 @@ def build_parser() -> argparse.ArgumentParser:
     fetch = subparsers.add_parser("fetch", help="Fetch raw Apple RSS review pages.")
     add_fetch_arguments(fetch)
     fetch.set_defaults(func=command_fetch)
+
+    fetch_web_catalog = subparsers.add_parser(
+        "fetch-web-catalog",
+        help="Fetch full review rows from the public App Store web catalog JSON endpoint.",
+    )
+    add_web_catalog_fetch_arguments(fetch_web_catalog)
+    fetch_web_catalog.set_defaults(func=command_fetch_web_catalog)
 
     init_postgres = subparsers.add_parser("init-postgres", help="Create or update the Postgres schema.")
     init_postgres.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
@@ -353,6 +366,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     daily.set_defaults(func=command_daily)
 
+    daily_web_catalog = subparsers.add_parser(
+        "daily-web-catalog",
+        help="Fetch, load, validate, and report public App Store web catalog reviews.",
+    )
+    add_web_catalog_fetch_arguments(daily_web_catalog)
+    daily_web_catalog.add_argument("--reports-root", type=Path, default=DEFAULT_WEB_CATALOG_REPORTS_ROOT)
+    daily_web_catalog.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
+    daily_web_catalog.add_argument(
+        "--disable-overlap-stop",
+        action="store_true",
+        help="Fetch to page cap even after already-known web catalog review IDs are seen.",
+    )
+    daily_web_catalog.set_defaults(func=command_daily_web_catalog)
+
     return parser
 
 
@@ -371,6 +398,26 @@ def add_fetch_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--request-delay-seconds", type=float, default=DEFAULT_REQUEST_DELAY_SECONDS)
     parser.add_argument("--max-attempts", type=int, default=DEFAULT_MAX_ATTEMPTS)
     parser.add_argument("--retry-delay-seconds", type=float, default=DEFAULT_RETRY_DELAY_SECONDS)
+
+
+def add_web_catalog_fetch_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--targets", type=Path, default=DEFAULT_TARGETS)
+    parser.add_argument("--raw-root", type=Path, default=DEFAULT_WEB_CATALOG_RAW_ROOT)
+    parser.add_argument("--sort-by", default=WEB_CATALOG_SORT_BY, choices=["recent", "helpful", "favorable", "critical"])
+    parser.add_argument("--limit", type=int, default=1, help="Maximum active targets to fetch. Use 0 for all.")
+    parser.add_argument("--target-offset", type=int, default=0, help="Number of active targets to skip before applying limit.")
+    parser.add_argument("--max-pages-per-app-country", type=int, default=25)
+    parser.add_argument(
+        "--review-limit",
+        type=int,
+        default=20,
+        help="Requested web catalog reviews per page; Apple currently caps this at 20.",
+    )
+    parser.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
+    parser.add_argument("--request-delay-seconds", type=float, default=5.0)
+    parser.add_argument("--web-429-retries", type=int, default=5)
+    parser.add_argument("--web-429-retry-seconds", type=float, default=60.0)
+    parser.add_argument("--web-429-backoff-multiplier", type=float, default=1.5)
 
 
 def command_targets(args: argparse.Namespace) -> int:
@@ -408,6 +455,32 @@ def command_fetch(args: argparse.Namespace) -> int:
         request_delay_seconds=args.request_delay_seconds,
         max_attempts=args.max_attempts,
         retry_delay_seconds=args.retry_delay_seconds,
+        known_review_ids_by_scope={},
+        use_overlap_stop=False,
+    )
+    write_jsonl(raw_dir / "review_pages.jsonl", report["page_reports"])
+    write_jsonl(raw_dir / "reviews.jsonl", report["reviews"])
+    write_json(raw_dir / "fetch_report.json", report)
+    print(json.dumps({"raw_dir": str(raw_dir), "summary": summarize_fetch_cli(report)}, indent=2, sort_keys=True))
+    return 0
+
+
+def command_fetch_web_catalog(args: argparse.Namespace) -> int:
+    targets = select_target_window(active_targets(load_targets(args.targets)), limit=args.limit, offset=args.target_offset)
+    run_id = make_run_id()
+    raw_dir = args.raw_root / run_id
+    report = fetch_web_catalog_targets(
+        targets,
+        raw_dir,
+        run_id,
+        sort_by=args.sort_by,
+        max_pages_per_app_country=args.max_pages_per_app_country,
+        review_limit=args.review_limit,
+        timeout_seconds=args.timeout_seconds,
+        request_delay_seconds=args.request_delay_seconds,
+        web_429_retries=args.web_429_retries,
+        web_429_retry_seconds=args.web_429_retry_seconds,
+        web_429_backoff_multiplier=args.web_429_backoff_multiplier,
         known_review_ids_by_scope={},
         use_overlap_stop=False,
     )
@@ -767,6 +840,71 @@ def command_compare_appfigures(args: argparse.Namespace) -> int:
 
 def command_daily(args: argparse.Namespace) -> int:
     report = run_daily_pipeline(args)
+    print(json.dumps(report, indent=2, sort_keys=True))
+    return 0
+
+
+def command_daily_web_catalog(args: argparse.Namespace) -> int:
+    started_at = utc_timestamp()
+    run_id = make_run_id()
+    raw_dir = args.raw_root / run_id
+    reports_dir = args.reports_root / run_id
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    targets = select_target_window(active_targets(load_targets(args.targets)), limit=args.limit, offset=args.target_offset)
+    scopes = [(target.apple_app_id, country, args.sort_by) for target in targets for country in target.countries]
+    use_overlap_stop = not getattr(args, "disable_overlap_stop", False)
+    known_ids = (
+        existing_review_ids_by_scope(args.database_url, scopes, source=WEB_CATALOG_SOURCE)
+        if use_overlap_stop
+        else {}
+    )
+    fetch_report = fetch_web_catalog_targets(
+        targets,
+        raw_dir,
+        run_id,
+        sort_by=args.sort_by,
+        max_pages_per_app_country=args.max_pages_per_app_country,
+        review_limit=args.review_limit,
+        timeout_seconds=args.timeout_seconds,
+        request_delay_seconds=args.request_delay_seconds,
+        web_429_retries=args.web_429_retries,
+        web_429_retry_seconds=args.web_429_retry_seconds,
+        web_429_backoff_multiplier=args.web_429_backoff_multiplier,
+        known_review_ids_by_scope=known_ids,
+        use_overlap_stop=use_overlap_stop,
+    )
+    write_jsonl(raw_dir / "review_pages.jsonl", fetch_report["page_reports"])
+    write_jsonl(raw_dir / "reviews.jsonl", fetch_report["reviews"])
+    write_json(raw_dir / "fetch_report.json", fetch_report)
+    load_summary = load_pipeline_run_postgres(args.database_url, raw_dir, args.targets)
+    validation_report = validate_postgres(args.database_url, run_id)
+    completed_at = utc_timestamp()
+    validation_path = reports_dir / "validation_report.json"
+    write_json(validation_path, validation_report)
+    report = {
+        "run_id": run_id,
+        "started_at": started_at,
+        "completed_at": completed_at,
+        "targets_path": str(args.targets),
+        "raw_dir": str(raw_dir),
+        "database_url": mask_database_url(args.database_url),
+        "storage_backend": "postgres",
+        "platform": "apple_app_store",
+        "source": WEB_CATALOG_SOURCE,
+        "sort_by": args.sort_by,
+        "target_count": len(targets),
+        "scope_count": len(scopes),
+        "target_offset": max(0, args.target_offset),
+        "max_pages_per_app_country": args.max_pages_per_app_country,
+        "review_limit": args.review_limit,
+        "overlap_stop_enabled": use_overlap_stop,
+        "fetch_summary": summarize_fetch_cli(fetch_report),
+        "load_summary": load_summary,
+        "validation_report_path": str(validation_path),
+        "report_path": str(reports_dir / "daily_report.json"),
+    }
+    write_json(reports_dir / "daily_report.json", report)
     print(json.dumps(report, indent=2, sort_keys=True))
     return 0
 

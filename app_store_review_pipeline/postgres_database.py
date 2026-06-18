@@ -173,9 +173,19 @@ def scope_key(app_id: str, country: str, sort_by: str = DEFAULT_SORT_BY) -> str:
     return f"{app_id}:{country.lower()}:{sort_by}"
 
 
+def infer_field_value(page_rows: list[dict], review_rows: list[dict], field: str, default: str) -> str:
+    for row in [*page_rows, *review_rows]:
+        value = row.get(field)
+        if value:
+            return str(value)
+    return default
+
+
 def existing_review_ids_by_scope(
     database_url: str,
     scopes: Iterable[tuple[str, str, str]],
+    *,
+    source: str = SOURCE,
 ) -> dict[tuple[str, str, str], set[str]]:
     scope_list = [(str(app_id), country.lower(), sort_by) for app_id, country, sort_by in scopes]
     results = {scope: set() for scope in scope_list}
@@ -190,7 +200,7 @@ def existing_review_ids_by_scope(
                 FROM app_store_reviews
                 WHERE app_id = %s AND country = %s AND source = %s
                 """,
-                (app_id, country, SOURCE),
+                (app_id, country, source),
             ).fetchall()
             results[(app_id, country, sort_by)] = {str(row["review_id"]) for row in rows}
     return results
@@ -202,6 +212,8 @@ def load_pipeline_run_postgres(database_url: str, raw_dir: Path, targets_path: P
     review_rows = read_jsonl(raw_dir / "reviews.jsonl")
     targets = load_targets(targets_path)
     loaded_at = utc_timestamp()
+    platform = infer_field_value(page_rows, review_rows, "platform", PLATFORM)
+    source = infer_field_value(page_rows, review_rows, "source", SOURCE)
 
     initialize_postgres(database_url)
     with connect_postgres(database_url) as connection:
@@ -212,6 +224,8 @@ def load_pipeline_run_postgres(database_url: str, raw_dir: Path, targets_path: P
             targets_path,
             loaded_at,
             target_count=sum(1 for target in targets if target.active),
+            platform=platform,
+            source=source,
         )
         upsert_targets(connection, targets, run_id)
         insert_pages(connection, page_rows)
@@ -261,6 +275,8 @@ def upsert_run(
     loaded_at: str,
     *,
     target_count: int,
+    platform: str = PLATFORM,
+    source: str = SOURCE,
 ) -> None:
     connection.execute(
         """
@@ -274,7 +290,7 @@ def upsert_run(
             loaded_at = EXCLUDED.loaded_at,
             target_count = EXCLUDED.target_count
         """,
-        (run_id, str(raw_dir), str(targets_path), loaded_at, PLATFORM, SOURCE, target_count),
+        (run_id, str(raw_dir), str(targets_path), loaded_at, platform, source, target_count),
     )
 
 
