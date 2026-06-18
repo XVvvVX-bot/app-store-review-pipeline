@@ -41,6 +41,11 @@ on:
         required: false
         default: "45"
         type: string
+      web_429_backoff_multiplier:
+        description: "Multiplier applied to HTTP 429 retry delay on each additional retry"
+        required: false
+        default: "1"
+        type: string
 
 permissions:
   contents: read
@@ -61,6 +66,7 @@ jobs:
       INPUT_RSS_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.rss_request_delay_seconds || '0.5' }}
       INPUT_WEB_429_RETRIES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retries || '3' }}
       INPUT_WEB_429_RETRY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_seconds || '45' }}
+      INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_backoff_multiplier || '1' }}
 
     steps:
       - name: Check out repository
@@ -87,6 +93,7 @@ jobs:
             --web-request-delay-seconds "$INPUT_REQUEST_DELAY_SECONDS" \
             --web-429-retries "$INPUT_WEB_429_RETRIES" \
             --web-429-retry-seconds "$INPUT_WEB_429_RETRY_SECONDS" \
+            --web-429-backoff-multiplier "$INPUT_WEB_429_BACKOFF_MULTIPLIER" \
             --rss-request-delay-seconds "$INPUT_RSS_REQUEST_DELAY_SECONDS"
 
       - name: Upload source comparison canary artifacts

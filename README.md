@@ -118,10 +118,11 @@ Compare RSS and web catalog on the same target window:
   --web-request-delay-seconds 2 \
   --web-429-retries 3 \
   --web-429-retry-seconds 45 \
+  --web-429-backoff-multiplier 1 \
   --rss-request-delay-seconds 0.5
 ```
 
-`compare-sources` writes `source_comparison_report.json` with RSS volume, web catalog volume, 429 recovery counts, capacity/parity metrics, a same-order stability gate, and the stricter RSS-replacement gate.
+`compare-sources` writes `source_comparison_report.json` with RSS volume, web catalog volume, 429 recovery counts, capacity/parity metrics, a same-order stability gate, and the stricter RSS-replacement gate. The web catalog retry path honors `Retry-After` when Apple provides it; otherwise it uses `--web-429-retry-seconds` with the optional `--web-429-backoff-multiplier` for conservative depth tests.
 
 Probe rendered App Store HTML with Playwright:
 
@@ -253,6 +254,17 @@ The web catalog canary defaults to:
 - web catalog request delay: `2` seconds
 - HTTP 429 retries: `3`
 - HTTP 429 retry delay: `45` seconds
+- HTTP 429 backoff multiplier: `1`
 - RSS pages per app-country: `10`
 
 Its artifact contains `data/reports/source_compare/{run_id}/source_comparison_report.json`, plus the raw RSS comparison files under `data/raw/source_compare/{run_id}/rss/`. Compare several runs before promoting web catalog reviews into the production ingestion path. The canary is intentionally a capacity-and-stability comparison, not a tiny liveness probe: RSS can return up to 50 reviews on one page while web catalog currently accepts `limit=20` per page, so web catalog must prove it can add enough value at predictable runtime. Use manual runs with higher `max_web_pages` only for deeper stress tests. The comparison section includes `web_configured_review_ceiling`, `web_pages_per_scope_needed_for_rss_parity`, `web_volume_gap_likely_configuration_limited`, and `web_unrecovered_429_page_count` to show whether a lower web count is caused by the configured page cap or deep-pagination instability.
+
+A conservative manual deep profile for replacement-source testing is:
+
+- `limit`: `10`
+- `max_web_pages`: `25`
+- `web_review_limit`: `20`
+- `request_delay_seconds`: `2`
+- `web_429_retries`: `5`
+- `web_429_retry_seconds`: `20`
+- `web_429_backoff_multiplier`: `1.5`

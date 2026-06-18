@@ -116,6 +116,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=30.0,
         help="Delay before retrying a web catalog page after HTTP 429.",
     )
+    probe_web.add_argument(
+        "--web-429-backoff-multiplier",
+        type=float,
+        default=1.0,
+        help="Multiplier applied to the fixed HTTP 429 retry delay on each additional retry.",
+    )
     probe_web.set_defaults(func=command_probe_web)
 
     compare = subparsers.add_parser(
@@ -137,6 +143,7 @@ def build_parser() -> argparse.ArgumentParser:
     compare.add_argument("--web-review-limit", type=int, default=20)
     compare.add_argument("--web-429-retries", type=int, default=3)
     compare.add_argument("--web-429-retry-seconds", type=float, default=45.0)
+    compare.add_argument("--web-429-backoff-multiplier", type=float, default=1.0)
     compare.set_defaults(func=command_compare_sources)
 
     provider_42matters = subparsers.add_parser(
@@ -371,6 +378,7 @@ def command_probe_web(args: argparse.Namespace) -> int:
         max_web_pages=args.max_web_pages,
         web_429_retries=args.web_429_retries,
         web_429_retry_seconds=args.web_429_retry_seconds,
+        web_429_backoff_multiplier=args.web_429_backoff_multiplier,
     )
     print(
         json.dumps(
@@ -404,6 +412,7 @@ def command_compare_sources(args: argparse.Namespace) -> int:
         web_request_delay_seconds=args.web_request_delay_seconds,
         web_429_retries=args.web_429_retries,
         web_429_retry_seconds=args.web_429_retry_seconds,
+        web_429_backoff_multiplier=args.web_429_backoff_multiplier,
         timeout_seconds=args.timeout_seconds,
     )
     print(

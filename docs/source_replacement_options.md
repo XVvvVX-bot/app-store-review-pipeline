@@ -10,7 +10,7 @@ Find a source that is more stable than Apple RSS while returning the same order 
 | --- | --- | --- |
 | Apple iTunes customer reviews RSS | Stable enough for daily public recent-review ingestion, structured JSON, but practical window is about 10 pages x 50 reviews per app-country scope. | Keep as primary baseline. |
 | App Store HTML / Playwright | Public pages expose rating signals and a small visible review set. Scrolling did not load deeper review rows in browser checks. | Diagnostic only. |
-| Apple public web catalog reviews | Structured JSON and better than visible HTML, but deep pagination repeatedly hit unrecovered `429`; a 10-app 25-page canary returned 1,220 web reviews vs 5,000 RSS reviews in 47 minutes. | Supplemental/canary only, not an RSS replacement. |
+| Apple public web catalog reviews | Structured JSON and better than visible HTML. Early deep pagination repeatedly hit unrecovered `429`, but the newer conservative profile with `Retry-After` support and configurable backoff passed local 1-app and 3-app RSS parity checks. | Candidate supplemental/replacement path, but not production default until a larger GitHub-hosted canary repeats the result. |
 | App Store Connect API | Official and stable, but scoped to apps in the authenticated developer account. | Strong for owned/partnered apps only. Not a public third-party source. |
 
 ## Official Apple Path

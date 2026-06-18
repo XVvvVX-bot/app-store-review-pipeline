@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import csv
 from pathlib import Path
 
@@ -8,8 +10,10 @@ from app_store_review_pipeline.apple_web import (
     app_store_web_catalog_next_url,
     app_store_web_catalog_url,
     app_store_web_reviews_url,
+    get_with_429_retries,
     parse_html_review_ids,
     parse_json_ld_aggregate_rating,
+    parse_retry_after_seconds,
     parse_serialized_next_href,
     parse_web_catalog_review_page,
     parse_web_catalog_reviews,
@@ -129,6 +133,27 @@ class FakeSession:
 
     def close(self):
         pass
+
+
+class FakeWebResponse:
+    def __init__(self, status_code: int, headers: dict | None = None, content: bytes = b"{}"):
+        self.status_code = status_code
+        self.headers = headers or {}
+        self.content = content
+        self.text = content.decode("utf-8", errors="replace")
+
+    def json(self):
+        return {}
+
+
+class FakeWebSession:
+    def __init__(self, responses: list[FakeWebResponse]):
+        self.responses = list(responses)
+
+    def get(self, *args, **kwargs):
+        if not self.responses:
+            raise AssertionError("No fake web responses remaining")
+        return self.responses.pop(0)
 
 
 def empty_payload(has_next=True):
@@ -475,6 +500,32 @@ def test_web_probe_parses_catalog_review_page():
     assert summary["next_href"] == "/v1/catalog/us/apps/1508186374/reviews?l=en-US&offset=12"
     assert summary["min_date"] == "2026-06-13T01:00:00Z"
     assert summary["max_date"] == "2026-06-14T01:00:00Z"
+
+
+def test_web_429_retry_uses_backoff_and_retry_after():
+    sleeps = []
+    response, attempts = get_with_429_retries(
+        FakeWebSession(
+            [
+                FakeWebResponse(429),
+                FakeWebResponse(429, headers={"retry-after": "7"}),
+                FakeWebResponse(200),
+            ]
+        ),
+        "https://apps.apple.com/api/apps/v1/catalog/us/apps/123/reviews",
+        headers={},
+        timeout_seconds=1,
+        web_429_retries=2,
+        web_429_retry_seconds=10,
+        web_429_backoff_multiplier=2,
+        sleep_fn=sleeps.append,
+    )
+
+    assert response.status_code == 200
+    assert [attempt["status_code"] for attempt in attempts] == [429, 429, 200]
+    assert sleeps == [10, 7.0]
+    assert parse_retry_after_seconds("3") == 3.0
+    assert parse_retry_after_seconds("bad") is None
 
 
 def test_source_comparison_summary_gate():

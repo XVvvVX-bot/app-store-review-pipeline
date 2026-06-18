@@ -37,6 +37,8 @@ However, HTML pages are not a better primary bulk review source:
 - A GitHub-hosted 10-app deep comparison with 25 web pages per scope and `limit=20` completed successfully in about 47 minutes, but it did not pass the replacement or stability gates. RSS returned 5,000 unique reviews with 0 fetch errors. Web catalog had enough configured capacity to reach 5,000 reviews, but returned only 1,220 reviews, with 61 final `200` pages and 13 final `429` pages after bounded retry. Every tested app-country scope eventually stopped on unrecovered `429`, so the volume gap was caused by deep-pagination stability, not the configured page cap.
 - A local Playwright rendered-HTML probe on Amazon Shopping on June 18, 2026 saw 6 rendered review title IDs before scrolling and 6 after scrolling. It found no new review IDs after scroll and no review API requests after the initial page load.
 - A local 2-app RSS-vs-web-catalog check on June 18, 2026 with 3 web pages per scope and `limit=20` returned 6/6 web pages at `200`, but RSS returned 1,000 unique reviews while web catalog returned 120 page-level reviews. The lower web count was configuration-limited and did not pass the replacement gate.
+- After adding `Retry-After` support and configurable 429 backoff on June 18, 2026, a local 1-app deep check with 25 web pages per scope returned 25/25 web pages at `200`, 500 web reviews, and 500 RSS reviews in about 57 seconds. It passed the replacement gate for Amazon Shopping.
+- The same conservative deep profile on 3 apps returned 75/75 web pages at final `200`, including 2 recovered `429` pages, 1,500 web reviews, and 1,500 RSS reviews in about 3m30s. It passed the replacement gate for Amazon Shopping, Walmart, and Target, but still needs a larger GitHub-hosted canary before promotion.
 - The public web catalog path is now a serious candidate for a richer-than-HTML diagnostic or supplemental path, but it is still an undocumented web surface and not yet the default production source.
 - The HTML shape is less stable than the RSS JSON structure.
 - The aggregate rating count proves review presence, but does not provide a complete review-row feed.
@@ -46,8 +48,10 @@ Use HTML, Playwright, and `probe-web` checks as diagnostics for source health an
 Run a bounded web probe with:
 
 ```bash
-.venv/bin/python app_store_pipeline.py probe-web --limit 20 --web-sort recent --attempt-pagination --max-web-pages 5 --review-limit 20 --request-delay-seconds 2 --web-429-retries 3 --web-429-retry-seconds 45
+.venv/bin/python app_store_pipeline.py probe-web --limit 20 --web-sort recent --attempt-pagination --max-web-pages 5 --review-limit 20 --request-delay-seconds 2 --web-429-retries 3 --web-429-retry-seconds 45 --web-429-backoff-multiplier 1
 ```
+
+For conservative deep-pagination tests, raise `--web-429-backoff-multiplier` above `1`. The retry helper honors `Retry-After` if Apple returns it; otherwise each additional 429 retry waits `web_429_retry_seconds * web_429_backoff_multiplier^(attempt-1)`.
 
 Run a rendered HTML probe with Playwright when we need browser-level evidence:
 

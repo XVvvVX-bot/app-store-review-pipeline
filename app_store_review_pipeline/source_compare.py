@@ -30,6 +30,7 @@ def compare_sources(
     web_request_delay_seconds: float = 2.0,
     web_429_retries: int = 3,
     web_429_retry_seconds: float = 45.0,
+    web_429_backoff_multiplier: float = 1.0,
     timeout_seconds: float = 20.0,
     sleep_fn: Callable[[float], None] = time.sleep,
 ) -> dict[str, Any]:
@@ -71,6 +72,7 @@ def compare_sources(
         review_limit=web_review_limit,
         web_429_retries=web_429_retries,
         web_429_retry_seconds=web_429_retry_seconds,
+        web_429_backoff_multiplier=web_429_backoff_multiplier,
         sleep_fn=sleep_fn,
     )
 
@@ -93,6 +95,7 @@ def compare_sources(
             "web_request_delay_seconds": web_request_delay_seconds,
             "web_429_retries": web_429_retries,
             "web_429_retry_seconds": web_429_retry_seconds,
+            "web_429_backoff_multiplier": web_429_backoff_multiplier,
             "timeout_seconds": timeout_seconds,
         },
         "rss": summarize_rss_report(rss_report),

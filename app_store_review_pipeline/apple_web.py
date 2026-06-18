@@ -4,6 +4,8 @@ import html
 import json
 import re
 import time
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
@@ -229,6 +231,7 @@ def probe_web_reviews(
     max_web_pages: int = 2,
     web_429_retries: int = 0,
     web_429_retry_seconds: float = 30.0,
+    web_429_backoff_multiplier: float = 1.0,
     sleep_fn: Callable[[float], None] = time.sleep,
     session: requests.Session | None = None,
 ) -> dict[str, Any]:
@@ -255,6 +258,7 @@ def probe_web_reviews(
                         request_delay_seconds=request_delay_seconds,
                         web_429_retries=web_429_retries,
                         web_429_retry_seconds=web_429_retry_seconds,
+                        web_429_backoff_multiplier=web_429_backoff_multiplier,
                         sleep_fn=sleep_fn,
                     )
                 )
@@ -273,6 +277,7 @@ def probe_web_reviews(
         "max_web_pages": max_web_pages if attempt_pagination else 1,
         "web_429_retries": web_429_retries,
         "web_429_retry_seconds": web_429_retry_seconds,
+        "web_429_backoff_multiplier": web_429_backoff_multiplier,
         "summary": summarize_web_probe(rows),
         "results": rows,
     }
@@ -293,6 +298,7 @@ def probe_web_reviews_for_scope(
     request_delay_seconds: float,
     web_429_retries: int,
     web_429_retry_seconds: float,
+    web_429_backoff_multiplier: float,
     sleep_fn: Callable[[float], None],
 ) -> dict[str, Any]:
     country = country.lower()
@@ -323,6 +329,7 @@ def probe_web_reviews_for_scope(
         timeout_seconds=timeout_seconds,
         web_429_retries=web_429_retries,
         web_429_retry_seconds=web_429_retry_seconds,
+        web_429_backoff_multiplier=web_429_backoff_multiplier,
         sleep_fn=sleep_fn,
     )
     catalog_status_code = catalog_response.status_code
@@ -367,6 +374,7 @@ def probe_web_reviews_for_scope(
             timeout_seconds=timeout_seconds,
             web_429_retries=web_429_retries,
             web_429_retry_seconds=web_429_retry_seconds,
+            web_429_backoff_multiplier=web_429_backoff_multiplier,
             sleep_fn=sleep_fn,
         )
         next_summary = {"review_count": 0, "review_ids": [], "next_href": None, "min_date": None, "max_date": None}
@@ -492,6 +500,7 @@ def get_with_429_retries(
     timeout_seconds: float,
     web_429_retries: int,
     web_429_retry_seconds: float,
+    web_429_backoff_multiplier: float,
     sleep_fn: Callable[[float], None],
 ) -> tuple[requests.Response, list[dict[str, Any]]]:
     attempts: list[dict[str, Any]] = []
@@ -509,10 +518,40 @@ def get_with_429_retries(
         )
         if response.status_code != 429 or attempt_number >= max_attempts:
             break
-        sleep_fn(web_429_retry_seconds)
+        sleep_fn(retry_delay_seconds(response, attempt_number, web_429_retry_seconds, web_429_backoff_multiplier))
     if response is None:
         raise RuntimeError("unreachable web request state")
     return response, attempts
+
+
+def retry_delay_seconds(
+    response: requests.Response,
+    attempt_number: int,
+    base_delay_seconds: float,
+    backoff_multiplier: float,
+) -> float:
+    retry_after = parse_retry_after_seconds(response.headers.get("retry-after"))
+    if retry_after is not None:
+        return retry_after
+    multiplier = max(1.0, backoff_multiplier)
+    return base_delay_seconds * (multiplier ** max(0, attempt_number - 1))
+
+
+def parse_retry_after_seconds(value: str | None) -> float | None:
+    if not value:
+        return None
+    try:
+        return max(0.0, float(value))
+    except ValueError:
+        pass
+    try:
+        retry_at = parsedate_to_datetime(value)
+    except (TypeError, ValueError, IndexError, OverflowError):
+        return None
+    if retry_at.tzinfo is None:
+        retry_at = retry_at.replace(tzinfo=timezone.utc)
+    delay = (retry_at - datetime.now(timezone.utc)).total_seconds()
+    return max(0.0, delay)
 
 
 def selected_response_headers(response: requests.Response) -> dict[str, str]:
