@@ -66,7 +66,7 @@ Current public-source readout from downloaded June 18, 2026 canary artifacts:
 - Full single-app canary reports are **ready for controlled ingestion trials**: 5/5 full single-app runs matched or exceeded RSS parity cleanly, with 2,479 RSS reviews vs 2,500 web catalog reviews, 8 recovered 429 pages, and 0 unrecovered 429 pages.
 - Rendered HTML with Playwright remains diagnostic only; repeated scrolling did not reveal more review rows or trigger deeper review network calls.
 - Controlled web catalog Postgres ingestion is now verified for the conservative single-app profile: a Venmo run fetched and inserted 500 unique web catalog reviews across 25 final-200 pages in 2m25s, with 0 fetch errors, 0 missing text/rating, and no retries needed.
-- Web catalog can exceed the RSS-sized 500-review window: an Amazon Shopping depth probe fetched and inserted 1,000 unique reviews across 50 final-200 pages in 5m40s. It hit our configured page cap, not an observed Apple depth limit. Treat this as a lower-bound proof of depth, not a claim of full historical completeness.
+- Web catalog can exceed the RSS-sized 500-review window: Amazon Shopping depth probes reached 2,000 distinct Postgres reviews across 100 final-200 pages. The 100-page run took 9m54s, had 0 final non-200 pages, 0 missing text/rating, and stopped at our configured page cap while Apple still returned a next link. Treat this as a lower-bound proof of depth, not a claim of full historical completeness.
 
 The next contractual production path is still a licensed-provider POC:
 

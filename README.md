@@ -145,7 +145,7 @@ For manual depth-limit probes, use `--start-page` to continue beyond the routine
   --disable-overlap-stop
 ```
 
-Apple currently caps each web catalog review page at `20` rows. The known depth lower bound from live testing is at least 50 pages / 1,000 reviews for Amazon Shopping; that run stopped at our configured page cap, not at an Apple no-next or final non-200 response.
+Apple currently caps each web catalog review page at `20` rows. The known depth lower bound from live testing is at least 100 pages / 2,000 reviews for Amazon Shopping; that run stopped at our configured page cap while the response still advertised a next page, not at an Apple no-next or final non-200 response.
 
 Validate the cumulative database:
 

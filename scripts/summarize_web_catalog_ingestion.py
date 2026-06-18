@@ -35,7 +35,8 @@ def load_json_object(path: Path) -> dict[str, Any]:
 
 
 def summarize_report(path: Path, report: dict[str, Any]) -> dict[str, Any]:
-    fetch = enrich_fetch_summary(report.get("fetch_summary") or {}, find_related_fetch_report(path, report))
+    fetch_report = find_related_fetch_report(path, report)
+    fetch = enrich_fetch_summary(report.get("fetch_summary") or {}, fetch_report)
     load = report.get("load_summary") or {}
     status_code_counts = fetch.get("status_code_counts") or {}
     attempt_counts = fetch.get("attempt_counts") or {}
@@ -45,9 +46,11 @@ def summarize_report(path: Path, report: dict[str, Any]) -> dict[str, Any]:
     target_count = int_or_zero(report.get("target_count"))
     scope_count = int_or_zero(report.get("scope_count"))
     max_pages = int_or_zero(report.get("max_pages_per_app_country"))
-    start_page = int_or_zero(report.get("start_page")) or 1
+    requested_start_page = int_or_zero(report.get("start_page")) or 1
+    effective_start_page = effective_fetch_start_page(fetch_report, requested_start_page)
     review_limit = int_or_zero(report.get("review_limit"))
-    configured_ceiling = scope_count * max_pages * review_limit if scope_count and max_pages and review_limit else 0
+    configured_page_count = max(0, max_pages - effective_start_page + 1) if max_pages else 0
+    configured_ceiling = scope_count * configured_page_count * review_limit if scope_count and review_limit else 0
     review_ratio_to_ceiling = reviews / configured_ceiling if configured_ceiling else None
     all_pages_ok = bool(fetch.get("all_pages_ok_after_retry"))
     final_non_200 = int_or_zero(fetch.get("final_non_200_pages"))
@@ -68,7 +71,9 @@ def summarize_report(path: Path, report: dict[str, Any]) -> dict[str, Any]:
         "scope_count": scope_count,
         "target_offset": report.get("target_offset"),
         "max_pages_per_app_country": max_pages,
-        "start_page": start_page,
+        "start_page": effective_start_page,
+        "requested_start_page": requested_start_page,
+        "start_page_mismatch": requested_start_page != effective_start_page,
         "review_limit": review_limit,
         "configured_review_ceiling": configured_ceiling,
         "reviews": reviews,
@@ -89,13 +94,25 @@ def summarize_report(path: Path, report: dict[str, Any]) -> dict[str, Any]:
         "duplicates_skipped": duplicates,
         "is_full_single_app_profile": target_count == 1
         and scope_count == 1
-        and start_page == 1
+        and effective_start_page == 1
         and max_pages >= 25
         and review_limit >= 20,
         "is_clean": all_pages_ok and final_non_200 == 0 and fetch_errors == 0 and missing_text == 0 and missing_rating == 0,
         "reached_configured_ceiling": configured_ceiling > 0 and reviews >= configured_ceiling,
         "loaded_any_rows": (inserted + updated + duplicates) > 0,
     }
+
+
+def effective_fetch_start_page(fetch_report: dict[str, Any] | None, fallback: int) -> int:
+    if not fetch_report:
+        return fallback
+    fetch_start = int_or_zero(fetch_report.get("start_page"))
+    if fetch_start:
+        return fetch_start
+    page_reports = fetch_report.get("page_reports") or []
+    first_page = page_reports[0] if page_reports else {}
+    first_page_number = int_or_zero(first_page.get("page_number")) if isinstance(first_page, dict) else 0
+    return first_page_number or fallback
 
 
 def find_related_fetch_report(daily_report_path: Path, report: dict[str, Any]) -> dict[str, Any] | None:
@@ -256,6 +273,7 @@ def summarize_history_from_reports(
             "status_code_counts": merge_counter(record.get("status_code_counts") for record in records),
             "attempt_counts": merge_counter(record.get("attempt_counts") for record in records),
             "terminal_reasons": merge_counter(record.get("terminal_reasons") for record in records),
+            "start_page_mismatch_runs": sum(1 for record in records if record.get("start_page_mismatch")),
         },
         "database": database_summary,
         "runs": records,
@@ -336,6 +354,7 @@ def render_markdown_summary(summary: dict[str, Any]) -> str:
         f"- Status code counts: `{aggregate.get('status_code_counts', {})}`",
         f"- Attempt counts: `{aggregate.get('attempt_counts', {})}`",
         f"- Terminal reasons: `{aggregate.get('terminal_reasons', {})}`",
+        f"- Start page mismatches: `{aggregate.get('start_page_mismatch_runs', 0)}`",
         "",
     ]
     if database:
@@ -382,8 +401,8 @@ def render_markdown_summary(summary: dict[str, Any]) -> str:
         [
             "## Runs",
             "",
-            "| Run | Offset | Start | Max Page | Targets | Pages | Reviews | Inserted | Updated | Duplicates | Status Codes | Attempts | Final Non-200 | Clean | Ceiling |",
-            "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | ---: | --- | --- |",
+            "| Run | Offset | Start | Requested Start | Max Page | Targets | Pages | Reviews | Inserted | Updated | Duplicates | Status Codes | Attempts | Final Non-200 | Clean | Ceiling |",
+            "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | ---: | --- | --- |",
         ]
     )
     for record in summary.get("runs") or []:
@@ -394,6 +413,7 @@ def render_markdown_summary(summary: dict[str, Any]) -> str:
                     markdown_escape(str(record.get("run_id") or "")),
                     markdown_escape(str(record.get("target_offset") if record.get("target_offset") is not None else "")),
                     str(record.get("start_page") or 1),
+                    str(record.get("requested_start_page") or record.get("start_page") or 1),
                     str(record.get("max_pages_per_app_country") or 0),
                     str(record.get("target_count") or 0),
                     str(record.get("pages") or 0),

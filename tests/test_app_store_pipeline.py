@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import csv
 import json
 from pathlib import Path
@@ -22,7 +23,7 @@ from app_store_review_pipeline.apple_web import (
     probe_web_reviews,
     probe_web_reviews_for_scope,
 )
-from app_store_review_pipeline.cli import select_target_window, summarize_fetch_cli
+from app_store_review_pipeline.cli import command_daily_web_catalog, select_target_window, summarize_fetch_cli
 from app_store_review_pipeline.config import WEB_CATALOG_SOURCE
 from app_store_review_pipeline.fetcher import fetch_targets, terminal_reason_for_page
 from app_store_review_pipeline.models import AppTarget, ReviewPage
@@ -466,6 +467,50 @@ def test_fetch_web_catalog_targets_can_start_from_deeper_page(tmp_path):
     assert report["page_reports"][0]["page_number"] == 51
     assert report["page_reports"][0]["raw_json_path"].endswith("_051.json")
     assert report["page_reports"][1]["terminal_reason"] == "page_cap"
+
+
+def test_daily_web_catalog_passes_start_page_to_fetcher(tmp_path, monkeypatch):
+    targets_path = tmp_path / "targets.csv"
+    write_targets(targets_path)
+    observed = {}
+
+    def fake_fetch_web_catalog_targets(*args, **kwargs):
+        observed["start_page"] = kwargs["start_page"]
+        return {
+            "page_reports": [],
+            "reviews": [],
+            "review_count": 0,
+            "unique_review_count": 0,
+            "fetch_errors": 0,
+            "capped_scopes": [],
+            "sparse_empty_pages": 0,
+        }
+
+    monkeypatch.setattr("app_store_review_pipeline.cli.fetch_web_catalog_targets", fake_fetch_web_catalog_targets)
+    monkeypatch.setattr("app_store_review_pipeline.cli.load_pipeline_run_postgres", lambda *args, **kwargs: {})
+    monkeypatch.setattr("app_store_review_pipeline.cli.validate_postgres", lambda *args, **kwargs: {})
+
+    args = argparse.Namespace(
+        raw_root=tmp_path / "raw",
+        reports_root=tmp_path / "reports",
+        targets=targets_path,
+        database_url="postgresql:///app_store_reviews",
+        limit=1,
+        target_offset=0,
+        sort_by="recent",
+        max_pages_per_app_country=100,
+        start_page=51,
+        review_limit=20,
+        timeout_seconds=1.0,
+        request_delay_seconds=0.0,
+        web_429_retries=0,
+        web_429_retry_seconds=0.0,
+        web_429_backoff_multiplier=1.0,
+        disable_overlap_stop=True,
+    )
+
+    assert command_daily_web_catalog(args) == 0
+    assert observed["start_page"] == 51
 
 
 def test_summarize_fetch_cli_includes_stability_metrics():
@@ -1569,6 +1614,65 @@ def test_web_catalog_ingestion_history_falls_back_to_raw_fetch_report(tmp_path):
     assert summary["promotion_gate"]["status"] == "ready_for_controlled_promotion"
     assert summary["aggregate"]["status_code_counts"] == {"200": 25}
     assert summary["runs"][0]["all_pages_ok_after_retry"] is True
+
+
+def test_web_catalog_ingestion_history_uses_effective_start_page_from_raw_report(tmp_path):
+    run_id = "run-start-mismatch"
+    daily_report = {
+        "run_id": run_id,
+        "source": WEB_CATALOG_SOURCE,
+        "target_count": 1,
+        "scope_count": 1,
+        "target_offset": 0,
+        "max_pages_per_app_country": 100,
+        "start_page": 51,
+        "review_limit": 20,
+        "fetch_summary": {
+            "pages": 100,
+            "reviews": 2000,
+            "unique_reviews": 2000,
+            "fetch_errors": 0,
+            "status_code_counts": {"200": 100},
+            "all_pages_ok_after_retry": True,
+        },
+        "load_summary": {"inserted": 1000, "updated": 0, "duplicates_skipped": 1000},
+    }
+    daily_path = tmp_path / "artifact" / "reports" / "apple_web_catalog" / run_id / "daily_report.json"
+    daily_path.parent.mkdir(parents=True)
+    daily_path.write_text(json.dumps(daily_report), encoding="utf-8")
+    raw_path = tmp_path / "artifact" / "raw" / "apple_web_catalog" / run_id / "fetch_report.json"
+    raw_path.parent.mkdir(parents=True)
+    raw_path.write_text(
+        json.dumps(
+            {
+                "start_page": 1,
+                "page_reports": [
+                    {
+                        "page_number": 1,
+                        "status": "ok",
+                        "status_code": 200,
+                        "attempt_count": 1,
+                        "terminal_reason": None,
+                        "missing_text_count": 0,
+                        "missing_rating_count": 0,
+                    }
+                ],
+                "review_count": 2000,
+                "unique_review_count": 2000,
+                "fetch_errors": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    summary = summarize_web_ingestion_history_from_reports([daily_path], min_runs=1, min_reviews_per_run=2000)
+
+    assert summary["promotion_gate"]["status"] == "ready_for_controlled_promotion"
+    assert summary["aggregate"]["start_page_mismatch_runs"] == 1
+    assert summary["runs"][0]["start_page"] == 1
+    assert summary["runs"][0]["requested_start_page"] == 51
+    assert summary["runs"][0]["configured_review_ceiling"] == 2000
+    assert summary["runs"][0]["reached_configured_ceiling"] is True
 
 
 def test_42matters_reviews_url_and_redaction():

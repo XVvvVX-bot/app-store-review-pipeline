@@ -915,6 +915,7 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         run_id,
         sort_by=args.sort_by,
         max_pages_per_app_country=args.max_pages_per_app_country,
+        start_page=args.start_page,
         review_limit=args.review_limit,
         timeout_seconds=args.timeout_seconds,
         request_delay_seconds=args.request_delay_seconds,
