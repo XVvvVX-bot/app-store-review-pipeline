@@ -131,12 +131,40 @@ Run the experimental web catalog ingestion path into Postgres:
 
 Keep this path conservative: one app per run is the profile that has passed the current public-source gate. Larger web catalog batches are stress tests, not the routine default.
 
+For manual depth-limit probes, use `--start-page` to continue beyond the routine 25-page window without re-fetching earlier pages:
+
+```bash
+.venv/bin/python app_store_pipeline.py daily-web-catalog \
+  --database-url postgresql:///app_store_reviews \
+  --limit 1 \
+  --target-offset 0 \
+  --start-page 51 \
+  --max-pages-per-app-country 100 \
+  --review-limit 20 \
+  --request-delay-seconds 5 \
+  --disable-overlap-stop
+```
+
+Apple currently caps each web catalog review page at `20` rows. The known depth lower bound from live testing is at least 50 pages / 1,000 reviews for Amazon Shopping; that run stopped at our configured page cap, not at an Apple no-next or final non-200 response.
+
 Validate the cumulative database:
 
 ```bash
 .venv/bin/python app_store_pipeline.py validate \
   --database-url postgresql:///app_store_reviews
 ```
+
+Summarize downloaded web catalog ingestion artifacts:
+
+```bash
+.venv/bin/python scripts/summarize_web_catalog_ingestion.py \
+  --root /path/to/downloaded/artifacts \
+  --database-url postgresql:///app_store_reviews \
+  --output-json data/reports/web_catalog_ingestion_history.json \
+  --output-markdown data/reports/web_catalog_ingestion_history.md
+```
+
+Use `--full-single-app-only` when judging the routine 25-page single-app profile; leave it off when analyzing manual depth-limit probes.
 
 Probe public App Store HTML and web JSON review surfaces:
 
@@ -340,6 +368,7 @@ The web catalog canary defaults to:
 - target limit: `1`
 - target offset: `auto`
 - web catalog pages per app-country: `25`
+- start page: `1`
 - web catalog reviews per page: `20`
 - sort: `recent`
 - web catalog request delay: `5` seconds
@@ -372,6 +401,8 @@ The web catalog ingestion workflow defaults to:
 This workflow is a controlled ingestion trial, not a replacement of the RSS daily workflow. It stores web catalog rows with a separate source key, so analysts can compare RSS and web catalog coverage in the same Postgres database without overwriting RSS rows.
 
 The web catalog `daily_report.json` includes stability fields in `fetch_summary`, including `status_code_counts`, `attempt_counts`, `retried_pages`, `final_non_200_pages`, `missing_text`, `missing_rating`, and `all_pages_ok_after_retry`. For source decisions, read these fields together with `reviews`, `unique_reviews`, and the Postgres row counts by `source`.
+
+Manual workflow dispatch includes `start_page` for depth probes. Routine scheduled runs should keep `start_page=1`; use values above 1 only for controlled limit tests after preserving artifact evidence.
 
 A conservative manual deep profile for replacement-source testing is:
 

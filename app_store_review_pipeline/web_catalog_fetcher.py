@@ -31,6 +31,7 @@ def fetch_web_catalog_targets(
     *,
     sort_by: str = WEB_CATALOG_SORT_BY,
     max_pages_per_app_country: int = 25,
+    start_page: int = 1,
     review_limit: int = 20,
     timeout_seconds: float = 20.0,
     request_delay_seconds: float = 5.0,
@@ -43,6 +44,7 @@ def fetch_web_catalog_targets(
     session: requests.Session | None = None,
 ) -> dict[str, Any]:
     raw_dir.mkdir(parents=True, exist_ok=True)
+    start_page = max(1, start_page)
     known_review_ids_by_scope = known_review_ids_by_scope or {}
     page_reports: list[dict[str, Any]] = []
     review_rows: list[dict[str, Any]] = []
@@ -59,8 +61,8 @@ def fetch_web_catalog_targets(
                 scope = (target.apple_app_id, country.lower(), sort_by)
                 known_review_ids = known_review_ids_by_scope.get(scope, set())
                 next_href: str | None = None
-                for page_number in range(1, max_pages_per_app_country + 1):
-                    if page_number > 1 and request_delay_seconds:
+                for page_number in range(start_page, max_pages_per_app_country + 1):
+                    if page_number > start_page and request_delay_seconds:
                         sleep_fn(request_delay_seconds)
                     page_report, reviews, next_href = fetch_web_catalog_page(
                         target,
@@ -69,6 +71,7 @@ def fetch_web_catalog_targets(
                         country=country,
                         sort_by=sort_by,
                         page_number=page_number,
+                        start_page=start_page,
                         next_href=next_href,
                         review_limit=review_limit,
                         session=http,
@@ -126,6 +129,7 @@ def fetch_web_catalog_targets(
         "source": WEB_CATALOG_SOURCE,
         "platform": PLATFORM,
         "sort_by": sort_by,
+        "start_page": start_page,
         "page_reports": page_reports,
         "reviews": review_rows,
         "fetched_pages": sum(1 for page in page_reports if page.get("status") == "ok"),
@@ -146,6 +150,7 @@ def fetch_web_catalog_page(
     country: str,
     sort_by: str,
     page_number: int,
+    start_page: int,
     next_href: str | None,
     review_limit: int,
     session: requests.Session,
@@ -157,8 +162,14 @@ def fetch_web_catalog_page(
 ) -> tuple[ReviewPage, list[AppReview], str | None]:
     country = country.lower()
     page_key = make_page_key(run_id, target.apple_app_id, country, sort_by, page_number)
-    if page_number == 1:
-        request_url = app_store_web_reviews_url(target.apple_app_id, country, sort=sort_by, limit=review_limit)
+    if page_number == start_page:
+        request_url = app_store_web_reviews_url(
+            target.apple_app_id,
+            country,
+            offset=(page_number - 1) * review_limit,
+            sort=sort_by,
+            limit=review_limit,
+        )
     else:
         request_url = app_store_web_catalog_next_url(str(next_href), sort=sort_by, limit=review_limit)
     raw_json_path = raw_dir / f"{safe_name(target.apple_app_id)}_{country}_{safe_name(sort_by)}_{page_number:03d}.json"

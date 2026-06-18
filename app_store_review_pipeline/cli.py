@@ -408,6 +408,12 @@ def add_web_catalog_fetch_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--target-offset", type=int, default=0, help="Number of active targets to skip before applying limit.")
     parser.add_argument("--max-pages-per-app-country", type=int, default=25)
     parser.add_argument(
+        "--start-page",
+        type=int,
+        default=1,
+        help="First web catalog page number to fetch; use values above 1 for manual depth-limit probes.",
+    )
+    parser.add_argument(
         "--review-limit",
         type=int,
         default=20,
@@ -475,6 +481,7 @@ def command_fetch_web_catalog(args: argparse.Namespace) -> int:
         run_id,
         sort_by=args.sort_by,
         max_pages_per_app_country=args.max_pages_per_app_country,
+        start_page=args.start_page,
         review_limit=args.review_limit,
         timeout_seconds=args.timeout_seconds,
         request_delay_seconds=args.request_delay_seconds,
@@ -940,6 +947,7 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         "scope_count": len(scopes),
         "target_offset": max(0, args.target_offset),
         "max_pages_per_app_country": args.max_pages_per_app_country,
+        "start_page": args.start_page,
         "review_limit": args.review_limit,
         "overlap_stop_enabled": use_overlap_stop,
         "fetch_summary": summarize_fetch_cli(fetch_report),

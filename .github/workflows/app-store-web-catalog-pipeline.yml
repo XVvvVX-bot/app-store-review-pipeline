@@ -21,6 +21,11 @@ on:
         required: false
         default: "25"
         type: string
+      start_page:
+        description: "First web catalog page to fetch; use values above 1 for manual depth probes"
+        required: false
+        default: "1"
+        type: string
       review_limit:
         description: "Requested web catalog reviews per page; Apple currently caps this at 20"
         required: false
@@ -69,6 +74,7 @@ jobs:
       INPUT_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '1' }}
       INPUT_TARGET_OFFSET: ${{ github.event_name == 'workflow_dispatch' && inputs.target_offset || 'auto' }}
       INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ github.event_name == 'workflow_dispatch' && inputs.max_pages_per_app_country || '25' }}
+      INPUT_START_PAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.start_page || '1' }}
       INPUT_REVIEW_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.review_limit || '20' }}
       INPUT_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '5' }}
       INPUT_WEB_429_RETRIES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retries || '5' }}
@@ -140,6 +146,7 @@ jobs:
             --limit "$INPUT_LIMIT" \
             --target-offset "$target_offset" \
             --max-pages-per-app-country "$INPUT_MAX_PAGES_PER_APP_COUNTRY" \
+            --start-page "$INPUT_START_PAGE" \
             --review-limit "$INPUT_REVIEW_LIMIT" \
             --request-delay-seconds "$INPUT_REQUEST_DELAY_SECONDS" \
             --web-429-retries "$INPUT_WEB_429_RETRIES" \

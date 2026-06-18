@@ -65,6 +65,9 @@ However, HTML pages are not a better primary bulk review source:
 - A self-hosted `App Store Web Catalog Ingestion` smoke run on June 18, 2026 verified the workflow wiring on GitHub: `target_offset=10`, `max_pages_per_app_country=1`, PayPal, 1 final `200` page, 20 reviews inserted into local Postgres, 0 fetch errors, and a healthy validation report.
 - A full single-app self-hosted `App Store Web Catalog Ingestion` trial on June 18, 2026 used the conservative scheduled profile on Venmo: `target_offset=11`, 25 max pages, `limit=20`, 5-second page delay, five 429 retries, and 1.5x backoff. It completed in 2m25s with 25/25 final `200` pages, 500 unique reviews, 0 empty pages, 0 fetch errors, 0 missing text/rating, no retries needed, and 500 rows inserted under `source='apple_app_store_web_catalog_reviews'`.
 - The web catalog daily report now surfaces stability metrics directly in `fetch_summary`: final status code counts, attempt counts, retried pages, successful-after-retry pages, final non-200 page count, missing text/rating counts, terminal reasons, and `all_pages_ok_after_retry`.
+- A manual Amazon Shopping depth probe on June 18, 2026 verified that web catalog can exceed the RSS-sized 500-review window. With `target_offset=0`, `max_pages_per_app_country=50`, `limit=20`, 5-second delay, `disable_overlap_stop=true`, and bounded 429 retry/backoff, the self-hosted workflow completed in 5m40s with 50/50 final `200` pages, 1,000 unique reviews, 0 empty pages, 0 fetch errors, 0 missing text/rating, and 1 page recovered after retry. The run stopped at the configured page cap, so the public web catalog depth limit was not reached. The same app's RSS rows in Postgres were 535.
+- `daily-web-catalog` and the workflow now support `start_page` for manual depth probes. This allows follow-up tests such as page 51-100 without re-fetching page 1-50. Keep scheduled runs at `start_page=1`.
+- `scripts/summarize_web_catalog_ingestion.py` summarizes web catalog ingestion artifacts, optionally joins Postgres source/app row counts, and gates promotion evidence by repeated clean full single-app runs.
 - The HTML shape is less stable than the RSS JSON structure.
 - The aggregate rating count proves review presence, but does not provide a complete review-row feed.
 
@@ -118,6 +121,15 @@ Run a controlled web catalog ingestion trial with:
 The matching `App Store Web Catalog Ingestion` workflow runs this conservative profile on the self-hosted macOS ARM64 runner every 6 hours at `15 3,9,15,21 * * *`. It writes to the local Postgres database, stores rows with `source='apple_app_store_web_catalog_reviews'`, and uploads `data/raw/apple_web_catalog/` plus `data/reports/apple_web_catalog/` as audit artifacts. Keep `limit=1` and `target_offset=auto` as the routine setting until the web catalog path has more operational history.
 
 Use the web catalog ingestion `daily_report.json` stability fields to judge each scheduled trial: `status_code_counts`, `attempt_counts`, `retried_pages`, `final_non_200_pages`, `missing_text`, `missing_rating`, and `all_pages_ok_after_retry`.
+
+Summarize ingestion artifacts with:
+
+```bash
+.venv/bin/python scripts/summarize_web_catalog_ingestion.py \
+  --root /path/to/downloaded/artifacts \
+  --database-url postgresql:///app_store_reviews \
+  --full-single-app-only
+```
 
 Run a rendered HTML probe with Playwright when we need browser-level evidence:
 

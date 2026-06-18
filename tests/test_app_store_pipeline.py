@@ -63,6 +63,12 @@ from scripts.summarize_source_comparisons import (
     render_markdown_summary,
     summarize_history_from_reports,
 )
+from scripts.summarize_web_catalog_ingestion import (
+    render_markdown_summary as render_web_ingestion_markdown_summary,
+)
+from scripts.summarize_web_catalog_ingestion import (
+    summarize_history_from_reports as summarize_web_ingestion_history_from_reports,
+)
 
 
 def write_targets(path: Path):
@@ -423,6 +429,7 @@ def test_fetch_web_catalog_targets_follows_next_pages_and_preserves_source(tmp_p
 
     assert report["source"] == WEB_CATALOG_SOURCE
     assert report["fetched_pages"] == 2
+    assert report["start_page"] == 1
     assert report["review_count"] == 4
     assert report["unique_review_count"] == 4
     assert report["page_reports"][0]["source"] == WEB_CATALOG_SOURCE
@@ -430,6 +437,35 @@ def test_fetch_web_catalog_targets_follows_next_pages_and_preserves_source(tmp_p
     assert report["reviews"][0]["content"] == "Web catalog review text 1"
     assert report["reviews"][0]["source_page_key"] == "run:123456789:us:recent:1"
     assert len(session.calls) == 2
+
+
+def test_fetch_web_catalog_targets_can_start_from_deeper_page(tmp_path):
+    session = FakeWebSession(
+        [
+            FakeWebResponse(200, payload=web_catalog_payload(start=101, count=2, has_next=True)),
+            FakeWebResponse(200, payload=web_catalog_payload(start=103, count=2, has_next=False)),
+        ]
+    )
+
+    report = fetch_web_catalog_targets(
+        [fixture_target()],
+        tmp_path,
+        "run",
+        start_page=51,
+        max_pages_per_app_country=52,
+        review_limit=20,
+        request_delay_seconds=0,
+        web_429_retries=0,
+        session=session,
+    )
+
+    assert report["fetched_pages"] == 2
+    assert report["start_page"] == 51
+    assert report["review_count"] == 4
+    assert "offset=1000" in session.calls[0]
+    assert report["page_reports"][0]["page_number"] == 51
+    assert report["page_reports"][0]["raw_json_path"].endswith("_051.json")
+    assert report["page_reports"][1]["terminal_reason"] == "page_cap"
 
 
 def test_summarize_fetch_cli_includes_stability_metrics():
@@ -1398,6 +1434,141 @@ def test_source_comparison_per_scope():
             "web_max_date": "2026-06-10T01:00:00Z",
         }
     ]
+
+
+def write_web_ingestion_report(path: Path, *, run_id: str, reviews: int, clean: bool = True) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    final_non_200 = 0 if clean else 1
+    status_code_counts = {"200": 25} if clean else {"200": 24, "429": 1}
+    report = {
+        "run_id": run_id,
+        "started_at": f"2026-06-18T19:00:0{run_id[-1]}Z",
+        "completed_at": f"2026-06-18T19:02:0{run_id[-1]}Z",
+        "source": WEB_CATALOG_SOURCE,
+        "target_count": 1,
+        "scope_count": 1,
+        "target_offset": 10,
+        "max_pages_per_app_country": 25,
+        "review_limit": 20,
+        "fetch_summary": {
+            "pages": 25,
+            "reviews": reviews,
+            "unique_reviews": reviews,
+            "fetch_errors": 0,
+            "status_code_counts": status_code_counts,
+            "attempt_counts": {"1": 25},
+            "retried_pages": 0,
+            "successful_after_retry_pages": 0,
+            "final_non_200_pages": final_non_200,
+            "terminal_reasons": {"page_cap": 1},
+            "missing_text": 0,
+            "missing_rating": 0,
+            "all_pages_ok_after_retry": clean,
+        },
+        "load_summary": {
+            "inserted": reviews,
+            "updated": 0,
+            "duplicates_skipped": 0,
+        },
+    }
+    path.write_text(json.dumps(report), encoding="utf-8")
+
+
+def test_web_catalog_ingestion_history_gate_requires_repeated_clean_full_runs(tmp_path):
+    paths = []
+    for index in range(5):
+        path = tmp_path / f"run-{index}" / "daily_report.json"
+        write_web_ingestion_report(path, run_id=f"run-{index}", reviews=500)
+        paths.append(path)
+
+    summary = summarize_web_ingestion_history_from_reports(paths, min_runs=5, full_single_app_only=True)
+
+    assert summary["promotion_gate"]["status"] == "ready_for_controlled_promotion"
+    assert summary["aggregate"]["reviews_total"] == 2500
+    assert summary["aggregate"]["status_code_counts"] == {"200": 125}
+    assert summary["aggregate"]["final_non_200_pages_total"] == 0
+
+
+def test_web_catalog_ingestion_history_blocks_partial_runs(tmp_path):
+    good_path = tmp_path / "good" / "daily_report.json"
+    bad_path = tmp_path / "bad" / "daily_report.json"
+    write_web_ingestion_report(good_path, run_id="run-1", reviews=500)
+    write_web_ingestion_report(bad_path, run_id="run-2", reviews=480, clean=False)
+
+    summary = summarize_web_ingestion_history_from_reports(
+        [good_path, bad_path],
+        min_runs=2,
+        full_single_app_only=True,
+        min_reviews_per_run=500,
+    )
+
+    assert summary["promotion_gate"]["status"] == "not_ready"
+    assert "one_or_more_runs_not_clean" in summary["promotion_gate"]["blocking_reasons"]
+    assert "one_or_more_runs_below_500_reviews" in summary["promotion_gate"]["blocking_reasons"]
+    assert summary["aggregate"]["final_non_200_pages_total"] == 1
+
+
+def test_web_catalog_ingestion_markdown_summary_includes_gate(tmp_path):
+    path = tmp_path / "run" / "daily_report.json"
+    write_web_ingestion_report(path, run_id="run-1", reviews=500)
+    summary = summarize_web_ingestion_history_from_reports([path], min_runs=1, full_single_app_only=True)
+
+    markdown = render_web_ingestion_markdown_summary(summary)
+
+    assert "Promotion status: **ready_for_controlled_promotion**" in markdown
+    assert "| run-1 |" in markdown
+
+
+def test_web_catalog_ingestion_history_falls_back_to_raw_fetch_report(tmp_path):
+    run_id = "run-1"
+    daily_report = {
+        "run_id": run_id,
+        "source": WEB_CATALOG_SOURCE,
+        "target_count": 1,
+        "scope_count": 1,
+        "target_offset": 10,
+        "max_pages_per_app_country": 25,
+        "review_limit": 20,
+        "fetch_summary": {
+            "pages": 25,
+            "reviews": 500,
+            "unique_reviews": 500,
+            "fetch_errors": 0,
+        },
+        "load_summary": {"inserted": 500, "updated": 0, "duplicates_skipped": 0},
+    }
+    daily_path = tmp_path / "artifact" / "reports" / "apple_web_catalog" / run_id / "daily_report.json"
+    daily_path.parent.mkdir(parents=True)
+    daily_path.write_text(json.dumps(daily_report), encoding="utf-8")
+    raw_path = tmp_path / "artifact" / "raw" / "apple_web_catalog" / run_id / "fetch_report.json"
+    raw_path.parent.mkdir(parents=True)
+    raw_path.write_text(
+        json.dumps(
+            {
+                "page_reports": [
+                    {
+                        "status": "ok",
+                        "status_code": 200,
+                        "attempt_count": 1,
+                        "terminal_reason": "page_cap",
+                        "missing_text_count": 0,
+                        "missing_rating_count": 0,
+                    }
+                ]
+                * 25,
+                "review_count": 500,
+                "unique_review_count": 500,
+                "fetch_errors": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    summary = summarize_web_ingestion_history_from_reports([daily_path], min_runs=1, full_single_app_only=True)
+
+    assert summary["promotion_gate"]["status"] == "ready_for_controlled_promotion"
+    assert summary["aggregate"]["status_code_counts"] == {"200": 25}
+    assert summary["runs"][0]["all_pages_ok_after_retry"] is True
 
 
 def test_42matters_reviews_url_and_redaction():
