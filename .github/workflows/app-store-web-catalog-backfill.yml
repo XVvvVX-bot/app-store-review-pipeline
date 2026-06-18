@@ -49,9 +49,19 @@ on:
         default: "1.5"
         type: string
       web_time_budget_seconds:
-        description: "Wall-clock budget for web catalog fetching; 0 means no budget"
+        description: "Overall wall-clock budget per app job; 0 means no overall budget"
         required: false
         default: "1800"
+        type: string
+      web_scope_time_budget_seconds:
+        description: "Wall-clock budget per app-country scope; 0 means no per-scope budget"
+        required: false
+        default: "1800"
+        type: string
+      max_parallel:
+        description: "Maximum app backfill jobs to run in parallel. True parallelism requires multiple self-hosted runner instances."
+        required: false
+        default: "2"
         type: string
 
 permissions:
@@ -62,14 +72,69 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.build-matrix.outputs.matrix }}
+      max_parallel: ${{ steps.build-matrix.outputs.max_parallel }}
+      selected_count: ${{ steps.build-matrix.outputs.selected_count }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Build app backfill matrix
+        id: build-matrix
+        env:
+          INPUT_LIMIT: ${{ inputs.limit || '1' }}
+          INPUT_TARGET_OFFSET: ${{ inputs.target_offset || '0' }}
+          INPUT_MAX_PARALLEL: ${{ inputs.max_parallel || '2' }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import csv
+          import json
+          import os
+
+          limit = max(0, int(os.environ["INPUT_LIMIT"]))
+          start_offset = max(0, int(os.environ["INPUT_TARGET_OFFSET"]))
+          max_parallel = max(1, int(os.environ["INPUT_MAX_PARALLEL"]))
+          rows = []
+          with open("data/targets/apple_apps.csv", newline="", encoding="utf-8") as handle:
+              active_index = 0
+              for row in csv.DictReader(handle):
+                  if str(row.get("active", "")).lower() != "true":
+                      continue
+                  if active_index >= start_offset:
+                      rows.append(
+                          {
+                              "target_offset": active_index,
+                              "app_id": row["apple_app_id"],
+                              "app_name": row["app_name"],
+                          }
+                      )
+                  active_index += 1
+          if limit:
+              rows = rows[:limit]
+          matrix = {"include": rows}
+          print(f"matrix={json.dumps(matrix, separators=(',', ':'))}")
+          print(f"selected_count={len(rows)}")
+          print(f"max_parallel={max_parallel}")
+          PY
+
   backfill:
+    needs: prepare-matrix
+    if: ${{ fromJSON(needs.prepare-matrix.outputs.selected_count) > 0 }}
     runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: ${{ fromJSON(needs.prepare-matrix.outputs.max_parallel) }}
+      matrix: ${{ fromJSON(needs.prepare-matrix.outputs.matrix) }}
     env:
       PIP_CONFIG_FILE: /dev/null
       PIP_USER: "false"
-      INPUT_LIMIT: ${{ inputs.limit || '1' }}
-      INPUT_TARGET_OFFSET: ${{ inputs.target_offset || '0' }}
+      INPUT_LIMIT: "1"
+      INPUT_TARGET_OFFSET: ${{ matrix.target_offset }}
       INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ inputs.max_pages_per_app_country || '0' }}
       INPUT_START_PAGE: ${{ inputs.start_page || '1' }}
       INPUT_REVIEW_LIMIT: ${{ inputs.review_limit || '20' }}
@@ -78,6 +143,7 @@ jobs:
       INPUT_WEB_429_RETRY_SECONDS: ${{ inputs.web_429_retry_seconds || '60' }}
       INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ inputs.web_429_backoff_multiplier || '1.5' }}
       INPUT_WEB_TIME_BUDGET_SECONDS: ${{ inputs.web_time_budget_seconds || '1800' }}
+      INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS: ${{ inputs.web_scope_time_budget_seconds || '1800' }}
 
     steps:
       - name: Check out repository
@@ -109,6 +175,7 @@ jobs:
         run: |
           set -euo pipefail
           database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          echo "Backfilling target offset $INPUT_TARGET_OFFSET: ${{ matrix.app_name }} (${{ matrix.app_id }})"
 
           .venv/bin/python app_store_pipeline.py daily-web-catalog \
             --database-url "$database_url" \
@@ -122,13 +189,14 @@ jobs:
             --web-429-retry-seconds "$INPUT_WEB_429_RETRY_SECONDS" \
             --web-429-backoff-multiplier "$INPUT_WEB_429_BACKOFF_MULTIPLIER" \
             --web-time-budget-seconds "$INPUT_WEB_TIME_BUDGET_SECONDS" \
+            --web-scope-time-budget-seconds "$INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS" \
             --disable-overlap-stop
 
       - name: Upload web catalog backfill artifacts
         if: ${{ always() && !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: app-store-web-catalog-backfill-${{ github.run_id }}
+          name: app-store-web-catalog-backfill-${{ github.run_id }}-${{ matrix.target_offset }}-${{ matrix.app_id }}
           retention-days: 14
           if-no-files-found: ignore
           path: |

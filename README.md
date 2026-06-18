@@ -458,18 +458,33 @@ The web catalog backfill workflow defaults to:
 
 - schedule: manual-only
 - runner: self-hosted macOS ARM64
-- target limit: `1`
-- target offset: `0`
+- matrix target limit: `1`
+- matrix target offset: `0`
+- max parallel app jobs: `2`
 - web catalog pages per app-country: `0`, meaning no page cap
 - web catalog reviews per page: `20`
 - web catalog request delay: `5` seconds
 - HTTP 429 retries: `5`
 - HTTP 429 retry delay: `60` seconds
 - HTTP 429 backoff multiplier: `1.5`
-- web time budget: `1800` seconds
+- per app job web time budget: `1800` seconds
+- per app-country scope web time budget: `1800` seconds
 - overlap stop: disabled
 
-Use the backfill workflow to test whether a given app-country scope can be exhausted. If the final page report stops on `no_next_href`, the run found the observed end of Apple's web catalog pagination for that scope. If it stops on `time_budget_exceeded`, `page_cap`, `non_200_page`, or `fetch_error`, treat the row count as a lower bound and continue later with `start_page`.
+Use the backfill workflow to test whether one or many app-country scopes can be exhausted. The workflow builds a GitHub Actions matrix from `data/targets/apple_apps.csv`; each matrix job runs exactly one app (`--limit 1`) and writes a separate artifact named with that app's target offset and app ID. `fail-fast` is disabled, so one app's throttling, failure, or timeout does not cancel the remaining app jobs. The overall workflow can still fail if any app job fails, which is useful because failures should remain visible.
+
+For a 200-app sweep, dispatch `App Store Web Catalog Backfill` with:
+
+- `target_offset`: `0`
+- `limit`: `200`
+- `max_pages_per_app_country`: `0`
+- `max_parallel`: start with `2`
+- `web_time_budget_seconds`: start with `1800`
+- `web_scope_time_budget_seconds`: start with `1800`
+
+True parallelism requires multiple self-hosted runner instances. With only one runner process on the Mac, matrix jobs queue one at a time even though the workflow is matrix-ready. If you add more local runner instances, install each one in a separate runner directory so concurrent jobs do not share a working folder.
+
+If the final page report stops on `no_next_href`, the run found the observed end of Apple's web catalog pagination for that scope. If it stops on `scope_time_budget_exceeded`, `time_budget_exceeded`, `page_cap`, `non_200_page`, or `fetch_error`, treat the row count as a lower bound and continue later with `start_page`.
 
 The web catalog `daily_report.json` includes stability fields in `fetch_summary`, including `status_code_counts`, `attempt_counts`, `retried_pages`, `final_non_200_pages`, `missing_text`, `missing_rating`, and `all_pages_ok_after_retry`. For source decisions, read these fields together with `reviews`, `unique_reviews`, and the Postgres row counts by `source`.
 The ingestion history summary adds cumulative depth evidence such as max page reached, apps at or above 500 unique web catalog reviews, final non-200 pages, and whether the terminal page still had a `next` link.

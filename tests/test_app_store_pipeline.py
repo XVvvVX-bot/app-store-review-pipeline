@@ -250,11 +250,11 @@ def web_catalog_payload(start=1, count=2, has_next=True):
     }
 
 
-def fixture_target():
+def fixture_target(app_id: str = "123456789", app_name: str = "Fixture"):
     return AppTarget(
-        app_name="Fixture",
+        app_name=app_name,
         category="test",
-        apple_app_id="123456789",
+        apple_app_id=app_id,
         apple_slug="fixture",
         countries=("us",),
         active=True,
@@ -469,6 +469,46 @@ def test_fetch_web_catalog_targets_zero_page_cap_follows_until_no_next(tmp_path)
     assert len(session.calls) == 3
 
 
+def test_fetch_web_catalog_targets_scope_time_budget_stops_one_scope(tmp_path):
+    session = FakeWebSession(
+        [
+            FakeWebResponse(200, payload=web_catalog_payload(start=1, count=2, has_next=True)),
+            FakeWebResponse(200, payload=web_catalog_payload(start=1, count=1, has_next=False)),
+        ]
+    )
+    targets = [
+        fixture_target(app_id="111111111", app_name="Slow App"),
+        fixture_target(app_id="222222222", app_name="Next App"),
+    ]
+
+    report = fetch_web_catalog_targets(
+        targets,
+        tmp_path,
+        "run",
+        max_pages_per_app_country=0,
+        review_limit=2,
+        request_delay_seconds=1,
+        web_429_retries=0,
+        scope_time_budget_seconds=0.5,
+        session=session,
+    )
+
+    assert len(session.calls) == 2
+    assert report["overall_time_budget_exceeded"] is False
+    assert report["warning_scopes"] == [
+        {
+            "app_id": "111111111",
+            "app_name": "Slow App",
+            "country": "us",
+            "sort_by": "recent",
+            "reason": "scope_time_budget_exceeded",
+        }
+    ]
+    assert report["page_reports"][0]["app_id"] == "111111111"
+    assert report["page_reports"][1]["app_id"] == "222222222"
+    assert report["page_reports"][1]["terminal_reason"] == "no_next_href"
+
+
 def test_fetch_web_catalog_targets_can_start_from_deeper_page(tmp_path):
     session = FakeWebSession(
         [
@@ -546,6 +586,7 @@ def test_daily_web_catalog_passes_start_page_to_fetcher(tmp_path, monkeypatch):
     def fake_fetch_web_catalog_targets(*args, **kwargs):
         observed["start_page"] = kwargs["start_page"]
         observed["time_budget_seconds"] = kwargs["time_budget_seconds"]
+        observed["scope_time_budget_seconds"] = kwargs["scope_time_budget_seconds"]
         return {
             "page_reports": [],
             "reviews": [],
@@ -577,12 +618,14 @@ def test_daily_web_catalog_passes_start_page_to_fetcher(tmp_path, monkeypatch):
         web_429_retry_seconds=0.0,
         web_429_backoff_multiplier=1.0,
         web_time_budget_seconds=120.0,
+        web_scope_time_budget_seconds=30.0,
         disable_overlap_stop=True,
     )
 
     assert command_daily_web_catalog(args) == 0
     assert observed["start_page"] == 51
     assert observed["time_budget_seconds"] == 120.0
+    assert observed["scope_time_budget_seconds"] == 30.0
 
 
 def test_daily_web_catalog_can_pass_rss_parity_targets_to_fetcher(tmp_path, monkeypatch):
@@ -634,6 +677,7 @@ def test_daily_web_catalog_can_pass_rss_parity_targets_to_fetcher(tmp_path, monk
         web_429_retry_seconds=0.0,
         web_429_backoff_multiplier=1.0,
         web_time_budget_seconds=0.0,
+        web_scope_time_budget_seconds=0.0,
         disable_overlap_stop=False,
         stop_at_rss_parity=True,
     )
@@ -650,6 +694,9 @@ def test_summarize_fetch_cli_includes_stability_metrics():
             "unique_review_count": 2,
             "fetch_errors": 1,
             "capped_scopes": [{"app_id": "123"}],
+            "warning_scopes": [{"reason": "scope_time_budget_exceeded"}],
+            "overall_time_budget_exceeded": False,
+            "scope_time_budget_seconds": 30.0,
             "sparse_empty_pages": 0,
             "page_reports": [
                 {
@@ -673,6 +720,9 @@ def test_summarize_fetch_cli_includes_stability_metrics():
     )
 
     assert summary["status_counts"] == {"ok": 1, "error": 1}
+    assert summary["warning_scope_reasons"] == {"scope_time_budget_exceeded": 1}
+    assert summary["warning_scope_count"] == 1
+    assert summary["scope_time_budget_seconds"] == 30.0
     assert summary["status_code_counts"] == {"200": 1, "429": 1}
     assert summary["attempt_counts"] == {"2": 1, "6": 1}
     assert summary["retried_pages"] == 2

@@ -433,6 +433,12 @@ def add_web_catalog_fetch_arguments(parser: argparse.ArgumentParser) -> None:
         help="Optional wall-clock budget for web catalog fetching. Use 0 for no budget.",
     )
     parser.add_argument(
+        "--web-scope-time-budget-seconds",
+        type=float,
+        default=0.0,
+        help="Optional per app-country wall-clock budget for web catalog fetching. Use 0 for no per-scope budget.",
+    )
+    parser.add_argument(
         "--stop-at-rss-parity",
         action="store_true",
         help=(
@@ -516,10 +522,12 @@ def command_fetch_web_catalog(args: argparse.Namespace) -> int:
 
 def summarize_fetch_cli(report: dict) -> dict:
     page_reports = report.get("page_reports", [])
+    warning_scopes = report.get("warning_scopes", []) or []
     status_counts: dict[str, int] = {}
     status_code_counts: dict[str, int] = {}
     attempt_counts: dict[str, int] = {}
     terminal_reasons: dict[str, int] = {}
+    warning_scope_reasons: dict[str, int] = {}
     retried_pages = 0
     successful_after_retry_pages = 0
     final_non_200_pages = 0
@@ -547,6 +555,9 @@ def summarize_fetch_cli(report: dict) -> dict:
             terminal_reasons[str(reason)] = terminal_reasons.get(str(reason), 0) + 1
         missing_text += int(row.get("missing_text_count") or 0)
         missing_rating += int(row.get("missing_rating_count") or 0)
+    for scope in warning_scopes:
+        reason = str(scope.get("reason") or "unknown")
+        warning_scope_reasons[reason] = warning_scope_reasons.get(reason, 0) + 1
 
     return {
         "pages": len(page_reports),
@@ -554,6 +565,8 @@ def summarize_fetch_cli(report: dict) -> dict:
         "unique_reviews": report.get("unique_review_count", 0),
         "fetch_errors": report.get("fetch_errors", 0),
         "capped_scopes": len(report.get("capped_scopes", [])),
+        "warning_scope_count": len(warning_scopes),
+        "warning_scope_reasons": warning_scope_reasons,
         "sparse_empty_pages": report.get("sparse_empty_pages", 0),
         "status_counts": status_counts,
         "status_code_counts": status_code_counts,
@@ -564,6 +577,8 @@ def summarize_fetch_cli(report: dict) -> dict:
         "terminal_reasons": terminal_reasons,
         "missing_text": missing_text,
         "missing_rating": missing_rating,
+        "overall_time_budget_exceeded": bool(report.get("overall_time_budget_exceeded", False)),
+        "scope_time_budget_seconds": report.get("scope_time_budget_seconds", 0),
         "all_pages_ok_after_retry": bool(page_reports) and final_non_200_pages == 0 and report.get("fetch_errors", 0) == 0,
     }
 
@@ -944,6 +959,7 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         web_429_retry_seconds=args.web_429_retry_seconds,
         web_429_backoff_multiplier=args.web_429_backoff_multiplier,
         time_budget_seconds=args.web_time_budget_seconds,
+        scope_time_budget_seconds=args.web_scope_time_budget_seconds,
         known_review_ids_by_scope=known_ids,
         target_review_counts_by_scope=target_review_counts,
         use_overlap_stop=use_overlap_stop,
@@ -974,6 +990,7 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         "start_page": args.start_page,
         "review_limit": args.review_limit,
         "web_time_budget_seconds": args.web_time_budget_seconds,
+        "web_scope_time_budget_seconds": args.web_scope_time_budget_seconds,
         "overlap_stop_enabled": use_overlap_stop,
         "stop_at_rss_parity": bool(getattr(args, "stop_at_rss_parity", False)),
         "rss_parity_source": SOURCE if getattr(args, "stop_at_rss_parity", False) else None,

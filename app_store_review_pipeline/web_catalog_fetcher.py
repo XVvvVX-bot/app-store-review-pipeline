@@ -13,6 +13,7 @@ from app_store_review_pipeline.apple_web import (
     app_store_reviews_page_url,
     app_store_web_catalog_next_url,
     app_store_web_reviews_url,
+    can_sleep_before_deadline,
     deadline_exceeded,
     final_attempt_stopped_for_time_budget,
     get_with_429_retries,
@@ -41,6 +42,7 @@ def fetch_web_catalog_targets(
     web_429_retry_seconds: float = 60.0,
     web_429_backoff_multiplier: float = 1.5,
     time_budget_seconds: float = 0.0,
+    scope_time_budget_seconds: float = 0.0,
     known_review_ids_by_scope: dict[tuple[str, str, str], set[str]] | None = None,
     target_review_counts_by_scope: dict[tuple[str, str, str], int] | None = None,
     use_overlap_stop: bool = True,
@@ -61,12 +63,29 @@ def fetch_web_catalog_targets(
     target_reached_scopes: list[dict[str, Any]] = []
     owned_session = session is None
     http = session or requests.Session()
+    overall_time_budget_exceeded = False
 
     try:
         for target_index, target in enumerate(targets):
+            if deadline_exceeded(deadline_monotonic, monotonic_fn):
+                overall_time_budget_exceeded = True
+                break
             if target_index and request_delay_seconds:
-                sleep_fn(request_delay_seconds)
+                if not sleep_with_deadline(
+                    request_delay_seconds,
+                    deadline_monotonic,
+                    sleep_fn=sleep_fn,
+                    monotonic_fn=monotonic_fn,
+                ):
+                    overall_time_budget_exceeded = True
+                    break
             for country in target.countries:
+                scope_deadline_monotonic = (
+                    monotonic_fn() + scope_time_budget_seconds
+                    if scope_time_budget_seconds and scope_time_budget_seconds > 0
+                    else None
+                )
+                effective_deadline = earliest_deadline(deadline_monotonic, scope_deadline_monotonic)
                 scope = (target.apple_app_id, country.lower(), sort_by)
                 known_review_ids = known_review_ids_by_scope.get(scope, set())
                 target_review_count = target_review_counts_by_scope.get(scope)
@@ -74,33 +93,44 @@ def fetch_web_catalog_targets(
                 next_href: str | None = None
                 page_number = start_page
                 while page_cap is None or page_number <= page_cap:
-                    if deadline_exceeded(deadline_monotonic, monotonic_fn):
+                    stop_reason = deadline_stop_reason(deadline_monotonic, scope_deadline_monotonic, monotonic_fn)
+                    if stop_reason:
                         warning_scopes.append(
                             {
                                 "app_id": target.apple_app_id,
                                 "app_name": target.app_name,
                                 "country": country.lower(),
                                 "sort_by": sort_by,
-                                "reason": "time_budget_exceeded",
+                                "reason": stop_reason,
                             }
                         )
+                        if stop_reason == "time_budget_exceeded":
+                            overall_time_budget_exceeded = True
                         break
                     if page_number > start_page and request_delay_seconds:
                         if not sleep_with_deadline(
                             request_delay_seconds,
-                            deadline_monotonic,
+                            effective_deadline,
                             sleep_fn=sleep_fn,
                             monotonic_fn=monotonic_fn,
                         ):
+                            stop_reason = deadline_sleep_stop_reason(
+                                request_delay_seconds,
+                                deadline_monotonic,
+                                scope_deadline_monotonic,
+                                monotonic_fn,
+                            )
                             warning_scopes.append(
                                 {
                                     "app_id": target.apple_app_id,
                                     "app_name": target.app_name,
                                     "country": country.lower(),
                                     "sort_by": sort_by,
-                                    "reason": "time_budget_exceeded",
+                                    "reason": stop_reason,
                                 }
                             )
+                            if stop_reason == "time_budget_exceeded":
+                                overall_time_budget_exceeded = True
                             break
                     page_report, reviews, next_href = fetch_web_catalog_page(
                         target,
@@ -117,7 +147,7 @@ def fetch_web_catalog_targets(
                         web_429_retries=web_429_retries,
                         web_429_retry_seconds=web_429_retry_seconds,
                         web_429_backoff_multiplier=web_429_backoff_multiplier,
-                        deadline_monotonic=deadline_monotonic,
+                        deadline_monotonic=effective_deadline,
                         monotonic_fn=monotonic_fn,
                         sleep_fn=sleep_fn,
                     )
@@ -175,6 +205,10 @@ def fetch_web_catalog_targets(
                             )
                         break
                     page_number += 1
+                if overall_time_budget_exceeded:
+                    break
+            if overall_time_budget_exceeded:
+                break
     finally:
         if owned_session:
             http.close()
@@ -188,6 +222,8 @@ def fetch_web_catalog_targets(
         "max_pages_per_app_country": max_pages_per_app_country,
         "page_cap_enabled": page_cap is not None,
         "time_budget_seconds": time_budget_seconds,
+        "scope_time_budget_seconds": scope_time_budget_seconds,
+        "overall_time_budget_exceeded": overall_time_budget_exceeded,
         "page_reports": page_reports,
         "reviews": review_rows,
         "fetched_pages": sum(1 for page in page_reports if page.get("status") == "ok"),
@@ -201,6 +237,38 @@ def fetch_web_catalog_targets(
         "target_review_count_scopes": len(target_review_counts_by_scope),
         "target_reached_scopes": target_reached_scopes,
     }
+
+
+def earliest_deadline(*deadlines: float | None) -> float | None:
+    active_deadlines = [deadline for deadline in deadlines if deadline is not None]
+    if not active_deadlines:
+        return None
+    return min(active_deadlines)
+
+
+def deadline_stop_reason(
+    overall_deadline_monotonic: float | None,
+    scope_deadline_monotonic: float | None,
+    monotonic_fn: Callable[[], float],
+) -> str | None:
+    if deadline_exceeded(overall_deadline_monotonic, monotonic_fn):
+        return "time_budget_exceeded"
+    if deadline_exceeded(scope_deadline_monotonic, monotonic_fn):
+        return "scope_time_budget_exceeded"
+    return None
+
+
+def deadline_sleep_stop_reason(
+    seconds: float,
+    overall_deadline_monotonic: float | None,
+    scope_deadline_monotonic: float | None,
+    monotonic_fn: Callable[[], float],
+) -> str:
+    if not can_sleep_before_deadline(seconds, overall_deadline_monotonic, monotonic_fn):
+        return "time_budget_exceeded"
+    if not can_sleep_before_deadline(seconds, scope_deadline_monotonic, monotonic_fn):
+        return "scope_time_budget_exceeded"
+    return deadline_stop_reason(overall_deadline_monotonic, scope_deadline_monotonic, monotonic_fn) or "time_budget_exceeded"
 
 
 def fetch_web_catalog_page(
