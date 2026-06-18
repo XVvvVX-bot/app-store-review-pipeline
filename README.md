@@ -107,6 +107,20 @@ Probe public App Store HTML and web JSON review surfaces:
 
 `probe-web` is a source-health and feasibility diagnostic. It records visible HTML review cards, aggregate rating metadata, the public web catalog reviews endpoint with `sort=recent`, and optional next-page review counts. It does not load Postgres and is not the production ingestion source.
 
+Compare RSS and web catalog on the same target window:
+
+```bash
+.venv/bin/python app_store_pipeline.py compare-sources \
+  --limit 20 \
+  --web-max-pages 2 \
+  --web-request-delay-seconds 1 \
+  --web-429-retries 1 \
+  --web-429-retry-seconds 30 \
+  --rss-request-delay-seconds 0.5
+```
+
+`compare-sources` writes `source_comparison_report.json` with RSS volume, web catalog volume, 429 recovery counts, and a single-run candidate gate.
+
 Run tests:
 
 ```bash
@@ -143,7 +157,7 @@ Three workflows are included:
 
 - `CI`: runs unit tests on GitHub-hosted Ubuntu.
 - `App Store Review Pipeline`: runs the real daily ingestion on a self-hosted macOS ARM64 runner so it can reach the local Postgres database on this Mac.
-- `App Store Web Catalog Canary`: runs a bounded web catalog `sort=recent` probe on GitHub-hosted Ubuntu. It does not write Postgres and is used only to compare candidate source stability and review volume against RSS.
+- `App Store Web Catalog Canary`: runs a bounded RSS vs web catalog `sort=recent` comparison on GitHub-hosted Ubuntu. It does not write Postgres and is used only to compare candidate source stability and review volume against RSS.
 
 The daily workflow defaults to:
 
@@ -165,5 +179,6 @@ The web catalog canary defaults to:
 - sort: `recent`
 - HTTP 429 retries: `1`
 - HTTP 429 retry delay: `30` seconds
+- RSS pages per app-country: `10`
 
-Its artifact contains `data/reports/apple_web/{run_id}/web_probe_report.json`, which should be compared over several runs before promoting web catalog reviews into the production ingestion path.
+Its artifact contains `data/reports/source_compare/{run_id}/source_comparison_report.json`, plus the raw RSS comparison files under `data/raw/source_compare/{run_id}/rss/`. Compare several runs before promoting web catalog reviews into the production ingestion path.

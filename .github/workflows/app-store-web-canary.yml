@@ -17,9 +17,14 @@ on:
         default: "2"
         type: string
       request_delay_seconds:
-        description: "Delay between requests"
+        description: "Delay between web catalog requests"
         required: false
         default: "1"
+        type: string
+      rss_request_delay_seconds:
+        description: "Delay between RSS requests"
+        required: false
+        default: "0.5"
         type: string
       web_429_retries:
         description: "Retries after HTTP 429"
@@ -47,6 +52,7 @@ jobs:
       INPUT_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '20' }}
       INPUT_MAX_WEB_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.max_web_pages || '2' }}
       INPUT_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '1' }}
+      INPUT_RSS_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.rss_request_delay_seconds || '0.5' }}
       INPUT_WEB_429_RETRIES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retries || '1' }}
       INPUT_WEB_429_RETRY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_seconds || '30' }}
 
@@ -65,23 +71,24 @@ jobs:
       - name: Run tests
         run: python -m pytest -q
 
-      - name: Probe App Store web catalog reviews
+      - name: Compare RSS and App Store web catalog reviews
         run: |
           set -euo pipefail
-          python app_store_pipeline.py probe-web \
+          python app_store_pipeline.py compare-sources \
             --limit "$INPUT_LIMIT" \
-            --web-sort recent \
-            --attempt-pagination \
-            --max-web-pages "$INPUT_MAX_WEB_PAGES" \
-            --request-delay-seconds "$INPUT_REQUEST_DELAY_SECONDS" \
+            --web-max-pages "$INPUT_MAX_WEB_PAGES" \
+            --web-request-delay-seconds "$INPUT_REQUEST_DELAY_SECONDS" \
             --web-429-retries "$INPUT_WEB_429_RETRIES" \
-            --web-429-retry-seconds "$INPUT_WEB_429_RETRY_SECONDS"
+            --web-429-retry-seconds "$INPUT_WEB_429_RETRY_SECONDS" \
+            --rss-request-delay-seconds "$INPUT_RSS_REQUEST_DELAY_SECONDS"
 
-      - name: Upload web catalog canary artifacts
+      - name: Upload source comparison canary artifacts
         if: ${{ always() && !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: app-store-web-catalog-canary-${{ github.run_id }}
           retention-days: 14
           if-no-files-found: error
-          path: data/reports/apple_web/
+          path: |
+            data/reports/source_compare/
+            data/raw/source_compare/

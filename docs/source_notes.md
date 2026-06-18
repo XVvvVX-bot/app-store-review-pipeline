@@ -41,13 +41,15 @@ Run a bounded web probe with:
 
 ## Web Catalog Canary Promotion Gate
 
-The `App Store Web Catalog Canary` workflow runs the candidate web catalog path on GitHub-hosted Ubuntu and uploads `data/reports/apple_web/{run_id}/web_probe_report.json`.
+The `App Store Web Catalog Canary` workflow runs both the RSS path and the candidate web catalog path on the same bounded target window using GitHub-hosted Ubuntu. It uploads `data/reports/source_compare/{run_id}/source_comparison_report.json`.
 
 Do not promote web catalog reviews into the production ingestion path until several scheduled canary runs show:
 
-- `web_catalog_page_status_counts` is dominated by `200` responses after bounded retry.
+- `web_catalog.web_catalog_page_status_counts` is dominated by `200` responses after bounded retry.
 - `recovered_429_page_count` stays small enough that the workflow runtime remains predictable.
-- `web_catalog_page_reviews_total` is consistently at or above the RSS volume for the same target window.
+- `comparison.web_reviews_at_or_above_rss` is consistently true for the same target window.
+- `web_catalog.web_catalog_page_reviews_total` is nonzero and commercially useful for the sampled target set.
+- `comparison.web_all_pages_ok_after_retry` is consistently true.
 - `web_sort` is `recent`, and page date ranges move backward in time as offsets increase.
 - The source still works without login, CAPTCHA solving, proxy rotation, or private App Store Connect credentials.
 

@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 
 from app_store_review_pipeline.config import (
+    DEFAULT_COMPARE_RAW_ROOT,
+    DEFAULT_COMPARE_REPORTS_ROOT,
     DEFAULT_DATABASE_URL,
     DEFAULT_MAX_CONSECUTIVE_EMPTY_PAGES,
     DEFAULT_MAX_ATTEMPTS,
@@ -29,6 +31,7 @@ from app_store_review_pipeline.postgres_database import (
     validate_postgres,
 )
 from app_store_review_pipeline.targets import active_targets, load_targets
+from app_store_review_pipeline.source_compare import compare_sources
 from app_store_review_pipeline.utils import make_run_id
 
 
@@ -106,6 +109,26 @@ def build_parser() -> argparse.ArgumentParser:
         help="Delay before retrying a web catalog page after HTTP 429.",
     )
     probe_web.set_defaults(func=command_probe_web)
+
+    compare = subparsers.add_parser(
+        "compare-sources",
+        help="Run the same target window through RSS and web catalog recent reviews and write a comparison report.",
+    )
+    compare.add_argument("--targets", type=Path, default=DEFAULT_TARGETS)
+    compare.add_argument("--raw-root", type=Path, default=DEFAULT_COMPARE_RAW_ROOT)
+    compare.add_argument("--reports-root", type=Path, default=DEFAULT_COMPARE_REPORTS_ROOT)
+    compare.add_argument("--limit", type=int, default=20, help="Maximum active targets to compare. Use 0 for all.")
+    compare.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
+    compare.add_argument("--rss-request-delay-seconds", type=float, default=0.5)
+    compare.add_argument("--rss-max-pages-per-app-country", type=int, default=DEFAULT_MAX_PAGES_PER_APP_COUNTRY)
+    compare.add_argument("--rss-max-consecutive-empty-pages", type=int, default=DEFAULT_MAX_CONSECUTIVE_EMPTY_PAGES)
+    compare.add_argument("--rss-max-attempts", type=int, default=DEFAULT_MAX_ATTEMPTS)
+    compare.add_argument("--rss-retry-delay-seconds", type=float, default=DEFAULT_RETRY_DELAY_SECONDS)
+    compare.add_argument("--web-request-delay-seconds", type=float, default=DEFAULT_REQUEST_DELAY_SECONDS)
+    compare.add_argument("--web-max-pages", type=int, default=2)
+    compare.add_argument("--web-429-retries", type=int, default=1)
+    compare.add_argument("--web-429-retry-seconds", type=float, default=30.0)
+    compare.set_defaults(func=command_compare_sources)
 
     daily = subparsers.add_parser("daily", help="Fetch, load, validate, and report Apple App Store reviews.")
     add_fetch_arguments(daily)
@@ -237,6 +260,41 @@ def command_probe_web(args: argparse.Namespace) -> int:
             {
                 "output": str(output_path),
                 "summary": report["summary"],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+def command_compare_sources(args: argparse.Namespace) -> int:
+    targets = active_targets(load_targets(args.targets))
+    selected = targets[: args.limit] if args.limit > 0 else targets
+    run_id = make_run_id()
+    report = compare_sources(
+        selected,
+        run_id=run_id,
+        raw_root=args.raw_root,
+        reports_root=args.reports_root,
+        rss_max_pages_per_app_country=args.rss_max_pages_per_app_country,
+        rss_max_consecutive_empty_pages=args.rss_max_consecutive_empty_pages,
+        rss_request_delay_seconds=args.rss_request_delay_seconds,
+        rss_max_attempts=args.rss_max_attempts,
+        rss_retry_delay_seconds=args.rss_retry_delay_seconds,
+        web_max_pages=args.web_max_pages,
+        web_request_delay_seconds=args.web_request_delay_seconds,
+        web_429_retries=args.web_429_retries,
+        web_429_retry_seconds=args.web_429_retry_seconds,
+        timeout_seconds=args.timeout_seconds,
+    )
+    print(
+        json.dumps(
+            {
+                "output": report["paths"]["comparison_report_path"],
+                "comparison": report["comparison"],
+                "rss": report["rss"],
+                "web_catalog": report["web_catalog"],
             },
             indent=2,
             sort_keys=True,

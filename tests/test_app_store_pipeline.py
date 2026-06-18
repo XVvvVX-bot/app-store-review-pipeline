@@ -17,6 +17,7 @@ from app_store_review_pipeline.apple_web import (
 from app_store_review_pipeline.fetcher import fetch_targets, terminal_reason_for_page
 from app_store_review_pipeline.models import AppTarget, ReviewPage
 from app_store_review_pipeline.postgres_database import mask_database_url, scope_key
+from app_store_review_pipeline.source_compare import compare_per_scope, summarize_comparison
 from app_store_review_pipeline.targets import active_targets, load_targets, parse_countries
 
 
@@ -460,3 +461,119 @@ def test_web_probe_parses_catalog_review_page():
     assert summary["next_href"] == "/v1/catalog/us/apps/1508186374/reviews?l=en-US&offset=12"
     assert summary["min_date"] == "2026-06-13T01:00:00Z"
     assert summary["max_date"] == "2026-06-14T01:00:00Z"
+
+
+def test_source_comparison_summary_gate():
+    rss_report = {
+        "page_reports": [
+            {"status": "ok", "review_count": 50, "terminal_reason": "empty_page"},
+        ],
+        "fetched_pages": 1,
+        "fetch_errors": 0,
+        "empty_pages": 0,
+        "sparse_empty_pages": 0,
+        "review_count": 50,
+        "unique_review_count": 50,
+        "warning_scopes": [],
+        "capped_scopes": [],
+    }
+    web_report = {
+        "summary": {
+            "web_catalog_page_reviews_total": 120,
+            "web_catalog_page_status_counts": {"200": 20},
+            "recovered_429_page_count": 3,
+            "retried_page_count": 3,
+        }
+    }
+
+    summary = summarize_comparison(rss_report, web_report)
+
+    assert summary["web_reviews_minus_rss_reviews"] == 70
+    assert summary["web_to_rss_review_ratio"] == 2.4
+    assert summary["web_reviews_at_or_above_rss"] is True
+    assert summary["web_all_pages_ok_after_retry"] is True
+    assert summary["candidate_passes_single_run_gate"] is True
+
+
+def test_source_comparison_gate_requires_web_reviews():
+    rss_report = {
+        "page_reports": [{"status": "ok", "review_count": 0}],
+        "fetched_pages": 1,
+        "fetch_errors": 0,
+        "empty_pages": 1,
+        "sparse_empty_pages": 0,
+        "review_count": 0,
+        "unique_review_count": 0,
+        "warning_scopes": [],
+        "capped_scopes": [],
+    }
+    web_report = {
+        "summary": {
+            "web_catalog_page_reviews_total": 0,
+            "web_catalog_page_status_counts": {"200": 1},
+            "recovered_429_page_count": 0,
+            "retried_page_count": 0,
+        }
+    }
+
+    summary = summarize_comparison(rss_report, web_report)
+
+    assert summary["web_reviews_at_or_above_rss"] is True
+    assert summary["candidate_passes_single_run_gate"] is False
+
+
+def test_source_comparison_per_scope():
+    rss_report = {
+        "page_reports": [
+            {
+                "app_id": "123",
+                "country": "US",
+                "status": "ok",
+                "review_count": 50,
+                "terminal_reason": "empty_page",
+            }
+        ]
+    }
+    web_report = {
+        "results": [
+            {
+                "app_id": "123",
+                "app_name": "Fixture",
+                "country": "us",
+                "web_catalog_pages_fetched": 2,
+                "web_catalog_page_reviews_total": 12,
+                "web_catalog_pages": [
+                    {"status_code": 429, "review_count": 0, "attempts": [{"status_code": 429}]},
+                    {
+                        "status_code": 200,
+                        "review_count": 6,
+                        "attempts": [{"status_code": 429}, {"status_code": 200}],
+                        "min_date": "2026-06-10T00:00:00Z",
+                        "max_date": "2026-06-10T01:00:00Z",
+                    },
+                ],
+            }
+        ]
+    }
+
+    rows = compare_per_scope(rss_report, web_report)
+
+    assert rows == [
+        {
+            "app_id": "123",
+            "app_name": "Fixture",
+            "country": "us",
+            "rss_page_count": 1,
+            "rss_fetch_errors": 0,
+            "rss_empty_pages": 0,
+            "rss_review_count": 50,
+            "rss_terminal_reasons": {"empty_page": 1},
+            "web_page_count": 2,
+            "web_review_count": 12,
+            "web_status_counts": {"429": 1, "200": 1},
+            "web_retried_pages": 1,
+            "web_recovered_429_pages": 1,
+            "web_min_date": "2026-06-10T00:00:00Z",
+            "web_max_date": "2026-06-10T01:00:00Z",
+        }
+    ]
