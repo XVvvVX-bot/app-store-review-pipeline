@@ -177,18 +177,20 @@ jobs:
           set -euo pipefail
           database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
           echo "Backfilling target offset $INPUT_TARGET_OFFSET: ${{ matrix.app_name }} (${{ matrix.app_id }})"
+          if [[ ! "$MATRIX_APP_ID" =~ ^[0-9]+$ ]]; then
+            echo "Invalid matrix app id: $MATRIX_APP_ID" >&2
+            exit 1
+          fi
           start_page="$INPUT_START_PAGE"
           if [[ "$start_page" == "auto" ]]; then
             no_next_count="$(psql "$database_url" \
-              -v app_id="$MATRIX_APP_ID" \
-              -Atc "select count(*) from app_store_review_pages where source = 'apple_app_store_web_catalog_reviews' and app_id = :'app_id' and terminal_reason = 'no_next_href';")"
+              -Atc "select count(*) from app_store_review_pages where source = 'apple_app_store_web_catalog_reviews' and app_id = '$MATRIX_APP_ID' and terminal_reason = 'no_next_href';")"
             if [[ "$no_next_count" != "0" ]]; then
               echo "App already has a no_next_href web catalog page in Postgres; skipping completed backfill scope."
               exit 0
             fi
             start_page="$(psql "$database_url" \
-              -v app_id="$MATRIX_APP_ID" \
-              -Atc "select coalesce(max(page_number) + 1, 1) from app_store_review_pages where source = 'apple_app_store_web_catalog_reviews' and app_id = :'app_id';")"
+              -Atc "select coalesce(max(page_number) + 1, 1) from app_store_review_pages where source = 'apple_app_store_web_catalog_reviews' and app_id = '$MATRIX_APP_ID';")"
           fi
           echo "Using start page: $start_page"
 
