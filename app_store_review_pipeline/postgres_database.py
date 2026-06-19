@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import Iterable
 from urllib.parse import urlsplit, urlunsplit
@@ -145,15 +146,30 @@ CREATE INDEX IF NOT EXISTS idx_app_store_sync_backlogged
     ON app_store_sync_state(backlogged);
 """
 
+POSTGRES_SCHEMA_ADVISORY_LOCK_ID = 63206438020260619
+POSTGRES_SCHEMA_MAX_ATTEMPTS = 5
+POSTGRES_SCHEMA_RETRY_SECONDS = 0.5
+
 
 def connect_postgres(database_url: str) -> psycopg.Connection:
     return psycopg.connect(database_url, row_factory=dict_row)
 
 
 def initialize_postgres(database_url: str) -> None:
-    with connect_postgres(database_url) as connection:
-        connection.execute(POSTGRES_SCHEMA)
-        connection.commit()
+    for attempt in range(1, POSTGRES_SCHEMA_MAX_ATTEMPTS + 1):
+        try:
+            with connect_postgres(database_url) as connection:
+                connection.execute(
+                    "SELECT pg_advisory_xact_lock(%s)",
+                    (POSTGRES_SCHEMA_ADVISORY_LOCK_ID,),
+                )
+                connection.execute(POSTGRES_SCHEMA)
+                connection.commit()
+            return
+        except psycopg.errors.DeadlockDetected:
+            if attempt >= POSTGRES_SCHEMA_MAX_ATTEMPTS:
+                raise
+            time.sleep(POSTGRES_SCHEMA_RETRY_SECONDS * attempt)
 
 
 def mask_database_url(database_url: str) -> str:

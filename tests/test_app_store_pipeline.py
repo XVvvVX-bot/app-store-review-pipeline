@@ -27,6 +27,7 @@ from app_store_review_pipeline.cli import command_daily_web_catalog, select_targ
 from app_store_review_pipeline.config import WEB_CATALOG_SOURCE
 from app_store_review_pipeline.fetcher import fetch_targets, terminal_reason_for_page
 from app_store_review_pipeline.models import AppTarget, ReviewPage
+from app_store_review_pipeline import postgres_database
 from app_store_review_pipeline.postgres_database import infer_field_value, mask_database_url, scope_key
 from app_store_review_pipeline.provider_apptweak import (
     apptweak_headers,
@@ -145,6 +146,34 @@ def page(status="ok", review_count=50, has_next_link=False):
         terminal_reason=None,
         overlap_review_count=0,
     )
+
+
+def test_initialize_postgres_serializes_schema_creation(monkeypatch):
+    calls = []
+
+    class FakeConnection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def execute(self, query, params=None):
+            calls.append((query, params))
+
+        def commit(self):
+            calls.append(("commit", None))
+
+    monkeypatch.setattr(postgres_database, "connect_postgres", lambda database_url: FakeConnection())
+
+    postgres_database.initialize_postgres("postgresql:///fixture")
+
+    assert calls[0] == (
+        "SELECT pg_advisory_xact_lock(%s)",
+        (postgres_database.POSTGRES_SCHEMA_ADVISORY_LOCK_ID,),
+    )
+    assert calls[1] == (postgres_database.POSTGRES_SCHEMA, None)
+    assert calls[2] == ("commit", None)
 
 
 class FakeResponse:
