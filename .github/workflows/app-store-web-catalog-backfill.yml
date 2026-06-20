@@ -61,7 +61,7 @@ on:
       max_parallel:
         description: "Maximum app backfill jobs to run in parallel. True parallelism requires multiple self-hosted runner instances."
         required: false
-        default: "4"
+        default: "8"
         type: string
 
 permissions:
@@ -87,7 +87,7 @@ jobs:
         env:
           INPUT_LIMIT: ${{ inputs.limit || '1' }}
           INPUT_TARGET_OFFSET: ${{ inputs.target_offset || '0' }}
-          INPUT_MAX_PARALLEL: ${{ inputs.max_parallel || '4' }}
+          INPUT_MAX_PARALLEL: ${{ inputs.max_parallel || '8' }}
         run: |
           set -euo pipefail
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
