@@ -395,7 +395,7 @@ Ten workflows are included:
 
 The daily workflow defaults to:
 
-- schedule: every 12 hours during web catalog cooldown/rate measurement
+- schedule: every 12 hours during web catalog cooldown/rate measurement, at `06:30` and `18:30` UTC
 - source: web catalog reviews JSON
 - database: `postgresql:///app_store_reviews`
 - secret override: `APP_STORE_DATABASE_URL`

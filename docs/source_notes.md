@@ -200,7 +200,7 @@ Current operating decision:
 
 - Pause scheduled RSS usage. The legacy RSS ingestion workflow remains manual-only, and the RSS-vs-web canary is manual-only while RSS value is considered too low for routine automation.
 - Keep web catalog as the primary candidate because it has already proven materially deeper coverage than visible HTML and can exceed the RSS 500-row/app window when Apple allows sustained pagination.
-- Use cooldown-aware web-only automation while finding a safe rate. The scheduled primary workflow now runs every 12 hours with a small 5-page cap, 10-second request delay, 2 HTTP 429 retries, and RSS-parity stopping disabled.
+- Use cooldown-aware web-only automation while finding a safe rate. The scheduled primary workflow now runs every 12 hours at `06:30` and `18:30` UTC with a small 5-page cap, 10-second request delay, 2 HTTP 429 retries, and RSS-parity stopping disabled.
 - Use the Postgres-backed HTTP 429 circuit breaker before and after scheduled ingestion. Recent-lookback protection prevents a scheduled job from hitting Apple during an active throttling window, and current-run protection marks 429-heavy runs as failures instead of green no-data runs.
 - Backfill defaults to `max_parallel=4`, but full backfill should not be attempted until a post-cooldown one-runner liveness check and a small 4-runner canary both finish with clean 200-page rates.
 
