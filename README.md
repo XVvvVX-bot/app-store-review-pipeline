@@ -57,7 +57,7 @@ Legacy RSS requests pages `1..10` from:
 https://itunes.apple.com/{country}/rss/customerreviews/page={page}/id={app_id}/sortby=mostrecent/json
 ```
 
-The scheduled web catalog probe starts from a conservative 5-page cap while the safe Apple request rate is being measured, then can auto-ramp through bounded page caps after clean recent runs. On incremental runs, the fetcher stops earlier when a page contains review IDs that are already in Postgres.
+The scheduled web catalog run uses the latest safe pressure state recorded in Postgres. Active boundary testing is handled by the separate pressure-search workflow: it starts with a 30-minute per-app cap, raises parallel app jobs from 1 to 4 after clean runs, and only then raises the per-app time cap.
 
 Apple's legacy RSS can return sparse pages: an empty `feed.entry` page may still include a `next` link, and later pages may contain review rows. For that reason, empty pages with `next` links are skipped through by default until the page cap or `--max-consecutive-empty-pages` is reached.
 
@@ -380,7 +380,7 @@ If a manual backfill run uses `--max-pages-per-app-country 0`, page cap is disab
 
 ## GitHub Actions
 
-Ten workflows are included:
+Eleven workflows are included:
 
 - `CI`: runs unit tests on GitHub-hosted Ubuntu.
 - `App Store Review Pipeline`: runs the primary scheduled web catalog ingestion on a self-hosted macOS ARM64 runner so it can reach the local Postgres database on this Mac.
@@ -388,6 +388,7 @@ Ten workflows are included:
 - `App Store Web Catalog Canary`: manual-only RSS vs web catalog `sort=recent` comparison on GitHub-hosted Ubuntu. It does not write Postgres and should be used only when an RSS baseline is explicitly needed.
 - `App Store Web Catalog Ingestion`: manual-only web catalog ingestion for controlled probes that should not change the scheduled workflow.
 - `App Store Web Catalog Backfill`: manual-only chunked backfill probe. The default fetches safe 5-page chunks; set `max_pages_per_app_country=0` only for explicit no-cap exhaustion probes after clean canaries.
+- `App Store Web Catalog Pressure Search`: manual-only chained pressure search on self-hosted macOS. It writes safe/candidate pressure state to Postgres and can self-dispatch the next probe until it finds a stable boundary.
 - `App Store Provider Compare`: manual-only RSS vs 42matters comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_42MATTERS_TOKEN` repository secret and does not write Postgres.
 - `App Store AppTweak Compare`: manual-only RSS vs AppTweak comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_APPTWEAK_TOKEN` repository secret and does not write Postgres.
 - `App Store Appfigures Compare`: manual-only RSS vs Appfigures Public Data comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_APPFIGURES_TOKEN` repository secret and does not write Postgres.
@@ -395,14 +396,14 @@ Ten workflows are included:
 
 The daily workflow defaults to:
 
-- schedule: every 30 minutes during web catalog cooldown/rate measurement, at minutes `13` and `43` UTC to avoid GitHub's high-load `:00`/`:30` schedule slots
+- schedule: daily at `09:17` UTC using the latest proven safe pressure state
 - source: web catalog reviews JSON
 - database: `postgresql:///app_store_reviews`
 - secret override: `APP_STORE_DATABASE_URL`
 - target limit: `1`
 - target offset: `auto`, selected from Postgres coverage gaps
-- web catalog pages per app-country: scheduled runs use a stateful auto-ramp from base `5` toward max `25` when recent pages are clean; manual runs default to fixed `5`
-- auto pressure ramp: `5 -> 7 -> 10 -> 12 -> 15 -> 20 -> 25` pages, using the last `720` minutes of page history
+- web catalog pages per app-country: scheduled runs use the safe cap stored in `app_store_pressure_state`; manual runs default to fixed `5`
+- pressure search: separate workflow probes candidate pressure rather than increasing the daily schedule automatically
 - start page: `1`
 - web catalog reviews per page: `20`
 - web catalog request delay: `10` seconds
@@ -414,11 +415,26 @@ The daily workflow defaults to:
 - RSS-parity stopping: disabled by default while RSS is paused
 - hard HTTP 429 cooldown gate: last HTTP 429 must be at least `720` minutes old
 - pre-run HTTP 429 circuit breaker: last `720` minutes, minimum `4` pages, trips at `>= 50%` 429
-- pressure state: stored in Postgres table `app_store_pressure_state`; with no state, the first scheduled run starts at `5` pages
-- pressure reset: any recent retry, HTTP 429, final non-200 page, or fetch error keeps or resets the next scheduled run at the base `5` pages
+- pressure state: stored in Postgres table `app_store_pressure_state`, including safe/candidate page cap, safe/candidate max parallel, safe/candidate per-app time budget, search phase, cooldown time, and last-run metrics
+- pressure reset: the pressure-search workflow treats the first HTTP 429/error as a candidate failure, cools down 30 minutes, retries the same candidate once, and then rolls back to the last safe pressure if it fails again
 - current-run HTTP 429 circuit breaker: minimum `1` page, trips at `>= 50%` 429
 
 Before relying on automation, register a self-hosted runner for this GitHub repository and make sure local Postgres is running.
+
+The pressure-search workflow defaults to:
+
+- schedule: manual-only chained probe
+- runner: self-hosted macOS ARM64
+- database: `postgresql:///app_store_reviews`
+- page cap: `0`, meaning the run is bounded by time instead of page count
+- starting per-app-country time budget: `1800` seconds, or 30 minutes
+- max parallel app jobs: starts at `1`, then increases to `2`, `3`, and `4` after clean runs
+- after parallel `4` is clean: increase the per-app-country time budget through `2700`, `3600`, `5400`, and `7200` seconds
+- request delay: `10` seconds per runner
+- HTTP 429 retries: `0` during pressure search so throttling is visible immediately
+- cooldown: `30` minutes after the first HTTP 429/error, then retry the same pressure once
+- rollback: if the same pressure fails after cooldown, cool down again and retry the previous safe pressure
+- stop condition: once rollback verification is clean, record that pressure as `stable`; if the configured maximum is clean, record `stable_at_configured_max`
 
 The web catalog canary defaults to:
 

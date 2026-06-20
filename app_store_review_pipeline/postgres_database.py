@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterable
 from urllib.parse import urlsplit, urlunsplit
@@ -137,11 +138,27 @@ CREATE TABLE IF NOT EXISTS app_store_sync_state (
 CREATE TABLE IF NOT EXISTS app_store_pressure_state (
     source TEXT PRIMARY KEY,
     next_max_pages_per_app_country INTEGER NOT NULL DEFAULT 5,
+    safe_max_pages_per_app_country INTEGER NOT NULL DEFAULT 5,
+    candidate_max_pages_per_app_country INTEGER NOT NULL DEFAULT 5,
+    next_max_parallel INTEGER NOT NULL DEFAULT 1,
+    safe_max_parallel INTEGER NOT NULL DEFAULT 1,
+    candidate_max_parallel INTEGER NOT NULL DEFAULT 1,
+    next_scope_time_budget_seconds INTEGER NOT NULL DEFAULT 1800,
+    safe_scope_time_budget_seconds INTEGER NOT NULL DEFAULT 1800,
+    candidate_scope_time_budget_seconds INTEGER NOT NULL DEFAULT 1800,
     clean_run_count INTEGER NOT NULL DEFAULT 0,
+    search_phase TEXT NOT NULL DEFAULT 'probe',
+    cooldown_until TEXT,
+    confirmed_429_count INTEGER NOT NULL DEFAULT 0,
     last_result TEXT,
     last_started_at TEXT,
     last_completed_at TEXT,
     last_used_pages INTEGER NOT NULL DEFAULT 0,
+    last_safe_pages INTEGER NOT NULL DEFAULT 5,
+    last_used_parallel INTEGER NOT NULL DEFAULT 1,
+    last_safe_parallel INTEGER NOT NULL DEFAULT 1,
+    last_used_scope_time_budget_seconds INTEGER NOT NULL DEFAULT 1800,
+    last_safe_scope_time_budget_seconds INTEGER NOT NULL DEFAULT 1800,
     last_page_count INTEGER NOT NULL DEFAULT 0,
     last_ok_page_count INTEGER NOT NULL DEFAULT 0,
     last_http_429_page_count INTEGER NOT NULL DEFAULT 0,
@@ -163,6 +180,25 @@ CREATE INDEX IF NOT EXISTS idx_app_store_sync_backlogged
     ON app_store_sync_state(backlogged);
 """
 
+POSTGRES_SCHEMA_MIGRATIONS = (
+    "ALTER TABLE app_store_pressure_state ADD COLUMN IF NOT EXISTS safe_max_pages_per_app_country INTEGER NOT NULL DEFAULT 5",
+    "ALTER TABLE app_store_pressure_state ADD COLUMN IF NOT EXISTS candidate_max_pages_per_app_country INTEGER NOT NULL DEFAULT 5",
+    "ALTER TABLE app_store_pressure_state ADD COLUMN IF NOT EXISTS next_max_parallel INTEGER NOT NULL DEFAULT 1",
+    "ALTER TABLE app_store_pressure_state ADD COLUMN IF NOT EXISTS safe_max_parallel INTEGER NOT NULL DEFAULT 1",
+    "ALTER TABLE app_store_pressure_state ADD COLUMN IF NOT EXISTS candidate_max_parallel INTEGER NOT NULL DEFAULT 1",
+    "ALTER TABLE app_store_pressure_state ADD COLUMN IF NOT EXISTS next_scope_time_budget_seconds INTEGER NOT NULL DEFAULT 1800",
+    "ALTER TABLE app_store_pressure_state ADD COLUMN IF NOT EXISTS safe_scope_time_budget_seconds INTEGER NOT NULL DEFAULT 1800",
+    "ALTER TABLE app_store_pressure_state ADD COLUMN IF NOT EXISTS candidate_scope_time_budget_seconds INTEGER NOT NULL DEFAULT 1800",
+    "ALTER TABLE app_store_pressure_state ADD COLUMN IF NOT EXISTS search_phase TEXT NOT NULL DEFAULT 'probe'",
+    "ALTER TABLE app_store_pressure_state ADD COLUMN IF NOT EXISTS cooldown_until TEXT",
+    "ALTER TABLE app_store_pressure_state ADD COLUMN IF NOT EXISTS confirmed_429_count INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE app_store_pressure_state ADD COLUMN IF NOT EXISTS last_safe_pages INTEGER NOT NULL DEFAULT 5",
+    "ALTER TABLE app_store_pressure_state ADD COLUMN IF NOT EXISTS last_used_parallel INTEGER NOT NULL DEFAULT 1",
+    "ALTER TABLE app_store_pressure_state ADD COLUMN IF NOT EXISTS last_safe_parallel INTEGER NOT NULL DEFAULT 1",
+    "ALTER TABLE app_store_pressure_state ADD COLUMN IF NOT EXISTS last_used_scope_time_budget_seconds INTEGER NOT NULL DEFAULT 1800",
+    "ALTER TABLE app_store_pressure_state ADD COLUMN IF NOT EXISTS last_safe_scope_time_budget_seconds INTEGER NOT NULL DEFAULT 1800",
+)
+
 POSTGRES_SCHEMA_ADVISORY_LOCK_ID = 63206438020260619
 POSTGRES_SCHEMA_MAX_ATTEMPTS = 5
 POSTGRES_SCHEMA_RETRY_SECONDS = 0.5
@@ -181,6 +217,8 @@ def initialize_postgres(database_url: str) -> None:
                     (POSTGRES_SCHEMA_ADVISORY_LOCK_ID,),
                 )
                 connection.execute(POSTGRES_SCHEMA)
+                for statement in POSTGRES_SCHEMA_MIGRATIONS:
+                    connection.execute(statement)
                 connection.commit()
             return
         except psycopg.errors.DeadlockDetected:
@@ -322,18 +360,157 @@ WEB_CATALOG_PRESSURE_RAMP: tuple[tuple[int, int], ...] = (
     (6, 25),
 )
 
+WEB_CATALOG_SCOPE_TIME_RAMP_SECONDS: tuple[int, ...] = (
+    1800,
+    2700,
+    3600,
+    5400,
+    7200,
+)
+
 
 def clamp_pressure_pages(value: int, *, base_pages: int, max_pages: int) -> int:
+    if int(value) <= 0 or int(max_pages) <= 0:
+        return 0
+    base_pages = max(1, int(base_pages))
     return min(max_pages, max(base_pages, int(value)))
 
 
 def next_pressure_pages(current_pages: int, *, base_pages: int, max_pages: int) -> int:
     current_pages = clamp_pressure_pages(current_pages, base_pages=base_pages, max_pages=max_pages)
+    if current_pages == 0:
+        return 0
     for _, candidate_pages in WEB_CATALOG_PRESSURE_RAMP:
         candidate_pages = clamp_pressure_pages(candidate_pages, base_pages=base_pages, max_pages=max_pages)
         if candidate_pages > current_pages:
             return candidate_pages
     return current_pages
+
+
+def previous_pressure_pages(current_pages: int, *, base_pages: int, max_pages: int) -> int:
+    current_pages = clamp_pressure_pages(current_pages, base_pages=base_pages, max_pages=max_pages)
+    if current_pages == 0:
+        return 0
+    previous_pages = base_pages
+    for _, candidate_pages in WEB_CATALOG_PRESSURE_RAMP:
+        candidate_pages = clamp_pressure_pages(candidate_pages, base_pages=base_pages, max_pages=max_pages)
+        if candidate_pages >= current_pages:
+            return previous_pages
+        previous_pages = candidate_pages
+    return previous_pages
+
+
+def next_scope_time_budget_seconds(current_seconds: int, *, base_seconds: int, max_seconds: int) -> int:
+    current_seconds = min(max_seconds, max(base_seconds, int(current_seconds)))
+    for candidate_seconds in WEB_CATALOG_SCOPE_TIME_RAMP_SECONDS:
+        candidate_seconds = min(max_seconds, max(base_seconds, candidate_seconds))
+        if candidate_seconds > current_seconds:
+            return candidate_seconds
+    return current_seconds
+
+
+def previous_scope_time_budget_seconds(current_seconds: int, *, base_seconds: int, max_seconds: int) -> int:
+    current_seconds = min(max_seconds, max(base_seconds, int(current_seconds)))
+    previous_seconds = base_seconds
+    for candidate_seconds in WEB_CATALOG_SCOPE_TIME_RAMP_SECONDS:
+        candidate_seconds = min(max_seconds, max(base_seconds, candidate_seconds))
+        if candidate_seconds >= current_seconds:
+            return previous_seconds
+        previous_seconds = candidate_seconds
+    return previous_seconds
+
+
+def next_pressure_config(
+    *,
+    used_pages: int,
+    used_parallel: int,
+    used_scope_time_budget_seconds: int,
+    base_pages: int,
+    max_pages: int,
+    base_parallel: int,
+    max_parallel: int,
+    base_scope_time_budget_seconds: int,
+    max_scope_time_budget_seconds: int,
+) -> dict:
+    safe_pages = clamp_pressure_pages(used_pages, base_pages=base_pages, max_pages=max_pages)
+    safe_parallel = min(max_parallel, max(base_parallel, int(used_parallel)))
+    safe_scope_time_budget_seconds = min(
+        max_scope_time_budget_seconds,
+        max(base_scope_time_budget_seconds, int(used_scope_time_budget_seconds)),
+    )
+    if safe_parallel < max_parallel:
+        return {
+            "max_pages_per_app_country": safe_pages,
+            "max_parallel": safe_parallel + 1,
+            "scope_time_budget_seconds": safe_scope_time_budget_seconds,
+        }
+    next_scope_seconds = next_scope_time_budget_seconds(
+        safe_scope_time_budget_seconds,
+        base_seconds=base_scope_time_budget_seconds,
+        max_seconds=max_scope_time_budget_seconds,
+    )
+    return {
+        "max_pages_per_app_country": safe_pages,
+        "max_parallel": safe_parallel,
+        "scope_time_budget_seconds": next_scope_seconds,
+    }
+
+
+def previous_pressure_config(
+    *,
+    used_pages: int,
+    used_parallel: int,
+    used_scope_time_budget_seconds: int,
+    base_pages: int,
+    max_pages: int,
+    base_parallel: int,
+    max_parallel: int,
+    base_scope_time_budget_seconds: int,
+    max_scope_time_budget_seconds: int,
+) -> dict:
+    safe_pages = clamp_pressure_pages(used_pages, base_pages=base_pages, max_pages=max_pages)
+    used_parallel = min(max_parallel, max(base_parallel, int(used_parallel)))
+    used_scope_time_budget_seconds = min(
+        max_scope_time_budget_seconds,
+        max(base_scope_time_budget_seconds, int(used_scope_time_budget_seconds)),
+    )
+    if used_scope_time_budget_seconds > base_scope_time_budget_seconds:
+        return {
+            "max_pages_per_app_country": safe_pages,
+            "max_parallel": used_parallel,
+            "scope_time_budget_seconds": previous_scope_time_budget_seconds(
+                used_scope_time_budget_seconds,
+                base_seconds=base_scope_time_budget_seconds,
+                max_seconds=max_scope_time_budget_seconds,
+            ),
+        }
+    return {
+        "max_pages_per_app_country": safe_pages,
+        "max_parallel": max(base_parallel, used_parallel - 1),
+        "scope_time_budget_seconds": base_scope_time_budget_seconds,
+    }
+
+
+def pressure_cooldown_timestamp(minutes: int) -> str | None:
+    minutes = max(0, int(minutes))
+    if minutes <= 0:
+        return None
+    cooldown_time = datetime.now(timezone.utc) + timedelta(minutes=minutes)
+    return cooldown_time.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def pressure_state_int(state: dict | None, key: str, default: int) -> int:
+    if not state:
+        return default
+    value = state.get(key)
+    return int(value) if value is not None else default
+
+
+def pressure_state_text(state: dict | None, key: str, default: str) -> str:
+    if not state:
+        return default
+    value = state.get(key)
+    return str(value) if value is not None else default
 
 
 def web_catalog_recent_pressure_metrics(
@@ -400,11 +577,21 @@ def web_catalog_pressure_status(
     lookback_minutes: int = 720,
     base_pages: int = 5,
     max_pages: int = 25,
+    base_parallel: int = 1,
+    max_parallel: int = 4,
+    base_scope_time_budget_seconds: int = 1800,
+    max_scope_time_budget_seconds: int = 7200,
+    selection_mode: str = "safe",
 ) -> dict:
     initialize_postgres(database_url)
     lookback_minutes = max(0, int(lookback_minutes))
-    base_pages = max(1, int(base_pages))
-    max_pages = max(1, int(max_pages))
+    base_pages = max(0, int(base_pages))
+    max_pages = max(0, int(max_pages))
+    base_parallel = max(1, int(base_parallel))
+    max_parallel = max(base_parallel, int(max_parallel))
+    base_scope_time_budget_seconds = max(1, int(base_scope_time_budget_seconds))
+    max_scope_time_budget_seconds = max(base_scope_time_budget_seconds, int(max_scope_time_budget_seconds))
+    selection_mode = selection_mode if selection_mode in {"safe", "candidate"} else "safe"
 
     with connect_postgres(database_url) as connection:
         metrics = web_catalog_recent_pressure_metrics(
@@ -414,7 +601,11 @@ def web_catalog_pressure_status(
         )
         state = connection.execute(
             """
-            SELECT *
+            SELECT *,
+                CASE
+                    WHEN cooldown_until IS NULL THEN 0
+                    ELSE GREATEST(0, EXTRACT(EPOCH FROM (cooldown_until::timestamptz - now())))
+                END AS cooldown_seconds_remaining
             FROM app_store_pressure_state
             WHERE source = %s
             """,
@@ -423,34 +614,95 @@ def web_catalog_pressure_status(
 
     page_count = int(metrics["page_count"] or 0)
     clean_for_ramp = pressure_metrics_are_clean(metrics)
-    stored_next_pages = int(state["next_max_pages_per_app_country"]) if state else base_pages
-    selected_pages = clamp_pressure_pages(stored_next_pages, base_pages=base_pages, max_pages=max_pages)
-    selected_level = max(0, sum(1 for _, pages in WEB_CATALOG_PRESSURE_RAMP if pages <= selected_pages) - 1)
+    safe_pages = clamp_pressure_pages(
+        pressure_state_int(state, "safe_max_pages_per_app_country", base_pages),
+        base_pages=base_pages,
+        max_pages=max_pages,
+    )
+    candidate_pages = clamp_pressure_pages(
+        pressure_state_int(state, "candidate_max_pages_per_app_country", safe_pages),
+        base_pages=base_pages,
+        max_pages=max_pages,
+    )
+    safe_parallel = min(
+        max_parallel,
+        max(base_parallel, pressure_state_int(state, "safe_max_parallel", base_parallel)),
+    )
+    candidate_parallel = min(
+        max_parallel,
+        max(base_parallel, pressure_state_int(state, "candidate_max_parallel", safe_parallel)),
+    )
+    safe_scope_time_budget_seconds = min(
+        max_scope_time_budget_seconds,
+        max(
+            base_scope_time_budget_seconds,
+            pressure_state_int(state, "safe_scope_time_budget_seconds", base_scope_time_budget_seconds),
+        ),
+    )
+    candidate_scope_time_budget_seconds = min(
+        max_scope_time_budget_seconds,
+        max(
+            base_scope_time_budget_seconds,
+            pressure_state_int(state, "candidate_scope_time_budget_seconds", safe_scope_time_budget_seconds),
+        ),
+    )
 
     if not state:
         reason = "no_pressure_state"
-        selected_pages = min(base_pages, max_pages)
-        selected_level = 0
+        safe_pages = clamp_pressure_pages(base_pages, base_pages=base_pages, max_pages=max_pages)
+        candidate_pages = safe_pages
+        safe_parallel = base_parallel
+        candidate_parallel = base_parallel
+        safe_scope_time_budget_seconds = base_scope_time_budget_seconds
+        candidate_scope_time_budget_seconds = base_scope_time_budget_seconds
     elif not page_count:
         reason = "no_recent_pages"
     elif not clean_for_ramp:
         reason = "recent_errors_or_retries"
-        selected_pages = min(base_pages, max_pages)
-        selected_level = 0
     else:
-        reason = "stored_next_page_cap"
+        reason = "stored_pressure_state"
+
+    if selection_mode == "candidate":
+        selected_pages = candidate_pages
+        selected_parallel = candidate_parallel
+        selected_scope_time_budget_seconds = candidate_scope_time_budget_seconds
+    else:
+        selected_pages = safe_pages
+        selected_parallel = safe_parallel
+        selected_scope_time_budget_seconds = safe_scope_time_budget_seconds
+
+    selected_level = max(0, sum(1 for _, pages in WEB_CATALOG_PRESSURE_RAMP if pages <= selected_pages) - 1)
+    cooldown_seconds_remaining = float((state.get("cooldown_seconds_remaining") if state else 0) or 0)
 
     return {
         "source": source,
         "lookback_minutes": lookback_minutes,
         "base_pages": base_pages,
         "max_pages": max_pages,
+        "base_parallel": base_parallel,
+        "max_parallel": max_parallel,
+        "base_scope_time_budget_seconds": base_scope_time_budget_seconds,
+        "max_scope_time_budget_seconds": max_scope_time_budget_seconds,
         "ramp": [
             {"level": level, "pages": pages}
             for level, pages in WEB_CATALOG_PRESSURE_RAMP
         ],
+        "scope_time_ramp_seconds": list(WEB_CATALOG_SCOPE_TIME_RAMP_SECONDS),
+        "selection_mode": selection_mode,
         "selected_level": selected_level,
         "selected_max_pages_per_app_country": selected_pages,
+        "selected_max_parallel": selected_parallel,
+        "selected_scope_time_budget_seconds": selected_scope_time_budget_seconds,
+        "safe_max_pages_per_app_country": safe_pages,
+        "safe_max_parallel": safe_parallel,
+        "safe_scope_time_budget_seconds": safe_scope_time_budget_seconds,
+        "candidate_max_pages_per_app_country": candidate_pages,
+        "candidate_max_parallel": candidate_parallel,
+        "candidate_scope_time_budget_seconds": candidate_scope_time_budget_seconds,
+        "search_phase": pressure_state_text(state, "search_phase", "probe"),
+        "cooldown_until": state.get("cooldown_until") if state else None,
+        "cooldown_seconds_remaining": cooldown_seconds_remaining,
+        "cooldown_active": cooldown_seconds_remaining > 0,
         "reason": reason,
         "clean_for_ramp": clean_for_ramp,
         "state": dict(state) if state else None,
@@ -471,13 +723,30 @@ def record_web_catalog_pressure_result(
     source: str = WEB_CATALOG_SOURCE,
     since: str,
     used_pages: int,
+    used_parallel: int = 1,
+    used_scope_time_budget_seconds: int = 1800,
     base_pages: int = 5,
     max_pages: int = 25,
+    base_parallel: int = 1,
+    max_parallel: int = 4,
+    base_scope_time_budget_seconds: int = 1800,
+    max_scope_time_budget_seconds: int = 7200,
+    cooldown_minutes: int = 30,
 ) -> dict:
     initialize_postgres(database_url)
-    base_pages = max(1, int(base_pages))
-    max_pages = max(1, int(max_pages))
+    base_pages = max(0, int(base_pages))
+    max_pages = max(0, int(max_pages))
+    base_parallel = max(1, int(base_parallel))
+    max_parallel = max(base_parallel, int(max_parallel))
+    base_scope_time_budget_seconds = max(1, int(base_scope_time_budget_seconds))
+    max_scope_time_budget_seconds = max(base_scope_time_budget_seconds, int(max_scope_time_budget_seconds))
+    cooldown_minutes = max(0, int(cooldown_minutes))
     used_pages = clamp_pressure_pages(int(used_pages), base_pages=base_pages, max_pages=max_pages)
+    used_parallel = min(max_parallel, max(base_parallel, int(used_parallel)))
+    used_scope_time_budget_seconds = min(
+        max_scope_time_budget_seconds,
+        max(base_scope_time_budget_seconds, int(used_scope_time_budget_seconds)),
+    )
 
     with connect_postgres(database_url) as connection:
         metrics = web_catalog_recent_pressure_metrics(
@@ -495,19 +764,189 @@ def record_web_catalog_pressure_result(
             (source,),
         ).fetchone()
         clean_for_ramp = pressure_metrics_are_clean(metrics)
-        proved_selected_pressure = clean_for_ramp and int(metrics["page_count"] or 0) >= used_pages
-        if proved_selected_pressure:
-            next_pages = next_pressure_pages(used_pages, base_pages=base_pages, max_pages=max_pages)
-            clean_run_count = int(previous_state["clean_run_count"] or 0) + 1 if previous_state else 1
-            result = "clean_ramp"
+        required_pages = used_pages if used_pages > 0 else 1
+        proved_selected_pressure = clean_for_ramp and int(metrics["page_count"] or 0) >= required_pages
+        previous_safe_pages = clamp_pressure_pages(
+            pressure_state_int(previous_state, "safe_max_pages_per_app_country", base_pages),
+            base_pages=base_pages,
+            max_pages=max_pages,
+        )
+        previous_safe_parallel = min(
+            max_parallel,
+            max(base_parallel, pressure_state_int(previous_state, "safe_max_parallel", base_parallel)),
+        )
+        previous_safe_scope_time_budget_seconds = min(
+            max_scope_time_budget_seconds,
+            max(
+                base_scope_time_budget_seconds,
+                pressure_state_int(
+                    previous_state,
+                    "safe_scope_time_budget_seconds",
+                    base_scope_time_budget_seconds,
+                ),
+            ),
+        )
+        phase = pressure_state_text(previous_state, "search_phase", "probe")
+        confirmed_429_count = pressure_state_int(previous_state, "confirmed_429_count", 0)
+        next_action = "stop"
+        next_after_seconds = 0
+        cooldown_until = None
+        page_count = int(metrics["page_count"] or 0)
+
+        if page_count == 0:
+            safe_pages = previous_safe_pages
+            safe_parallel = previous_safe_parallel
+            safe_scope_time_budget_seconds = previous_safe_scope_time_budget_seconds
+            candidate_pages = clamp_pressure_pages(
+                pressure_state_int(previous_state, "candidate_max_pages_per_app_country", safe_pages),
+                base_pages=base_pages,
+                max_pages=max_pages,
+            )
+            candidate_parallel = min(
+                max_parallel,
+                max(base_parallel, pressure_state_int(previous_state, "candidate_max_parallel", safe_parallel)),
+            )
+            candidate_scope_time_budget_seconds = min(
+                max_scope_time_budget_seconds,
+                max(
+                    base_scope_time_budget_seconds,
+                    pressure_state_int(
+                        previous_state,
+                        "candidate_scope_time_budget_seconds",
+                        safe_scope_time_budget_seconds,
+                    ),
+                ),
+            )
+            clean_run_count = pressure_state_int(previous_state, "clean_run_count", 0)
+            result = "no_pages_no_change"
+            search_phase = phase
+        elif proved_selected_pressure:
+            safe_pages = used_pages
+            safe_parallel = used_parallel
+            safe_scope_time_budget_seconds = used_scope_time_budget_seconds
+            clean_run_count = pressure_state_int(previous_state, "clean_run_count", 0) + 1
+            next_config = next_pressure_config(
+                used_pages=used_pages,
+                used_parallel=used_parallel,
+                used_scope_time_budget_seconds=used_scope_time_budget_seconds,
+                base_pages=base_pages,
+                max_pages=max_pages,
+                base_parallel=base_parallel,
+                max_parallel=max_parallel,
+                base_scope_time_budget_seconds=base_scope_time_budget_seconds,
+                max_scope_time_budget_seconds=max_scope_time_budget_seconds,
+            )
+            at_max_parallel = safe_parallel >= max_parallel
+            at_max_time = safe_scope_time_budget_seconds >= max_scope_time_budget_seconds
+            if at_max_parallel and at_max_time:
+                result = "stable_at_configured_max"
+                search_phase = "stable"
+                candidate_pages = safe_pages
+                candidate_parallel = safe_parallel
+                candidate_scope_time_budget_seconds = safe_scope_time_budget_seconds
+            elif phase == "rollback_verify":
+                result = "stable_safe_strategy"
+                search_phase = "stable"
+                candidate_pages = safe_pages
+                candidate_parallel = safe_parallel
+                candidate_scope_time_budget_seconds = safe_scope_time_budget_seconds
+            else:
+                result = "clean_increase_pressure"
+                search_phase = "probe"
+                candidate_pages = int(next_config["max_pages_per_app_country"])
+                candidate_parallel = int(next_config["max_parallel"])
+                candidate_scope_time_budget_seconds = int(next_config["scope_time_budget_seconds"])
+                next_action = "continue_now"
+            confirmed_429_count = 0
         elif clean_for_ramp:
-            next_pages = used_pages
-            clean_run_count = int(previous_state["clean_run_count"] or 0) if previous_state else 0
+            safe_pages = used_pages
+            safe_parallel = used_parallel
+            safe_scope_time_budget_seconds = used_scope_time_budget_seconds
+            clean_run_count = pressure_state_int(previous_state, "clean_run_count", 0)
             result = "clean_but_short"
+            search_phase = "stable"
+            candidate_pages = safe_pages
+            candidate_parallel = safe_parallel
+            candidate_scope_time_budget_seconds = safe_scope_time_budget_seconds
         else:
-            next_pages = min(base_pages, max_pages)
             clean_run_count = 0
-            result = "reset_after_error_or_retry"
+            safe_pages = previous_safe_pages
+            safe_parallel = previous_safe_parallel
+            safe_scope_time_budget_seconds = previous_safe_scope_time_budget_seconds
+            if phase == "retry_after_429":
+                rollback_config = {
+                    "max_pages_per_app_country": previous_safe_pages,
+                    "max_parallel": previous_safe_parallel,
+                    "scope_time_budget_seconds": previous_safe_scope_time_budget_seconds,
+                }
+                if (
+                    int(rollback_config["max_parallel"]) >= used_parallel
+                    and int(rollback_config["scope_time_budget_seconds"]) >= used_scope_time_budget_seconds
+                ):
+                    rollback_config = previous_pressure_config(
+                        used_pages=used_pages,
+                        used_parallel=used_parallel,
+                        used_scope_time_budget_seconds=used_scope_time_budget_seconds,
+                        base_pages=base_pages,
+                        max_pages=max_pages,
+                        base_parallel=base_parallel,
+                        max_parallel=max_parallel,
+                        base_scope_time_budget_seconds=base_scope_time_budget_seconds,
+                        max_scope_time_budget_seconds=max_scope_time_budget_seconds,
+                    )
+                safe_pages = int(rollback_config["max_pages_per_app_country"])
+                safe_parallel = int(rollback_config["max_parallel"])
+                safe_scope_time_budget_seconds = int(rollback_config["scope_time_budget_seconds"])
+                candidate_pages = safe_pages
+                candidate_parallel = safe_parallel
+                candidate_scope_time_budget_seconds = safe_scope_time_budget_seconds
+                result = "confirmed_429_rollback"
+                search_phase = "rollback_verify"
+                confirmed_429_count += 1
+                next_action = "cooldown_retry_rollback"
+                next_after_seconds = cooldown_minutes * 60
+                cooldown_until = pressure_cooldown_timestamp(cooldown_minutes)
+            elif phase == "rollback_verify":
+                rollback_config = previous_pressure_config(
+                    used_pages=used_pages,
+                    used_parallel=used_parallel,
+                    used_scope_time_budget_seconds=used_scope_time_budget_seconds,
+                    base_pages=base_pages,
+                    max_pages=max_pages,
+                    base_parallel=base_parallel,
+                    max_parallel=max_parallel,
+                    base_scope_time_budget_seconds=base_scope_time_budget_seconds,
+                    max_scope_time_budget_seconds=max_scope_time_budget_seconds,
+                )
+                safe_pages = int(rollback_config["max_pages_per_app_country"])
+                safe_parallel = int(rollback_config["max_parallel"])
+                safe_scope_time_budget_seconds = int(rollback_config["scope_time_budget_seconds"])
+                candidate_pages = safe_pages
+                candidate_parallel = safe_parallel
+                candidate_scope_time_budget_seconds = safe_scope_time_budget_seconds
+                result = "rollback_still_429_lower_pressure"
+                search_phase = "rollback_verify"
+                confirmed_429_count += 1
+                next_action = "cooldown_retry_rollback"
+                next_after_seconds = cooldown_minutes * 60
+                cooldown_until = pressure_cooldown_timestamp(cooldown_minutes)
+            else:
+                candidate_pages = used_pages
+                candidate_parallel = used_parallel
+                candidate_scope_time_budget_seconds = used_scope_time_budget_seconds
+                result = "first_429_cooldown_retry"
+                search_phase = "retry_after_429"
+                confirmed_429_count = max(confirmed_429_count, 1)
+                next_action = "cooldown_retry_same_pressure"
+                next_after_seconds = cooldown_minutes * 60
+                cooldown_until = pressure_cooldown_timestamp(cooldown_minutes)
+
+        next_pages = candidate_pages
+        next_parallel = candidate_parallel
+        next_scope_time_budget_seconds = candidate_scope_time_budget_seconds
+        if next_action == "stop":
+            next_after_seconds = 0
+            cooldown_until = None
 
         completed_at = utc_timestamp()
         connection.execute(
@@ -515,11 +954,27 @@ def record_web_catalog_pressure_result(
             INSERT INTO app_store_pressure_state (
                 source,
                 next_max_pages_per_app_country,
+                safe_max_pages_per_app_country,
+                candidate_max_pages_per_app_country,
+                next_max_parallel,
+                safe_max_parallel,
+                candidate_max_parallel,
+                next_scope_time_budget_seconds,
+                safe_scope_time_budget_seconds,
+                candidate_scope_time_budget_seconds,
                 clean_run_count,
+                search_phase,
+                cooldown_until,
+                confirmed_429_count,
                 last_result,
                 last_started_at,
                 last_completed_at,
                 last_used_pages,
+                last_safe_pages,
+                last_used_parallel,
+                last_safe_parallel,
+                last_used_scope_time_budget_seconds,
+                last_safe_scope_time_budget_seconds,
                 last_page_count,
                 last_ok_page_count,
                 last_http_429_page_count,
@@ -528,14 +983,34 @@ def record_web_catalog_pressure_result(
                 last_retried_page_count,
                 updated_at
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+            VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP
+            )
             ON CONFLICT (source) DO UPDATE SET
                 next_max_pages_per_app_country = EXCLUDED.next_max_pages_per_app_country,
+                safe_max_pages_per_app_country = EXCLUDED.safe_max_pages_per_app_country,
+                candidate_max_pages_per_app_country = EXCLUDED.candidate_max_pages_per_app_country,
+                next_max_parallel = EXCLUDED.next_max_parallel,
+                safe_max_parallel = EXCLUDED.safe_max_parallel,
+                candidate_max_parallel = EXCLUDED.candidate_max_parallel,
+                next_scope_time_budget_seconds = EXCLUDED.next_scope_time_budget_seconds,
+                safe_scope_time_budget_seconds = EXCLUDED.safe_scope_time_budget_seconds,
+                candidate_scope_time_budget_seconds = EXCLUDED.candidate_scope_time_budget_seconds,
                 clean_run_count = EXCLUDED.clean_run_count,
+                search_phase = EXCLUDED.search_phase,
+                cooldown_until = EXCLUDED.cooldown_until,
+                confirmed_429_count = EXCLUDED.confirmed_429_count,
                 last_result = EXCLUDED.last_result,
                 last_started_at = EXCLUDED.last_started_at,
                 last_completed_at = EXCLUDED.last_completed_at,
                 last_used_pages = EXCLUDED.last_used_pages,
+                last_safe_pages = EXCLUDED.last_safe_pages,
+                last_used_parallel = EXCLUDED.last_used_parallel,
+                last_safe_parallel = EXCLUDED.last_safe_parallel,
+                last_used_scope_time_budget_seconds = EXCLUDED.last_used_scope_time_budget_seconds,
+                last_safe_scope_time_budget_seconds = EXCLUDED.last_safe_scope_time_budget_seconds,
                 last_page_count = EXCLUDED.last_page_count,
                 last_ok_page_count = EXCLUDED.last_ok_page_count,
                 last_http_429_page_count = EXCLUDED.last_http_429_page_count,
@@ -547,11 +1022,27 @@ def record_web_catalog_pressure_result(
             (
                 source,
                 next_pages,
+                safe_pages,
+                candidate_pages,
+                next_parallel,
+                safe_parallel,
+                candidate_parallel,
+                next_scope_time_budget_seconds,
+                safe_scope_time_budget_seconds,
+                candidate_scope_time_budget_seconds,
                 clean_run_count,
+                search_phase,
+                cooldown_until,
+                confirmed_429_count,
                 result,
                 since,
                 completed_at,
                 used_pages,
+                safe_pages,
+                used_parallel,
+                safe_parallel,
+                used_scope_time_budget_seconds,
+                safe_scope_time_budget_seconds,
                 int(metrics["page_count"] or 0),
                 int(metrics["ok_page_count"] or 0),
                 int(metrics["http_429_page_count"] or 0),
@@ -566,8 +1057,23 @@ def record_web_catalog_pressure_result(
         "source": source,
         "since": since,
         "used_pages": used_pages,
+        "used_parallel": used_parallel,
+        "used_scope_time_budget_seconds": used_scope_time_budget_seconds,
         "next_max_pages_per_app_country": next_pages,
+        "safe_max_pages_per_app_country": safe_pages,
+        "candidate_max_pages_per_app_country": candidate_pages,
+        "next_max_parallel": next_parallel,
+        "safe_max_parallel": safe_parallel,
+        "candidate_max_parallel": candidate_parallel,
+        "next_scope_time_budget_seconds": next_scope_time_budget_seconds,
+        "safe_scope_time_budget_seconds": safe_scope_time_budget_seconds,
+        "candidate_scope_time_budget_seconds": candidate_scope_time_budget_seconds,
         "result": result,
+        "search_phase": search_phase,
+        "next_action": next_action,
+        "next_after_seconds": next_after_seconds,
+        "cooldown_until": cooldown_until,
+        "confirmed_429_count": confirmed_429_count,
         "clean_for_ramp": clean_for_ramp,
         "proved_selected_pressure": proved_selected_pressure,
         "clean_run_count": clean_run_count,

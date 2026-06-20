@@ -2,9 +2,9 @@ name: App Store Review Pipeline
 
 on:
   schedule:
-    # Half-hourly cooldown-safe web catalog probe.
-    # Avoid :00/:30 because GitHub may delay or drop scheduled workflows during high-load minutes.
-    - cron: "13,43 * * * *"
+    # Daily production-style incremental run using the latest proven safe pressure state.
+    # The separate pressure-search workflow performs active boundary testing.
+    - cron: "17 9 * * *"
   workflow_dispatch:
     inputs:
       limit:
@@ -23,13 +23,14 @@ on:
         default: "5"
         type: string
       pressure_ramp_mode:
-        description: "Use recent clean web catalog pages to raise scheduled pressure, or keep the fixed page cap"
+        description: "Use stored safe web catalog pressure, candidate pressure, or keep the fixed page cap"
         required: false
         default: "fixed"
         type: choice
         options:
           - fixed
-          - auto
+          - safe
+          - candidate
       pressure_ramp_lookback_minutes:
         description: "Recent clean-history window used by auto pressure ramp"
         required: false
@@ -128,7 +129,7 @@ jobs:
       INPUT_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '1' }}
       INPUT_TARGET_OFFSET: ${{ github.event_name == 'workflow_dispatch' && inputs.target_offset || 'auto' }}
       INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ github.event_name == 'workflow_dispatch' && inputs.max_pages_per_app_country || '5' }}
-      INPUT_PRESSURE_RAMP_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.pressure_ramp_mode || 'auto' }}
+      INPUT_PRESSURE_RAMP_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.pressure_ramp_mode || 'safe' }}
       INPUT_PRESSURE_RAMP_LOOKBACK_MINUTES: ${{ github.event_name == 'workflow_dispatch' && inputs.pressure_ramp_lookback_minutes || '720' }}
       INPUT_PRESSURE_RAMP_MAX_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.pressure_ramp_max_pages || '25' }}
       INPUT_START_PAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.start_page || '1' }}
@@ -205,13 +206,14 @@ jobs:
           set -euo pipefail
           database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
           selected_max_pages_per_app_country="$INPUT_MAX_PAGES_PER_APP_COUNTRY"
-          if [[ "$INPUT_PRESSURE_RAMP_MODE" == "auto" ]]; then
+          if [[ "$INPUT_PRESSURE_RAMP_MODE" == "safe" || "$INPUT_PRESSURE_RAMP_MODE" == "candidate" ]]; then
             pressure_json="$(.venv/bin/python app_store_pipeline.py select-web-catalog-pressure \
               --database-url "$database_url" \
               --source apple_app_store_web_catalog_reviews \
               --lookback-minutes "$INPUT_PRESSURE_RAMP_LOOKBACK_MINUTES" \
               --base-pages "$INPUT_MAX_PAGES_PER_APP_COUNTRY" \
-              --max-pages "$INPUT_PRESSURE_RAMP_MAX_PAGES")"
+              --max-pages "$INPUT_PRESSURE_RAMP_MAX_PAGES" \
+              --selection-mode "$INPUT_PRESSURE_RAMP_MODE")"
             echo "$pressure_json"
             selected_max_pages_per_app_country="$(
               PRESSURE_JSON="$pressure_json" .venv/bin/python - <<'PY'
@@ -285,7 +287,7 @@ jobs:
             --max-rate "$INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE"
 
       - name: Record web catalog pressure result
-        if: ${{ always() && !cancelled() && env.INPUT_PRESSURE_RAMP_MODE == 'auto' }}
+        if: ${{ always() && !cancelled() && env.INPUT_PRESSURE_RAMP_MODE == 'candidate' }}
         env:
           DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
         run: |

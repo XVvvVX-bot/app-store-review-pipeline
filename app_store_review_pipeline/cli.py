@@ -114,6 +114,11 @@ def build_parser() -> argparse.ArgumentParser:
     web_pressure.add_argument("--lookback-minutes", type=int, default=720)
     web_pressure.add_argument("--base-pages", type=int, default=5)
     web_pressure.add_argument("--max-pages", type=int, default=25)
+    web_pressure.add_argument("--base-parallel", type=int, default=1)
+    web_pressure.add_argument("--max-parallel", type=int, default=4)
+    web_pressure.add_argument("--base-scope-time-budget-seconds", type=int, default=1800)
+    web_pressure.add_argument("--max-scope-time-budget-seconds", type=int, default=7200)
+    web_pressure.add_argument("--selection-mode", choices=["safe", "candidate"], default="safe")
     web_pressure.set_defaults(func=command_select_web_catalog_pressure)
 
     web_pressure_record = subparsers.add_parser(
@@ -124,8 +129,15 @@ def build_parser() -> argparse.ArgumentParser:
     web_pressure_record.add_argument("--source", default=WEB_CATALOG_SOURCE)
     web_pressure_record.add_argument("--since", required=True)
     web_pressure_record.add_argument("--used-pages", type=int, required=True)
+    web_pressure_record.add_argument("--used-parallel", type=int, default=1)
+    web_pressure_record.add_argument("--used-scope-time-budget-seconds", type=int, default=1800)
     web_pressure_record.add_argument("--base-pages", type=int, default=5)
     web_pressure_record.add_argument("--max-pages", type=int, default=25)
+    web_pressure_record.add_argument("--base-parallel", type=int, default=1)
+    web_pressure_record.add_argument("--max-parallel", type=int, default=4)
+    web_pressure_record.add_argument("--base-scope-time-budget-seconds", type=int, default=1800)
+    web_pressure_record.add_argument("--max-scope-time-budget-seconds", type=int, default=7200)
+    web_pressure_record.add_argument("--cooldown-minutes", type=int, default=30)
     web_pressure_record.set_defaults(func=command_record_web_catalog_pressure_result)
 
     load = subparsers.add_parser("load", aliases=["load-postgres"], help="Load raw Apple RSS pages into Postgres.")
@@ -667,6 +679,11 @@ def command_select_web_catalog_pressure(args: argparse.Namespace) -> int:
         lookback_minutes=args.lookback_minutes,
         base_pages=args.base_pages,
         max_pages=args.max_pages,
+        base_parallel=getattr(args, "base_parallel", 1),
+        max_parallel=getattr(args, "max_parallel", 4),
+        base_scope_time_budget_seconds=getattr(args, "base_scope_time_budget_seconds", 1800),
+        max_scope_time_budget_seconds=getattr(args, "max_scope_time_budget_seconds", 7200),
+        selection_mode=getattr(args, "selection_mode", "safe"),
     )
     print(json.dumps(status, indent=2, sort_keys=True))
     return 0
@@ -678,8 +695,15 @@ def command_record_web_catalog_pressure_result(args: argparse.Namespace) -> int:
         source=args.source,
         since=args.since,
         used_pages=args.used_pages,
+        used_parallel=getattr(args, "used_parallel", 1),
+        used_scope_time_budget_seconds=getattr(args, "used_scope_time_budget_seconds", 1800),
         base_pages=args.base_pages,
         max_pages=args.max_pages,
+        base_parallel=getattr(args, "base_parallel", 1),
+        max_parallel=getattr(args, "max_parallel", 4),
+        base_scope_time_budget_seconds=getattr(args, "base_scope_time_budget_seconds", 1800),
+        max_scope_time_budget_seconds=getattr(args, "max_scope_time_budget_seconds", 7200),
+        cooldown_minutes=getattr(args, "cooldown_minutes", 30),
     )
     print(json.dumps(status, indent=2, sort_keys=True))
     return 0

@@ -180,7 +180,8 @@ def test_initialize_postgres_serializes_schema_creation(monkeypatch):
         (postgres_database.POSTGRES_SCHEMA_ADVISORY_LOCK_ID,),
     )
     assert calls[1] == (postgres_database.POSTGRES_SCHEMA, None)
-    assert calls[2] == ("commit", None)
+    assert any(call[0].startswith("ALTER TABLE app_store_pressure_state") for call in calls)
+    assert calls[-1] == ("commit", None)
 
 
 def test_web_catalog_429_circuit_breaker_trips_on_high_rate(monkeypatch):
@@ -384,6 +385,12 @@ def test_web_catalog_pressure_uses_stored_next_page_cap_after_clean_recent_pages
         {
             "source": WEB_CATALOG_SOURCE,
             "next_max_pages_per_app_country": 12,
+            "safe_max_pages_per_app_country": 12,
+            "candidate_max_pages_per_app_country": 12,
+            "safe_max_parallel": 2,
+            "candidate_max_parallel": 3,
+            "safe_scope_time_budget_seconds": 1800,
+            "candidate_scope_time_budget_seconds": 1800,
             "clean_run_count": 3,
         },
     ]
@@ -411,8 +418,10 @@ def test_web_catalog_pressure_uses_stored_next_page_cap_after_clean_recent_pages
     status = postgres_database.web_catalog_pressure_status("postgresql:///fixture", base_pages=5, max_pages=25)
 
     assert status["clean_for_ramp"] is True
-    assert status["reason"] == "stored_next_page_cap"
+    assert status["reason"] == "stored_pressure_state"
     assert status["selected_max_pages_per_app_country"] == 12
+    assert status["selected_max_parallel"] == 2
+    assert status["candidate_max_parallel"] == 3
 
 
 def test_web_catalog_pressure_starts_at_base_without_state(monkeypatch):
@@ -472,6 +481,12 @@ def test_web_catalog_pressure_resets_on_retries(monkeypatch):
         {
             "source": WEB_CATALOG_SOURCE,
             "next_max_pages_per_app_country": 20,
+            "safe_max_pages_per_app_country": 5,
+            "candidate_max_pages_per_app_country": 20,
+            "safe_max_parallel": 1,
+            "candidate_max_parallel": 4,
+            "safe_scope_time_budget_seconds": 1800,
+            "candidate_scope_time_budget_seconds": 1800,
             "clean_run_count": 5,
         },
     ]
@@ -503,7 +518,7 @@ def test_web_catalog_pressure_resets_on_retries(monkeypatch):
     assert status["selected_max_pages_per_app_country"] == 5
 
 
-def test_record_web_catalog_pressure_result_raises_next_page_cap_after_clean_run(monkeypatch):
+def test_record_web_catalog_pressure_result_raises_parallel_after_clean_run(monkeypatch):
     rows = [
         {
                 "page_count": 100,
@@ -518,6 +533,12 @@ def test_record_web_catalog_pressure_result_raises_next_page_cap_after_clean_run
         {
             "source": WEB_CATALOG_SOURCE,
             "next_max_pages_per_app_country": 5,
+            "safe_max_pages_per_app_country": 5,
+            "candidate_max_pages_per_app_country": 5,
+            "safe_max_parallel": 1,
+            "candidate_max_parallel": 1,
+            "safe_scope_time_budget_seconds": 1800,
+            "candidate_scope_time_budget_seconds": 1800,
             "clean_run_count": 2,
         },
     ]
@@ -557,8 +578,11 @@ def test_record_web_catalog_pressure_result_raises_next_page_cap_after_clean_run
         max_pages=25,
     )
 
-    assert status["result"] == "clean_ramp"
-    assert status["next_max_pages_per_app_country"] == 7
+    assert status["result"] == "clean_increase_pressure"
+    assert status["next_max_pages_per_app_country"] == 5
+    assert status["next_max_parallel"] == 2
+    assert status["next_scope_time_budget_seconds"] == 1800
+    assert status["next_action"] == "continue_now"
     assert status["clean_run_count"] == 3
     assert executed[-1] == ("commit", None)
 

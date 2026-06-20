@@ -1,0 +1,446 @@
+name: App Store Web Catalog Pressure Search
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_offset:
+        description: "First active target offset for the pressure matrix"
+        required: false
+        default: "0"
+        type: string
+      max_pages_per_app_country:
+        description: "Page cap per app-country; 0 means time-budget bounded"
+        required: false
+        default: "0"
+        type: string
+      base_parallel:
+        description: "Starting matrix parallelism"
+        required: false
+        default: "1"
+        type: string
+      max_parallel:
+        description: "Maximum matrix parallelism to prove before increasing app time"
+        required: false
+        default: "4"
+        type: string
+      base_scope_time_budget_seconds:
+        description: "Starting per-app-country time budget; 1800 is 30 minutes"
+        required: false
+        default: "1800"
+        type: string
+      max_scope_time_budget_seconds:
+        description: "Maximum per-app-country time budget to prove"
+        required: false
+        default: "7200"
+        type: string
+      start_page:
+        description: "First web catalog page to fetch, or auto to continue from Postgres max page + 1"
+        required: false
+        default: "auto"
+        type: string
+      review_limit:
+        description: "Requested web catalog reviews per page; Apple currently caps this at 20"
+        required: false
+        default: "20"
+        type: string
+      request_delay_seconds:
+        description: "Delay between web catalog requests"
+        required: false
+        default: "10"
+        type: string
+      web_429_retries:
+        description: "Retries after HTTP 429"
+        required: false
+        default: "0"
+        type: string
+      web_429_retry_seconds:
+        description: "Delay before retrying HTTP 429"
+        required: false
+        default: "60"
+        type: string
+      web_429_backoff_multiplier:
+        description: "Multiplier applied to HTTP 429 retry delay"
+        required: false
+        default: "1.5"
+        type: string
+      cooldown_minutes:
+        description: "Cooldown before retrying after HTTP 429"
+        required: false
+        default: "30"
+        type: string
+      web_429_circuit_breaker_min_pages:
+        description: "Minimum current-run pages before the global HTTP 429 breaker can trip"
+        required: false
+        default: "1"
+        type: string
+      web_429_circuit_breaker_max_rate:
+        description: "Fail when current-run HTTP 429 page rate is at or above this value"
+        required: false
+        default: "0.5"
+        type: string
+      auto_continue:
+        description: "Dispatch the next pressure-search run automatically"
+        required: false
+        default: true
+        type: boolean
+      chain_depth:
+        description: "Internal continuation counter"
+        required: false
+        default: "0"
+        type: string
+      max_chain_depth:
+        description: "Maximum automatic continuations"
+        required: false
+        default: "20"
+        type: string
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: app-store-pressure-search
+  cancel-in-progress: false
+
+jobs:
+  prepare-pressure:
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 45
+    outputs:
+      matrix: ${{ steps.prepare.outputs.matrix }}
+      selected_count: ${{ steps.prepare.outputs.selected_count }}
+      run_started_at: ${{ steps.prepare.outputs.run_started_at }}
+      selected_max_pages_per_app_country: ${{ steps.prepare.outputs.selected_max_pages_per_app_country }}
+      selected_max_parallel: ${{ steps.prepare.outputs.selected_max_parallel }}
+      selected_scope_time_budget_seconds: ${{ steps.prepare.outputs.selected_scope_time_budget_seconds }}
+    env:
+      PIP_CONFIG_FILE: /dev/null
+      PIP_USER: "false"
+      INPUT_TARGET_OFFSET: ${{ inputs.target_offset || '0' }}
+      INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ inputs.max_pages_per_app_country || '0' }}
+      INPUT_BASE_PARALLEL: ${{ inputs.base_parallel || '1' }}
+      INPUT_MAX_PARALLEL: ${{ inputs.max_parallel || '4' }}
+      INPUT_BASE_SCOPE_TIME_BUDGET_SECONDS: ${{ inputs.base_scope_time_budget_seconds || '1800' }}
+      INPUT_MAX_SCOPE_TIME_BUDGET_SECONDS: ${{ inputs.max_scope_time_budget_seconds || '7200' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Create Python virtualenv
+        run: |
+          set -euo pipefail
+          python3.12 -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+
+      - name: Install dependencies
+        run: .venv/bin/python -m pip install -r requirements.txt
+
+      - name: Prepare pressure matrix
+        id: prepare
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          .venv/bin/python app_store_pipeline.py init-postgres --database-url "$database_url"
+
+          pressure_json="$(.venv/bin/python app_store_pipeline.py select-web-catalog-pressure \
+            --database-url "$database_url" \
+            --source apple_app_store_web_catalog_reviews \
+            --base-pages "$INPUT_MAX_PAGES_PER_APP_COUNTRY" \
+            --max-pages "$INPUT_MAX_PAGES_PER_APP_COUNTRY" \
+            --base-parallel "$INPUT_BASE_PARALLEL" \
+            --max-parallel "$INPUT_MAX_PARALLEL" \
+            --base-scope-time-budget-seconds "$INPUT_BASE_SCOPE_TIME_BUDGET_SECONDS" \
+            --max-scope-time-budget-seconds "$INPUT_MAX_SCOPE_TIME_BUDGET_SECONDS" \
+            --selection-mode candidate)"
+          echo "$pressure_json"
+
+          cooldown_seconds="$(
+            PRESSURE_JSON="$pressure_json" .venv/bin/python - <<'PY'
+          import json
+          import os
+
+          print(int(float(json.loads(os.environ["PRESSURE_JSON"]).get("cooldown_seconds_remaining") or 0)))
+          PY
+          )"
+          if (( cooldown_seconds > 0 )); then
+            echo "Pressure state is cooling down for ${cooldown_seconds}s before next probe."
+            sleep "$cooldown_seconds"
+          fi
+
+          run_started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "run_started_at=$run_started_at" >> "$GITHUB_OUTPUT"
+
+          PRESSURE_JSON="$pressure_json" python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import csv
+          import json
+          import os
+
+          pressure = json.loads(os.environ["PRESSURE_JSON"])
+          selected_parallel = max(1, int(pressure["selected_max_parallel"]))
+          selected_pages = int(pressure["selected_max_pages_per_app_country"])
+          selected_scope_time = int(pressure["selected_scope_time_budget_seconds"])
+          start_offset = max(0, int(os.environ["INPUT_TARGET_OFFSET"]))
+
+          rows = []
+          with open("data/targets/apple_apps.csv", newline="", encoding="utf-8") as handle:
+              active_index = 0
+              for row in csv.DictReader(handle):
+                  if str(row.get("active", "")).lower() != "true":
+                      continue
+                  if active_index >= start_offset:
+                      rows.append(
+                          {
+                              "target_offset": active_index,
+                              "app_id": row["apple_app_id"],
+                              "app_name": row["app_name"],
+                          }
+                      )
+                  active_index += 1
+                  if len(rows) >= selected_parallel:
+                      break
+
+          print(f"matrix={json.dumps({'include': rows}, separators=(',', ':'))}")
+          print(f"selected_count={len(rows)}")
+          print(f"selected_max_pages_per_app_country={selected_pages}")
+          print(f"selected_max_parallel={selected_parallel}")
+          print(f"selected_scope_time_budget_seconds={selected_scope_time}")
+          PY
+
+  pressure:
+    needs: prepare-pressure
+    if: ${{ fromJSON(needs.prepare-pressure.outputs.selected_count) > 0 }}
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 180
+    strategy:
+      fail-fast: true
+      max-parallel: ${{ fromJSON(needs.prepare-pressure.outputs.selected_max_parallel) }}
+      matrix: ${{ fromJSON(needs.prepare-pressure.outputs.matrix) }}
+    env:
+      PIP_CONFIG_FILE: /dev/null
+      PIP_USER: "false"
+      INPUT_LIMIT: "1"
+      INPUT_TARGET_OFFSET: ${{ matrix.target_offset }}
+      MATRIX_APP_ID: ${{ matrix.app_id }}
+      INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ needs.prepare-pressure.outputs.selected_max_pages_per_app_country }}
+      INPUT_START_PAGE: ${{ inputs.start_page || 'auto' }}
+      INPUT_REVIEW_LIMIT: ${{ inputs.review_limit || '20' }}
+      INPUT_REQUEST_DELAY_SECONDS: ${{ inputs.request_delay_seconds || '10' }}
+      INPUT_WEB_429_RETRIES: ${{ inputs.web_429_retries || '0' }}
+      INPUT_WEB_429_RETRY_SECONDS: ${{ inputs.web_429_retry_seconds || '60' }}
+      INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ inputs.web_429_backoff_multiplier || '1.5' }}
+      INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS: ${{ needs.prepare-pressure.outputs.selected_scope_time_budget_seconds }}
+      PRESSURE_RUN_STARTED_AT: ${{ needs.prepare-pressure.outputs.run_started_at }}
+      INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES: ${{ inputs.web_429_circuit_breaker_min_pages || '1' }}
+      INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE: ${{ inputs.web_429_circuit_breaker_max_rate || '0.5' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Create Python virtualenv
+        run: |
+          set -euo pipefail
+          python3.12 -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+
+      - name: Install dependencies
+        run: .venv/bin/python -m pip install -r requirements.txt
+
+      - name: Check local Postgres
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          .venv/bin/python app_store_pipeline.py init-postgres --database-url "$database_url"
+
+      - name: Check current-run web catalog 429 circuit breaker
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          .venv/bin/python app_store_pipeline.py check-web-429-circuit-breaker \
+            --database-url "$database_url" \
+            --source apple_app_store_web_catalog_reviews \
+            --since "$PRESSURE_RUN_STARTED_AT" \
+            --min-pages "$INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES" \
+            --max-rate "$INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE"
+
+      - name: Run web catalog pressure probe
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          echo "Pressure target offset $INPUT_TARGET_OFFSET: ${{ matrix.app_name }} (${{ matrix.app_id }})"
+          if [[ ! "$MATRIX_APP_ID" =~ ^[0-9]+$ ]]; then
+            echo "Invalid matrix app id: $MATRIX_APP_ID" >&2
+            exit 1
+          fi
+          start_page="$INPUT_START_PAGE"
+          if [[ "$start_page" == "auto" ]]; then
+            start_page="$(psql "$database_url" \
+              -Atc "select coalesce(max(page_number) + 1, 1) from app_store_review_pages where source = 'apple_app_store_web_catalog_reviews' and app_id = '$MATRIX_APP_ID';")"
+          fi
+          echo "Using start page: $start_page"
+          echo "Using page cap: $INPUT_MAX_PAGES_PER_APP_COUNTRY"
+          echo "Using per-scope time budget: $INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS seconds"
+
+          .venv/bin/python app_store_pipeline.py daily-web-catalog \
+            --database-url "$database_url" \
+            --limit "$INPUT_LIMIT" \
+            --target-offset "$INPUT_TARGET_OFFSET" \
+            --max-pages-per-app-country "$INPUT_MAX_PAGES_PER_APP_COUNTRY" \
+            --start-page "$start_page" \
+            --review-limit "$INPUT_REVIEW_LIMIT" \
+            --request-delay-seconds "$INPUT_REQUEST_DELAY_SECONDS" \
+            --web-429-retries "$INPUT_WEB_429_RETRIES" \
+            --web-429-retry-seconds "$INPUT_WEB_429_RETRY_SECONDS" \
+            --web-429-backoff-multiplier "$INPUT_WEB_429_BACKOFF_MULTIPLIER" \
+            --web-time-budget-seconds "$INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS" \
+            --web-scope-time-budget-seconds "$INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS" \
+            --disable-overlap-stop
+
+      - name: Check current-run web catalog 429 circuit breaker after probe
+        if: ${{ always() && !cancelled() }}
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          .venv/bin/python app_store_pipeline.py check-web-429-circuit-breaker \
+            --database-url "$database_url" \
+            --source apple_app_store_web_catalog_reviews \
+            --since "$PRESSURE_RUN_STARTED_AT" \
+            --min-pages "$INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES" \
+            --max-rate "$INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE"
+
+      - name: Upload pressure probe artifacts
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-store-pressure-search-${{ github.run_id }}-${{ matrix.target_offset }}-${{ matrix.app_id }}
+          retention-days: 14
+          if-no-files-found: ignore
+          path: |
+            data/raw/apple_web_catalog/
+            data/reports/apple_web_catalog/
+
+  record-pressure:
+    needs:
+      - prepare-pressure
+      - pressure
+    if: ${{ always() && needs.prepare-pressure.result == 'success' && fromJSON(needs.prepare-pressure.outputs.selected_count) > 0 }}
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 45
+    env:
+      PIP_CONFIG_FILE: /dev/null
+      PIP_USER: "false"
+      INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ needs.prepare-pressure.outputs.selected_max_pages_per_app_country }}
+      INPUT_MAX_PARALLEL: ${{ inputs.max_parallel || '4' }}
+      SELECTED_MAX_PARALLEL: ${{ needs.prepare-pressure.outputs.selected_max_parallel }}
+      INPUT_BASE_PARALLEL: ${{ inputs.base_parallel || '1' }}
+      INPUT_SCOPE_TIME_BUDGET_SECONDS: ${{ needs.prepare-pressure.outputs.selected_scope_time_budget_seconds }}
+      INPUT_BASE_SCOPE_TIME_BUDGET_SECONDS: ${{ inputs.base_scope_time_budget_seconds || '1800' }}
+      INPUT_MAX_SCOPE_TIME_BUDGET_SECONDS: ${{ inputs.max_scope_time_budget_seconds || '7200' }}
+      INPUT_COOLDOWN_MINUTES: ${{ inputs.cooldown_minutes || '30' }}
+      INPUT_AUTO_CONTINUE: ${{ inputs.auto_continue }}
+      INPUT_CHAIN_DEPTH: ${{ inputs.chain_depth || '0' }}
+      INPUT_MAX_CHAIN_DEPTH: ${{ inputs.max_chain_depth || '20' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Create Python virtualenv
+        run: |
+          set -euo pipefail
+          python3.12 -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+
+      - name: Install dependencies
+        run: .venv/bin/python -m pip install -r requirements.txt
+
+      - name: Record pressure result
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          pressure_result="$(.venv/bin/python app_store_pipeline.py record-web-catalog-pressure-result \
+            --database-url "$database_url" \
+            --source apple_app_store_web_catalog_reviews \
+            --since "${{ needs.prepare-pressure.outputs.run_started_at }}" \
+            --used-pages "$INPUT_MAX_PAGES_PER_APP_COUNTRY" \
+            --used-parallel "$SELECTED_MAX_PARALLEL" \
+            --used-scope-time-budget-seconds "$INPUT_SCOPE_TIME_BUDGET_SECONDS" \
+            --base-pages "$INPUT_MAX_PAGES_PER_APP_COUNTRY" \
+            --max-pages "$INPUT_MAX_PAGES_PER_APP_COUNTRY" \
+            --base-parallel "$INPUT_BASE_PARALLEL" \
+            --max-parallel "$INPUT_MAX_PARALLEL" \
+            --base-scope-time-budget-seconds "$INPUT_BASE_SCOPE_TIME_BUDGET_SECONDS" \
+            --max-scope-time-budget-seconds "$INPUT_MAX_SCOPE_TIME_BUDGET_SECONDS" \
+            --cooldown-minutes "$INPUT_COOLDOWN_MINUTES")"
+          echo "$pressure_result"
+          echo "$pressure_result" > pressure_result.json
+
+          next_action="$(
+            PRESSURE_RESULT="$pressure_result" .venv/bin/python - <<'PY'
+          import json
+          import os
+
+          print(json.loads(os.environ["PRESSURE_RESULT"])["next_action"])
+          PY
+          )"
+          next_after_seconds="$(
+            PRESSURE_RESULT="$pressure_result" .venv/bin/python - <<'PY'
+          import json
+          import os
+
+          print(int(json.loads(os.environ["PRESSURE_RESULT"])["next_after_seconds"]))
+          PY
+          )"
+          echo "NEXT_ACTION=$next_action" >> "$GITHUB_ENV"
+          echo "NEXT_AFTER_SECONDS=$next_after_seconds" >> "$GITHUB_ENV"
+
+      - name: Upload pressure result
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-store-pressure-result-${{ github.run_id }}
+          retention-days: 14
+          if-no-files-found: ignore
+          path: pressure_result.json
+
+      - name: Dispatch next pressure probe
+        if: ${{ env.INPUT_AUTO_CONTINUE == 'true' && env.NEXT_ACTION != 'stop' && fromJSON(env.INPUT_CHAIN_DEPTH) < fromJSON(env.INPUT_MAX_CHAIN_DEPTH) }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          next_depth="$(( INPUT_CHAIN_DEPTH + 1 ))"
+          if (( NEXT_AFTER_SECONDS > 0 )); then
+            echo "Cooling down for ${NEXT_AFTER_SECONDS}s before dispatching the next pressure probe."
+            sleep "$NEXT_AFTER_SECONDS"
+          fi
+          gh workflow run app-store-pressure-search.yml \
+            --ref "${GITHUB_REF_NAME:-main}" \
+            -f target_offset="${{ inputs.target_offset || '0' }}" \
+            -f max_pages_per_app_country="${{ inputs.max_pages_per_app_country || '0' }}" \
+            -f base_parallel="${{ inputs.base_parallel || '1' }}" \
+            -f max_parallel="${{ inputs.max_parallel || '4' }}" \
+            -f base_scope_time_budget_seconds="${{ inputs.base_scope_time_budget_seconds || '1800' }}" \
+            -f max_scope_time_budget_seconds="${{ inputs.max_scope_time_budget_seconds || '7200' }}" \
+            -f start_page="${{ inputs.start_page || 'auto' }}" \
+            -f review_limit="${{ inputs.review_limit || '20' }}" \
+            -f request_delay_seconds="${{ inputs.request_delay_seconds || '10' }}" \
+            -f web_429_retries="${{ inputs.web_429_retries || '0' }}" \
+            -f web_429_retry_seconds="${{ inputs.web_429_retry_seconds || '60' }}" \
+            -f web_429_backoff_multiplier="${{ inputs.web_429_backoff_multiplier || '1.5' }}" \
+            -f cooldown_minutes="${{ inputs.cooldown_minutes || '30' }}" \
+            -f web_429_circuit_breaker_min_pages="${{ inputs.web_429_circuit_breaker_min_pages || '1' }}" \
+            -f web_429_circuit_breaker_max_rate="${{ inputs.web_429_circuit_breaker_max_rate || '0.5' }}" \
+            -f auto_continue="$INPUT_AUTO_CONTINUE" \
+            -f chain_depth="$next_depth" \
+            -f max_chain_depth="${{ inputs.max_chain_depth || '20' }}"
