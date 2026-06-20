@@ -41,9 +41,11 @@ from app_store_review_pipeline.postgres_database import (
     load_pipeline_run_postgres,
     mask_database_url,
     review_counts_by_scope,
+    record_web_catalog_pressure_result,
     validate_postgres,
     web_catalog_429_circuit_breaker_status,
     web_catalog_429_cooldown_status,
+    web_catalog_pressure_status,
 )
 from app_store_review_pipeline.provider_apptweak import probe_apptweak_reviews
 from app_store_review_pipeline.provider_appfigures import probe_appfigures_reviews
@@ -102,6 +104,29 @@ def build_parser() -> argparse.ArgumentParser:
     web_429_cooldown.add_argument("--source", default=WEB_CATALOG_SOURCE)
     web_429_cooldown.add_argument("--cooldown-minutes", type=int, default=720)
     web_429_cooldown.set_defaults(func=command_check_web_429_cooldown)
+
+    web_pressure = subparsers.add_parser(
+        "select-web-catalog-pressure",
+        help="Choose the scheduled web catalog page cap from recent clean request history.",
+    )
+    web_pressure.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
+    web_pressure.add_argument("--source", default=WEB_CATALOG_SOURCE)
+    web_pressure.add_argument("--lookback-minutes", type=int, default=720)
+    web_pressure.add_argument("--base-pages", type=int, default=5)
+    web_pressure.add_argument("--max-pages", type=int, default=25)
+    web_pressure.set_defaults(func=command_select_web_catalog_pressure)
+
+    web_pressure_record = subparsers.add_parser(
+        "record-web-catalog-pressure-result",
+        help="Record the latest scheduled web catalog pressure result and choose the next page cap.",
+    )
+    web_pressure_record.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
+    web_pressure_record.add_argument("--source", default=WEB_CATALOG_SOURCE)
+    web_pressure_record.add_argument("--since", required=True)
+    web_pressure_record.add_argument("--used-pages", type=int, required=True)
+    web_pressure_record.add_argument("--base-pages", type=int, default=5)
+    web_pressure_record.add_argument("--max-pages", type=int, default=25)
+    web_pressure_record.set_defaults(func=command_record_web_catalog_pressure_result)
 
     load = subparsers.add_parser("load", aliases=["load-postgres"], help="Load raw Apple RSS pages into Postgres.")
     load.add_argument("--raw-dir", type=Path, required=True)
@@ -633,6 +658,31 @@ def command_check_web_429_cooldown(args: argparse.Namespace) -> int:
     )
     print(json.dumps(status, indent=2, sort_keys=True))
     return 2 if status["tripped"] else 0
+
+
+def command_select_web_catalog_pressure(args: argparse.Namespace) -> int:
+    status = web_catalog_pressure_status(
+        args.database_url,
+        source=args.source,
+        lookback_minutes=args.lookback_minutes,
+        base_pages=args.base_pages,
+        max_pages=args.max_pages,
+    )
+    print(json.dumps(status, indent=2, sort_keys=True))
+    return 0
+
+
+def command_record_web_catalog_pressure_result(args: argparse.Namespace) -> int:
+    status = record_web_catalog_pressure_result(
+        args.database_url,
+        source=args.source,
+        since=args.since,
+        used_pages=args.used_pages,
+        base_pages=args.base_pages,
+        max_pages=args.max_pages,
+    )
+    print(json.dumps(status, indent=2, sort_keys=True))
+    return 0
 
 
 def command_load_postgres(args: argparse.Namespace) -> int:

@@ -26,6 +26,7 @@ from app_store_review_pipeline.apple_web import (
 from app_store_review_pipeline.cli import (
     command_check_web_429_circuit_breaker,
     command_check_web_429_cooldown,
+    command_select_web_catalog_pressure,
     command_daily_web_catalog,
     select_target_window,
     summarize_fetch_cli,
@@ -366,6 +367,221 @@ def test_check_web_429_cooldown_command_returns_two_when_tripped(monkeypatch, ca
 
     assert command_check_web_429_cooldown(args) == 2
     assert json.loads(capsys.readouterr().out)["tripped"] is True
+
+
+def test_web_catalog_pressure_uses_stored_next_page_cap_after_clean_recent_pages(monkeypatch):
+    rows = [
+        {
+            "page_count": 22,
+            "ok_page_count": 22,
+            "error_page_count": 0,
+            "http_429_page_count": 0,
+            "final_non_200_page_count": 0,
+            "retried_page_count": 0,
+            "first_page_at": "2026-06-20 19:00:00+00",
+            "last_page_at": "2026-06-20 20:00:00+00",
+        },
+        {
+            "source": WEB_CATALOG_SOURCE,
+            "next_max_pages_per_app_country": 12,
+            "clean_run_count": 3,
+        },
+    ]
+
+    class FakeResult:
+        def __init__(self, row):
+            self.row = row
+
+        def fetchone(self):
+            return self.row
+
+    class FakeConnection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def execute(self, query, params=None):
+            return FakeResult(rows.pop(0))
+
+    monkeypatch.setattr(postgres_database, "initialize_postgres", lambda database_url: None)
+    monkeypatch.setattr(postgres_database, "connect_postgres", lambda database_url: FakeConnection())
+
+    status = postgres_database.web_catalog_pressure_status("postgresql:///fixture", base_pages=5, max_pages=25)
+
+    assert status["clean_for_ramp"] is True
+    assert status["reason"] == "stored_next_page_cap"
+    assert status["selected_max_pages_per_app_country"] == 12
+
+
+def test_web_catalog_pressure_starts_at_base_without_state(monkeypatch):
+    rows = [
+        {
+                "page_count": 22,
+                "ok_page_count": 22,
+                "error_page_count": 0,
+                "http_429_page_count": 0,
+                "final_non_200_page_count": 0,
+                "retried_page_count": 0,
+                "first_page_at": "2026-06-20 19:00:00+00",
+                "last_page_at": "2026-06-20 20:00:00+00",
+        },
+        None,
+    ]
+
+    class FakeResult:
+        def __init__(self, row):
+            self.row = row
+
+        def fetchone(self):
+            return self.row
+
+    class FakeConnection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def execute(self, query, params=None):
+            return FakeResult(rows.pop(0))
+
+    monkeypatch.setattr(postgres_database, "initialize_postgres", lambda database_url: None)
+    monkeypatch.setattr(postgres_database, "connect_postgres", lambda database_url: FakeConnection())
+
+    status = postgres_database.web_catalog_pressure_status("postgresql:///fixture", base_pages=5, max_pages=25)
+
+    assert status["clean_for_ramp"] is True
+    assert status["reason"] == "no_pressure_state"
+    assert status["selected_max_pages_per_app_country"] == 5
+
+
+def test_web_catalog_pressure_resets_on_retries(monkeypatch):
+    rows = [
+        {
+            "page_count": 100,
+            "ok_page_count": 100,
+            "error_page_count": 0,
+            "http_429_page_count": 0,
+            "final_non_200_page_count": 0,
+            "retried_page_count": 1,
+            "first_page_at": "2026-06-20 19:00:00+00",
+            "last_page_at": "2026-06-20 20:00:00+00",
+        },
+        {
+            "source": WEB_CATALOG_SOURCE,
+            "next_max_pages_per_app_country": 20,
+            "clean_run_count": 5,
+        },
+    ]
+
+    class FakeResult:
+        def __init__(self, row):
+            self.row = row
+
+        def fetchone(self):
+            return self.row
+
+    class FakeConnection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def execute(self, query, params=None):
+            return FakeResult(rows.pop(0))
+
+    monkeypatch.setattr(postgres_database, "initialize_postgres", lambda database_url: None)
+    monkeypatch.setattr(postgres_database, "connect_postgres", lambda database_url: FakeConnection())
+
+    status = postgres_database.web_catalog_pressure_status("postgresql:///fixture", base_pages=5, max_pages=25)
+
+    assert status["clean_for_ramp"] is False
+    assert status["reason"] == "recent_errors_or_retries"
+    assert status["selected_max_pages_per_app_country"] == 5
+
+
+def test_record_web_catalog_pressure_result_raises_next_page_cap_after_clean_run(monkeypatch):
+    rows = [
+        {
+                "page_count": 100,
+                "ok_page_count": 100,
+                "error_page_count": 0,
+                "http_429_page_count": 0,
+                "final_non_200_page_count": 0,
+                "retried_page_count": 0,
+                "first_page_at": "2026-06-20 19:00:00+00",
+                "last_page_at": "2026-06-20 20:00:00+00",
+        },
+        {
+            "source": WEB_CATALOG_SOURCE,
+            "next_max_pages_per_app_country": 5,
+            "clean_run_count": 2,
+        },
+    ]
+    executed = []
+
+    class FakeConnection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def execute(self, query, params=None):
+            executed.append((query, params))
+            if query.lstrip().upper().startswith("INSERT"):
+                return None
+            return FakeResult(rows.pop(0))
+
+        def commit(self):
+            executed.append(("commit", None))
+
+    class FakeResult:
+        def __init__(self, row):
+            self.row = row
+
+        def fetchone(self):
+            return self.row
+
+    monkeypatch.setattr(postgres_database, "initialize_postgres", lambda database_url: None)
+    monkeypatch.setattr(postgres_database, "connect_postgres", lambda database_url: FakeConnection())
+
+    status = postgres_database.record_web_catalog_pressure_result(
+        "postgresql:///fixture",
+        since="2026-06-20T19:00:00Z",
+        used_pages=5,
+        base_pages=5,
+        max_pages=25,
+    )
+
+    assert status["result"] == "clean_ramp"
+    assert status["next_max_pages_per_app_country"] == 7
+    assert status["clean_run_count"] == 3
+    assert executed[-1] == ("commit", None)
+
+
+def test_select_web_catalog_pressure_command_outputs_selected_page_cap(monkeypatch, capsys):
+    monkeypatch.setattr(
+        "app_store_review_pipeline.cli.web_catalog_pressure_status",
+        lambda *args, **kwargs: {
+            "source": WEB_CATALOG_SOURCE,
+            "selected_max_pages_per_app_country": 10,
+            "reason": "clean_recent_pages",
+        },
+    )
+    args = argparse.Namespace(
+        database_url="postgresql:///fixture",
+        source=WEB_CATALOG_SOURCE,
+        lookback_minutes=720,
+        base_pages=5,
+        max_pages=25,
+    )
+
+    assert command_select_web_catalog_pressure(args) == 0
+    assert json.loads(capsys.readouterr().out)["selected_max_pages_per_app_country"] == 10
 
 
 class FakeResponse:

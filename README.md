@@ -57,7 +57,7 @@ Legacy RSS requests pages `1..10` from:
 https://itunes.apple.com/{country}/rss/customerreviews/page={page}/id={app_id}/sortby=mostrecent/json
 ```
 
-The default 5-page cap keeps the scheduled web catalog probe intentionally small while the safe Apple request rate is being measured. On incremental runs, the fetcher stops earlier when a page contains review IDs that are already in Postgres.
+The scheduled web catalog probe starts from a conservative 5-page cap while the safe Apple request rate is being measured, then can auto-ramp through bounded page caps after clean recent runs. On incremental runs, the fetcher stops earlier when a page contains review IDs that are already in Postgres.
 
 Apple's legacy RSS can return sparse pages: an empty `feed.entry` page may still include a `next` link, and later pages may contain review rows. For that reason, empty pages with `next` links are skipped through by default until the page cap or `--max-consecutive-empty-pages` is reached.
 
@@ -401,7 +401,8 @@ The daily workflow defaults to:
 - secret override: `APP_STORE_DATABASE_URL`
 - target limit: `1`
 - target offset: `auto`, selected from Postgres coverage gaps
-- web catalog pages per app-country: `5`
+- web catalog pages per app-country: scheduled runs use a stateful auto-ramp from base `5` toward max `25` when recent pages are clean; manual runs default to fixed `5`
+- auto pressure ramp: `5 -> 7 -> 10 -> 12 -> 15 -> 20 -> 25` pages, using the last `720` minutes of page history
 - start page: `1`
 - web catalog reviews per page: `20`
 - web catalog request delay: `10` seconds
@@ -413,6 +414,8 @@ The daily workflow defaults to:
 - RSS-parity stopping: disabled by default while RSS is paused
 - hard HTTP 429 cooldown gate: last HTTP 429 must be at least `720` minutes old
 - pre-run HTTP 429 circuit breaker: last `720` minutes, minimum `4` pages, trips at `>= 50%` 429
+- pressure state: stored in Postgres table `app_store_pressure_state`; with no state, the first scheduled run starts at `5` pages
+- pressure reset: any recent retry, HTTP 429, final non-200 page, or fetch error keeps or resets the next scheduled run at the base `5` pages
 - current-run HTTP 429 circuit breaker: minimum `1` page, trips at `>= 50%` 429
 
 Before relying on automation, register a self-hosted runner for this GitHub repository and make sure local Postgres is running.

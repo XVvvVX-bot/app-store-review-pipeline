@@ -134,6 +134,23 @@ CREATE TABLE IF NOT EXISTS app_store_sync_state (
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS app_store_pressure_state (
+    source TEXT PRIMARY KEY,
+    next_max_pages_per_app_country INTEGER NOT NULL DEFAULT 5,
+    clean_run_count INTEGER NOT NULL DEFAULT 0,
+    last_result TEXT,
+    last_started_at TEXT,
+    last_completed_at TEXT,
+    last_used_pages INTEGER NOT NULL DEFAULT 0,
+    last_page_count INTEGER NOT NULL DEFAULT 0,
+    last_ok_page_count INTEGER NOT NULL DEFAULT 0,
+    last_http_429_page_count INTEGER NOT NULL DEFAULT 0,
+    last_error_page_count INTEGER NOT NULL DEFAULT 0,
+    last_final_non_200_page_count INTEGER NOT NULL DEFAULT 0,
+    last_retried_page_count INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_app_store_reviews_app_country_updated
     ON app_store_reviews(app_id, country, updated_epoch_seconds DESC);
 CREATE INDEX IF NOT EXISTS idx_app_store_reviews_run
@@ -292,6 +309,274 @@ def web_catalog_429_cooldown_status(
         "minutes_since_last_http_429": minutes_since_last_http_429,
         "http_429_count_in_cooldown": int(row["http_429_count_in_cooldown"] or 0),
         "tripped": tripped,
+    }
+
+
+WEB_CATALOG_PRESSURE_RAMP: tuple[tuple[int, int], ...] = (
+    (0, 5),
+    (1, 7),
+    (2, 10),
+    (3, 12),
+    (4, 15),
+    (5, 20),
+    (6, 25),
+)
+
+
+def clamp_pressure_pages(value: int, *, base_pages: int, max_pages: int) -> int:
+    return min(max_pages, max(base_pages, int(value)))
+
+
+def next_pressure_pages(current_pages: int, *, base_pages: int, max_pages: int) -> int:
+    current_pages = clamp_pressure_pages(current_pages, base_pages=base_pages, max_pages=max_pages)
+    for _, candidate_pages in WEB_CATALOG_PRESSURE_RAMP:
+        candidate_pages = clamp_pressure_pages(candidate_pages, base_pages=base_pages, max_pages=max_pages)
+        if candidate_pages > current_pages:
+            return candidate_pages
+    return current_pages
+
+
+def web_catalog_recent_pressure_metrics(
+    connection: psycopg.Connection,
+    *,
+    source: str,
+    lookback_minutes: int = 720,
+    since: str | None = None,
+) -> dict:
+    where_clauses = ["source = %s", "fetched_at IS NOT NULL"]
+    params: list = [source]
+    if since:
+        where_clauses.append("fetched_at::timestamptz >= %s::timestamptz")
+        params.append(since)
+    elif lookback_minutes:
+        where_clauses.append("fetched_at::timestamptz >= now() - (%s * INTERVAL '1 minute')")
+        params.append(lookback_minutes)
+
+    row = connection.execute(
+        f"""
+        SELECT
+            COUNT(*) AS page_count,
+            COUNT(*) FILTER (WHERE status = 'ok') AS ok_page_count,
+            COUNT(*) FILTER (WHERE status = 'error') AS error_page_count,
+            COUNT(*) FILTER (WHERE status_code = 429) AS http_429_page_count,
+            COUNT(*) FILTER (
+                WHERE status_code IS NOT NULL
+                    AND (status_code < 200 OR status_code >= 300)
+            ) AS final_non_200_page_count,
+            COUNT(*) FILTER (WHERE attempt_count > 1) AS retried_page_count,
+            MIN(fetched_at::timestamptz) AS first_page_at,
+            MAX(fetched_at::timestamptz) AS last_page_at
+        FROM app_store_review_pages
+        WHERE {" AND ".join(where_clauses)}
+        """,
+        tuple(params),
+    ).fetchone()
+    return {
+        "page_count": int(row["page_count"] or 0),
+        "ok_page_count": int(row["ok_page_count"] or 0),
+        "error_page_count": int(row["error_page_count"] or 0),
+        "http_429_page_count": int(row["http_429_page_count"] or 0),
+        "final_non_200_page_count": int(row["final_non_200_page_count"] or 0),
+        "retried_page_count": int(row["retried_page_count"] or 0),
+        "first_page_at": row["first_page_at"],
+        "last_page_at": row["last_page_at"],
+    }
+
+
+def pressure_metrics_are_clean(metrics: dict) -> bool:
+    return (
+        int(metrics["page_count"] or 0) > 0
+        and int(metrics["http_429_page_count"] or 0) == 0
+        and int(metrics["error_page_count"] or 0) == 0
+        and int(metrics["final_non_200_page_count"] or 0) == 0
+        and int(metrics["retried_page_count"] or 0) == 0
+    )
+
+
+def web_catalog_pressure_status(
+    database_url: str,
+    *,
+    source: str = WEB_CATALOG_SOURCE,
+    lookback_minutes: int = 720,
+    base_pages: int = 5,
+    max_pages: int = 25,
+) -> dict:
+    initialize_postgres(database_url)
+    lookback_minutes = max(0, int(lookback_minutes))
+    base_pages = max(1, int(base_pages))
+    max_pages = max(1, int(max_pages))
+
+    with connect_postgres(database_url) as connection:
+        metrics = web_catalog_recent_pressure_metrics(
+            connection,
+            source=source,
+            lookback_minutes=lookback_minutes,
+        )
+        state = connection.execute(
+            """
+            SELECT *
+            FROM app_store_pressure_state
+            WHERE source = %s
+            """,
+            (source,),
+        ).fetchone()
+
+    page_count = int(metrics["page_count"] or 0)
+    clean_for_ramp = pressure_metrics_are_clean(metrics)
+    stored_next_pages = int(state["next_max_pages_per_app_country"]) if state else base_pages
+    selected_pages = clamp_pressure_pages(stored_next_pages, base_pages=base_pages, max_pages=max_pages)
+    selected_level = max(0, sum(1 for _, pages in WEB_CATALOG_PRESSURE_RAMP if pages <= selected_pages) - 1)
+
+    if not state:
+        reason = "no_pressure_state"
+        selected_pages = min(base_pages, max_pages)
+        selected_level = 0
+    elif not page_count:
+        reason = "no_recent_pages"
+    elif not clean_for_ramp:
+        reason = "recent_errors_or_retries"
+        selected_pages = min(base_pages, max_pages)
+        selected_level = 0
+    else:
+        reason = "stored_next_page_cap"
+
+    return {
+        "source": source,
+        "lookback_minutes": lookback_minutes,
+        "base_pages": base_pages,
+        "max_pages": max_pages,
+        "ramp": [
+            {"level": level, "pages": pages}
+            for level, pages in WEB_CATALOG_PRESSURE_RAMP
+        ],
+        "selected_level": selected_level,
+        "selected_max_pages_per_app_country": selected_pages,
+        "reason": reason,
+        "clean_for_ramp": clean_for_ramp,
+        "state": dict(state) if state else None,
+        "page_count": page_count,
+        "ok_page_count": int(metrics["ok_page_count"] or 0),
+        "error_page_count": int(metrics["error_page_count"] or 0),
+        "http_429_page_count": int(metrics["http_429_page_count"] or 0),
+        "final_non_200_page_count": int(metrics["final_non_200_page_count"] or 0),
+        "retried_page_count": int(metrics["retried_page_count"] or 0),
+        "first_page_at": str(metrics["first_page_at"]) if metrics["first_page_at"] is not None else None,
+        "last_page_at": str(metrics["last_page_at"]) if metrics["last_page_at"] is not None else None,
+    }
+
+
+def record_web_catalog_pressure_result(
+    database_url: str,
+    *,
+    source: str = WEB_CATALOG_SOURCE,
+    since: str,
+    used_pages: int,
+    base_pages: int = 5,
+    max_pages: int = 25,
+) -> dict:
+    initialize_postgres(database_url)
+    base_pages = max(1, int(base_pages))
+    max_pages = max(1, int(max_pages))
+    used_pages = clamp_pressure_pages(int(used_pages), base_pages=base_pages, max_pages=max_pages)
+
+    with connect_postgres(database_url) as connection:
+        metrics = web_catalog_recent_pressure_metrics(
+            connection,
+            source=source,
+            lookback_minutes=0,
+            since=since,
+        )
+        previous_state = connection.execute(
+            """
+            SELECT *
+            FROM app_store_pressure_state
+            WHERE source = %s
+            """,
+            (source,),
+        ).fetchone()
+        clean_for_ramp = pressure_metrics_are_clean(metrics)
+        proved_selected_pressure = clean_for_ramp and int(metrics["page_count"] or 0) >= used_pages
+        if proved_selected_pressure:
+            next_pages = next_pressure_pages(used_pages, base_pages=base_pages, max_pages=max_pages)
+            clean_run_count = int(previous_state["clean_run_count"] or 0) + 1 if previous_state else 1
+            result = "clean_ramp"
+        elif clean_for_ramp:
+            next_pages = used_pages
+            clean_run_count = int(previous_state["clean_run_count"] or 0) if previous_state else 0
+            result = "clean_but_short"
+        else:
+            next_pages = min(base_pages, max_pages)
+            clean_run_count = 0
+            result = "reset_after_error_or_retry"
+
+        completed_at = utc_timestamp()
+        connection.execute(
+            """
+            INSERT INTO app_store_pressure_state (
+                source,
+                next_max_pages_per_app_country,
+                clean_run_count,
+                last_result,
+                last_started_at,
+                last_completed_at,
+                last_used_pages,
+                last_page_count,
+                last_ok_page_count,
+                last_http_429_page_count,
+                last_error_page_count,
+                last_final_non_200_page_count,
+                last_retried_page_count,
+                updated_at
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (source) DO UPDATE SET
+                next_max_pages_per_app_country = EXCLUDED.next_max_pages_per_app_country,
+                clean_run_count = EXCLUDED.clean_run_count,
+                last_result = EXCLUDED.last_result,
+                last_started_at = EXCLUDED.last_started_at,
+                last_completed_at = EXCLUDED.last_completed_at,
+                last_used_pages = EXCLUDED.last_used_pages,
+                last_page_count = EXCLUDED.last_page_count,
+                last_ok_page_count = EXCLUDED.last_ok_page_count,
+                last_http_429_page_count = EXCLUDED.last_http_429_page_count,
+                last_error_page_count = EXCLUDED.last_error_page_count,
+                last_final_non_200_page_count = EXCLUDED.last_final_non_200_page_count,
+                last_retried_page_count = EXCLUDED.last_retried_page_count,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (
+                source,
+                next_pages,
+                clean_run_count,
+                result,
+                since,
+                completed_at,
+                used_pages,
+                int(metrics["page_count"] or 0),
+                int(metrics["ok_page_count"] or 0),
+                int(metrics["http_429_page_count"] or 0),
+                int(metrics["error_page_count"] or 0),
+                int(metrics["final_non_200_page_count"] or 0),
+                int(metrics["retried_page_count"] or 0),
+            ),
+        )
+        connection.commit()
+
+    return {
+        "source": source,
+        "since": since,
+        "used_pages": used_pages,
+        "next_max_pages_per_app_country": next_pages,
+        "result": result,
+        "clean_for_ramp": clean_for_ramp,
+        "proved_selected_pressure": proved_selected_pressure,
+        "clean_run_count": clean_run_count,
+        "page_count": int(metrics["page_count"] or 0),
+        "ok_page_count": int(metrics["ok_page_count"] or 0),
+        "http_429_page_count": int(metrics["http_429_page_count"] or 0),
+        "error_page_count": int(metrics["error_page_count"] or 0),
+        "final_non_200_page_count": int(metrics["final_non_200_page_count"] or 0),
+        "retried_page_count": int(metrics["retried_page_count"] or 0),
     }
 
 

@@ -21,6 +21,24 @@ on:
         required: false
         default: "5"
         type: string
+      pressure_ramp_mode:
+        description: "Use recent clean web catalog pages to raise scheduled pressure, or keep the fixed page cap"
+        required: false
+        default: "fixed"
+        type: choice
+        options:
+          - fixed
+          - auto
+      pressure_ramp_lookback_minutes:
+        description: "Recent clean-history window used by auto pressure ramp"
+        required: false
+        default: "720"
+        type: string
+      pressure_ramp_max_pages:
+        description: "Highest page cap auto pressure ramp may select"
+        required: false
+        default: "25"
+        type: string
       start_page:
         description: "First web catalog page to fetch"
         required: false
@@ -109,6 +127,9 @@ jobs:
       INPUT_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '1' }}
       INPUT_TARGET_OFFSET: ${{ github.event_name == 'workflow_dispatch' && inputs.target_offset || 'auto' }}
       INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ github.event_name == 'workflow_dispatch' && inputs.max_pages_per_app_country || '5' }}
+      INPUT_PRESSURE_RAMP_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.pressure_ramp_mode || 'auto' }}
+      INPUT_PRESSURE_RAMP_LOOKBACK_MINUTES: ${{ github.event_name == 'workflow_dispatch' && inputs.pressure_ramp_lookback_minutes || '720' }}
+      INPUT_PRESSURE_RAMP_MAX_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.pressure_ramp_max_pages || '25' }}
       INPUT_START_PAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.start_page || '1' }}
       INPUT_REVIEW_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.review_limit || '20' }}
       INPUT_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '10' }}
@@ -176,18 +197,48 @@ jobs:
       - name: Run tests
         run: .venv/bin/python -m pytest -q
 
+      - name: Select web catalog pressure
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          selected_max_pages_per_app_country="$INPUT_MAX_PAGES_PER_APP_COUNTRY"
+          if [[ "$INPUT_PRESSURE_RAMP_MODE" == "auto" ]]; then
+            pressure_json="$(.venv/bin/python app_store_pipeline.py select-web-catalog-pressure \
+              --database-url "$database_url" \
+              --source apple_app_store_web_catalog_reviews \
+              --lookback-minutes "$INPUT_PRESSURE_RAMP_LOOKBACK_MINUTES" \
+              --base-pages "$INPUT_MAX_PAGES_PER_APP_COUNTRY" \
+              --max-pages "$INPUT_PRESSURE_RAMP_MAX_PAGES")"
+            echo "$pressure_json"
+            selected_max_pages_per_app_country="$(
+              PRESSURE_JSON="$pressure_json" .venv/bin/python - <<'PY'
+          import json
+          import os
+
+          print(json.loads(os.environ["PRESSURE_JSON"])["selected_max_pages_per_app_country"])
+          PY
+            )"
+          fi
+          echo "SELECTED_MAX_PAGES_PER_APP_COUNTRY=$selected_max_pages_per_app_country" >> "$GITHUB_ENV"
+          echo "Using max pages per app-country: $selected_max_pages_per_app_country"
+
       - name: Run primary web catalog review pipeline
         env:
           DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
         run: |
           set -euo pipefail
           database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          max_pages_per_app_country="$SELECTED_MAX_PAGES_PER_APP_COUNTRY"
+          echo "Using max pages per app-country: $max_pages_per_app_country"
+
           target_offset="$INPUT_TARGET_OFFSET"
           if [[ "$target_offset" == "auto" ]]; then
             target_offset="$(.venv/bin/python scripts/summarize_source_coverage.py \
               --database-url "$database_url" \
               --targets data/targets/apple_apps.csv \
-              --max-pages-per-app-country "$INPUT_MAX_PAGES_PER_APP_COUNTRY" \
+              --max-pages-per-app-country "$max_pages_per_app_country" \
               --review-limit "$INPUT_REVIEW_LIMIT" \
               --print-next-target-offset)"
           fi
@@ -206,7 +257,7 @@ jobs:
             --database-url "$database_url" \
             --limit "$INPUT_LIMIT" \
             --target-offset "$target_offset" \
-            --max-pages-per-app-country "$INPUT_MAX_PAGES_PER_APP_COUNTRY" \
+            --max-pages-per-app-country "$max_pages_per_app_country" \
             --start-page "$INPUT_START_PAGE" \
             --review-limit "$INPUT_REVIEW_LIMIT" \
             --request-delay-seconds "$INPUT_REQUEST_DELAY_SECONDS" \
@@ -231,6 +282,22 @@ jobs:
             --since "${{ steps.run-window.outputs.run_started_at }}" \
             --min-pages 1 \
             --max-rate "$INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE"
+
+      - name: Record web catalog pressure result
+        if: ${{ always() && !cancelled() && env.INPUT_PRESSURE_RAMP_MODE == 'auto' }}
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          used_pages="${SELECTED_MAX_PAGES_PER_APP_COUNTRY:-$INPUT_MAX_PAGES_PER_APP_COUNTRY}"
+          .venv/bin/python app_store_pipeline.py record-web-catalog-pressure-result \
+            --database-url "$database_url" \
+            --source apple_app_store_web_catalog_reviews \
+            --since "${{ steps.run-window.outputs.run_started_at }}" \
+            --used-pages "$used_pages" \
+            --base-pages "$INPUT_MAX_PAGES_PER_APP_COUNTRY" \
+            --max-pages "$INPUT_PRESSURE_RAMP_MAX_PAGES"
 
       - name: Upload App Store daily artifacts
         if: ${{ always() && !cancelled() }}
