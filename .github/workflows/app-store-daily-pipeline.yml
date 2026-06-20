@@ -2,8 +2,9 @@ name: App Store Review Pipeline
 
 on:
   schedule:
-    # Half-hourly cooldown-safe web catalog probe while the safe public-source rate is being measured.
-    - cron: "*/30 * * * *"
+    # Half-hourly cooldown-safe web catalog probe.
+    # Avoid :00/:30 because GitHub may delay or drop scheduled workflows during high-load minutes.
+    - cron: "13,43 * * * *"
   workflow_dispatch:
     inputs:
       limit:
