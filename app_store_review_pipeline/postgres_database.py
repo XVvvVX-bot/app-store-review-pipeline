@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from pathlib import Path
 from typing import Iterable
 from urllib.parse import urlsplit, urlunsplit
@@ -513,6 +514,20 @@ def pressure_state_text(state: dict | None, key: str, default: str) -> str:
     return str(value) if value is not None else default
 
 
+def json_safe_database_value(value):
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return value
+
+
+def json_safe_database_row(row: dict | None) -> dict | None:
+    if not row:
+        return None
+    return {key: json_safe_database_value(value) for key, value in dict(row).items()}
+
+
 def web_catalog_recent_pressure_metrics(
     connection: psycopg.Connection,
     *,
@@ -705,7 +720,7 @@ def web_catalog_pressure_status(
         "cooldown_active": cooldown_seconds_remaining > 0,
         "reason": reason,
         "clean_for_ramp": clean_for_ramp,
-        "state": dict(state) if state else None,
+        "state": json_safe_database_row(state),
         "page_count": page_count,
         "ok_page_count": int(metrics["ok_page_count"] or 0),
         "error_page_count": int(metrics["error_page_count"] or 0),
