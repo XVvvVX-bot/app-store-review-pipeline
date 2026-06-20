@@ -387,7 +387,7 @@ Ten workflows are included:
 - `Legacy App Store RSS Pipeline`: manual-only RSS ingestion for baseline checks and historical comparison.
 - `App Store Web Catalog Canary`: manual-only RSS vs web catalog `sort=recent` comparison on GitHub-hosted Ubuntu. It does not write Postgres and should be used only when an RSS baseline is explicitly needed.
 - `App Store Web Catalog Ingestion`: manual-only web catalog ingestion for controlled probes that should not change the scheduled workflow.
-- `App Store Web Catalog Backfill`: manual-only complete-backfill probe. The default `max_pages_per_app_country=0` follows web catalog `next` links until terminal evidence, error, or budget.
+- `App Store Web Catalog Backfill`: manual-only chunked backfill probe. The default fetches safe 5-page chunks; set `max_pages_per_app_country=0` only for explicit no-cap exhaustion probes after clean canaries.
 - `App Store Provider Compare`: manual-only RSS vs 42matters comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_42MATTERS_TOKEN` repository secret and does not write Postgres.
 - `App Store AppTweak Compare`: manual-only RSS vs AppTweak comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_APPTWEAK_TOKEN` repository secret and does not write Postgres.
 - `App Store Appfigures Compare`: manual-only RSS vs Appfigures Public Data comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_APPFIGURES_TOKEN` repository secret and does not write Postgres.
@@ -465,10 +465,10 @@ The web catalog backfill workflow defaults to:
 - matrix target offset: `0`
 - max parallel app jobs: `4`
 - start page: `auto`, meaning continue from the highest stored page plus one, and skip apps that already reached `no_next_href`
-- web catalog pages per app-country: `0`, meaning no page cap
+- web catalog pages per app-country: `5`
 - web catalog reviews per page: `20`
-- web catalog request delay: `5` seconds
-- HTTP 429 retries: `5`
+- web catalog request delay: `10` seconds
+- HTTP 429 retries: `1`
 - HTTP 429 retry delay: `60` seconds
 - HTTP 429 backoff multiplier: `1.5`
 - per app job web time budget: `1800` seconds
@@ -477,17 +477,21 @@ The web catalog backfill workflow defaults to:
 - hard HTTP 429 cooldown gate: last HTTP 429 must be at least `720` minutes old
 - global HTTP 429 circuit breaker: current-run minimum `4` pages, trips at `>= 50%` 429, with matrix `fail-fast` enabled
 
-Use the backfill workflow to test whether one or many app-country scopes can be exhausted. The workflow builds a GitHub Actions matrix from `data/targets/apple_apps.csv`; each matrix job runs exactly one app (`--limit 1`) and writes a separate artifact named with that app's target offset and app ID. The hard cooldown gate prevents backfill from starting if the most recent stored web catalog HTTP 429 is still inside the cooldown window. `fail-fast` is enabled because Apple can throttle the public web catalog endpoint globally; once the shared circuit breaker trips, remaining matrix jobs should stop instead of continuing a bad run.
+Use the backfill workflow to advance coverage in bounded chunks and to test whether one or many app-country scopes can eventually be exhausted. The workflow builds a GitHub Actions matrix from `data/targets/apple_apps.csv`; each matrix job runs exactly one app (`--limit 1`) and writes a separate artifact named with that app's target offset and app ID. The hard cooldown gate prevents backfill from starting if the most recent stored web catalog HTTP 429 is still inside the cooldown window. `fail-fast` is enabled because Apple can throttle the public web catalog endpoint globally; once the shared circuit breaker trips, remaining matrix jobs should stop instead of continuing a bad run.
 
-For a 200-app sweep, dispatch `App Store Web Catalog Backfill` with:
+For routine chunked backfill after a clean cooldown window, dispatch `App Store Web Catalog Backfill` with:
 
 - `target_offset`: `0`
 - `limit`: `200`
-- `max_pages_per_app_country`: `0`
+- `max_pages_per_app_country`: `5`
 - `start_page`: `auto`
-- `max_parallel`: start with `4` only after a cooldown canary is clean; use `1` for the first post-cooldown liveness check
-- `web_time_budget_seconds`: start with `1800`
-- `web_scope_time_budget_seconds`: start with `1800`
+- `max_parallel`: `4`
+- `request_delay_seconds`: `10`
+- `web_429_retries`: `1`
+- `web_time_budget_seconds`: start with `900`
+- `web_scope_time_budget_seconds`: start with `900`
+
+Use `max_pages_per_app_country=0` only for explicit no-cap exhaustion probes after repeated clean chunked batches.
 
 True parallelism requires multiple self-hosted runner instances. With only one runner process on the Mac, matrix jobs queue one at a time even though the workflow is matrix-ready. If you add more local runner instances, install each one in a separate runner directory so concurrent jobs do not share a working folder.
 

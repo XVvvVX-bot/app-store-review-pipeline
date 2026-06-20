@@ -14,9 +14,9 @@ on:
         default: "0"
         type: string
       max_pages_per_app_country:
-        description: "Maximum web catalog pages per app-country scope; 0 follows next links until no-next/error/budget"
+        description: "Maximum web catalog pages per app-country scope; use 0 only for explicit no-cap exhaustion probes"
         required: false
-        default: "0"
+        default: "5"
         type: string
       start_page:
         description: "First web catalog page to fetch, or auto to continue from Postgres max page + 1"
@@ -31,12 +31,12 @@ on:
       request_delay_seconds:
         description: "Delay between web catalog requests"
         required: false
-        default: "5"
+        default: "10"
         type: string
       web_429_retries:
         description: "Retries after HTTP 429"
         required: false
-        default: "5"
+        default: "1"
         type: string
       web_429_retry_seconds:
         description: "Delay before retrying HTTP 429"
@@ -153,11 +153,11 @@ jobs:
       INPUT_LIMIT: "1"
       INPUT_TARGET_OFFSET: ${{ matrix.target_offset }}
       MATRIX_APP_ID: ${{ matrix.app_id }}
-      INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ inputs.max_pages_per_app_country || '0' }}
+      INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ inputs.max_pages_per_app_country || '5' }}
       INPUT_START_PAGE: ${{ inputs.start_page || 'auto' }}
       INPUT_REVIEW_LIMIT: ${{ inputs.review_limit || '20' }}
-      INPUT_REQUEST_DELAY_SECONDS: ${{ inputs.request_delay_seconds || '5' }}
-      INPUT_WEB_429_RETRIES: ${{ inputs.web_429_retries || '5' }}
+      INPUT_REQUEST_DELAY_SECONDS: ${{ inputs.request_delay_seconds || '10' }}
+      INPUT_WEB_429_RETRIES: ${{ inputs.web_429_retries || '1' }}
       INPUT_WEB_429_RETRY_SECONDS: ${{ inputs.web_429_retry_seconds || '60' }}
       INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ inputs.web_429_backoff_multiplier || '1.5' }}
       INPUT_WEB_TIME_BUDGET_SECONDS: ${{ inputs.web_time_budget_seconds || '1800' }}

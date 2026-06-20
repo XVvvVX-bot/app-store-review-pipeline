@@ -145,7 +145,7 @@ Run a controlled web catalog ingestion trial with:
 
 At this point in the investigation, the primary `App Store Review Pipeline` workflow ran a conservative web catalog profile on the self-hosted macOS ARM64 runner every 6 hours with `limit=1`, `target_offset=auto`, and RSS-parity stopping. This profile proved useful for early migration testing, but it was later replaced by a cooldown-safe web-only schedule after sustained backfill tests triggered Apple HTTP 429 throttling.
 
-The manual `App Store Web Catalog Backfill` workflow is for complete-backfill probes. Its default `max_pages_per_app_country=0` disables page cap and follows web catalog `next` links until `no_next_href`, fetch error, non-200 response, or wall-clock budget. A `no_next_href` stop is the strongest public-path evidence that the observed catalog pagination is exhausted for that app-country scope; any other stop reason is a lower-bound result.
+The manual `App Store Web Catalog Backfill` workflow is for chunked backfill probes by default. Its default `max_pages_per_app_country=5` advances each selected app-country scope in small bounded batches. Set `max_pages_per_app_country=0` only for explicit no-cap exhaustion probes after repeated clean chunked batches. A `no_next_href` stop is the strongest public-path evidence that the observed catalog pagination is exhausted for that app-country scope; any other stop reason is a lower-bound result.
 
 Use the web catalog ingestion `daily_report.json` stability fields to judge each scheduled trial: `status_code_counts`, `attempt_counts`, `retried_pages`, `final_non_200_pages`, `missing_text`, `missing_rating`, and `all_pages_ok_after_retry`.
 
@@ -203,7 +203,16 @@ Current operating decision:
 - Use cooldown-aware web-only automation while finding a safe rate. The scheduled primary workflow now runs every 12 hours at `06:30` and `18:30` UTC with a small 5-page cap, 10-second request delay, 2 HTTP 429 retries, and RSS-parity stopping disabled.
 - Use the Postgres-backed HTTP 429 cooldown gate before any scheduled or backfill ingestion. If the latest stored web catalog HTTP 429 is less than 720 minutes old, the workflow exits before making new Apple requests.
 - Keep the HTTP 429 rate circuit breakers as a second layer. Recent-lookback protection catches high-rate windows, and current-run protection marks 429-heavy runs as failures instead of green no-data runs.
-- Backfill defaults to `max_parallel=4`, but full backfill should not be attempted until a post-cooldown one-runner liveness check and a small 4-runner canary both finish with clean 200-page rates.
+- Backfill defaults to bounded chunks: `max_parallel=4`, `max_pages_per_app_country=5`, `request_delay_seconds=10`, and `web_429_retries=1`. Full no-cap exhaustion should not be attempted until repeated chunked batches finish with clean 200-page rates.
+
+Post-cooldown evidence from June 20, 2026:
+
+- The scheduled `18:30` UTC workflow did not appear by `19:00` UTC, so a manual run was used to preserve the post-cooldown source test. The workflow was active and the remote cron was `30 6,18 * * *`; this is treated as a GitHub schedule delay/miss rather than an Apple-source result.
+- Manual daily liveness run `27880858230` used the scheduled defaults and completed successfully: 5/5 web catalog pages returned HTTP 200, 0 pages returned HTTP 429, and 100 reviews were loaded.
+- Small 4-runner canary `27880917037` fetched 8 apps x 1 page with `max_parallel=4`: 8/8 pages returned HTTP 200, 0 pages returned HTTP 429.
+- Modest 4-runner depth canary `27880973587` fetched 4 apps x 5 pages with `max_parallel=4` and `request_delay_seconds=10`: 20/20 pages returned HTTP 200, 0 pages returned HTTP 429.
+- Larger chunk canary `27881027486` fetched 8 apps x 5 pages with the same rate: 40/40 pages returned HTTP 200, 0 pages returned HTTP 429.
+- Combined post-cooldown evidence from `19:01:47` to `19:10:45` UTC was 73/73 HTTP 200 pages, 0 HTTP 429 pages, and 1,460 fetched review rows. This supports `max_parallel=4`, 5-page chunks, and 10-second per-job page delay as the current provisional safe mode, not no-cap full backfill.
 
 Recommended post-cooldown sequence:
 
