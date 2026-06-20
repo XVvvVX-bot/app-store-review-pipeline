@@ -8,7 +8,7 @@ from urllib.parse import urlsplit, urlunsplit
 import psycopg
 from psycopg.rows import dict_row
 
-from app_store_review_pipeline.config import DEFAULT_SORT_BY, PLATFORM, SOURCE
+from app_store_review_pipeline.config import DEFAULT_SORT_BY, PLATFORM, SOURCE, WEB_CATALOG_SOURCE
 from app_store_review_pipeline.files import read_jsonl
 from app_store_review_pipeline.targets import load_targets
 from app_store_review_pipeline.utils import utc_timestamp
@@ -183,6 +183,69 @@ def mask_database_url(database_url: str) -> str:
     port = f":{parsed.port}" if parsed.port else ""
     netloc = f"{username}:***@{host}{port}"
     return urlunsplit((parsed.scheme, netloc, parsed.path, parsed.query, parsed.fragment))
+
+
+def web_catalog_429_circuit_breaker_status(
+    database_url: str,
+    *,
+    source: str = WEB_CATALOG_SOURCE,
+    since: str | None = None,
+    lookback_minutes: int = 60,
+    min_pages: int = 4,
+    max_rate: float = 0.5,
+) -> dict:
+    initialize_postgres(database_url)
+    min_pages = max(0, int(min_pages))
+    max_rate = max(0.0, float(max_rate))
+    lookback_minutes = max(0, int(lookback_minutes))
+
+    where_clauses = ["source = %s", "fetched_at IS NOT NULL"]
+    params: list = [source]
+    if since:
+        where_clauses.append("fetched_at::timestamptz >= %s::timestamptz")
+        params.append(since)
+        window = {"since": since}
+    elif lookback_minutes:
+        where_clauses.append("fetched_at::timestamptz >= now() - (%s * INTERVAL '1 minute')")
+        params.append(lookback_minutes)
+        window = {"lookback_minutes": lookback_minutes}
+    else:
+        window = {"lookback_minutes": 0}
+
+    with connect_postgres(database_url) as connection:
+        row = connection.execute(
+            f"""
+            SELECT
+                COUNT(*) AS page_count,
+                COUNT(*) FILTER (WHERE status_code = 429) AS http_429_page_count,
+                COUNT(*) FILTER (WHERE status = 'ok') AS ok_page_count,
+                COUNT(*) FILTER (WHERE status = 'error') AS error_page_count,
+                MIN(fetched_at::timestamptz) AS first_page_at,
+                MAX(fetched_at::timestamptz) AS last_page_at
+            FROM app_store_review_pages
+            WHERE {" AND ".join(where_clauses)}
+            """,
+            tuple(params),
+        ).fetchone()
+
+    page_count = int(row["page_count"] or 0)
+    http_429_page_count = int(row["http_429_page_count"] or 0)
+    http_429_rate = http_429_page_count / page_count if page_count else 0.0
+    tripped = page_count >= min_pages and max_rate > 0 and http_429_rate >= max_rate
+    return {
+        "source": source,
+        "window": window,
+        "page_count": page_count,
+        "http_429_page_count": http_429_page_count,
+        "ok_page_count": int(row["ok_page_count"] or 0),
+        "error_page_count": int(row["error_page_count"] or 0),
+        "http_429_rate": http_429_rate,
+        "min_pages": min_pages,
+        "max_rate": max_rate,
+        "tripped": tripped,
+        "first_page_at": str(row["first_page_at"]) if row["first_page_at"] is not None else None,
+        "last_page_at": str(row["last_page_at"]) if row["last_page_at"] is not None else None,
+    }
 
 
 def scope_key(app_id: str, country: str, sort_by: str = DEFAULT_SORT_BY) -> str:

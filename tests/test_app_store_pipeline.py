@@ -23,7 +23,12 @@ from app_store_review_pipeline.apple_web import (
     probe_web_reviews,
     probe_web_reviews_for_scope,
 )
-from app_store_review_pipeline.cli import command_daily_web_catalog, select_target_window, summarize_fetch_cli
+from app_store_review_pipeline.cli import (
+    command_check_web_429_circuit_breaker,
+    command_daily_web_catalog,
+    select_target_window,
+    summarize_fetch_cli,
+)
 from app_store_review_pipeline.config import WEB_CATALOG_SOURCE
 from app_store_review_pipeline.fetcher import fetch_targets, terminal_reason_for_page
 from app_store_review_pipeline.models import AppTarget, ReviewPage
@@ -174,6 +179,107 @@ def test_initialize_postgres_serializes_schema_creation(monkeypatch):
     )
     assert calls[1] == (postgres_database.POSTGRES_SCHEMA, None)
     assert calls[2] == ("commit", None)
+
+
+def test_web_catalog_429_circuit_breaker_trips_on_high_rate(monkeypatch):
+    queries = []
+
+    class FakeResult:
+        def fetchone(self):
+            return {
+                "page_count": 4,
+                "http_429_page_count": 3,
+                "ok_page_count": 1,
+                "error_page_count": 3,
+                "first_page_at": "2026-06-20 00:00:00+00",
+                "last_page_at": "2026-06-20 00:10:00+00",
+            }
+
+    class FakeConnection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def execute(self, query, params=None):
+            queries.append((query, params))
+            return FakeResult()
+
+    monkeypatch.setattr(postgres_database, "initialize_postgres", lambda database_url: None)
+    monkeypatch.setattr(postgres_database, "connect_postgres", lambda database_url: FakeConnection())
+
+    status = postgres_database.web_catalog_429_circuit_breaker_status(
+        "postgresql:///fixture",
+        since="2026-06-20T00:00:00Z",
+        min_pages=4,
+        max_rate=0.5,
+    )
+
+    assert status["tripped"] is True
+    assert status["page_count"] == 4
+    assert status["http_429_page_count"] == 3
+    assert status["http_429_rate"] == 0.75
+    assert queries[0][1] == (WEB_CATALOG_SOURCE, "2026-06-20T00:00:00Z")
+
+
+def test_web_catalog_429_circuit_breaker_waits_for_min_pages(monkeypatch):
+    class FakeResult:
+        def fetchone(self):
+            return {
+                "page_count": 3,
+                "http_429_page_count": 3,
+                "ok_page_count": 0,
+                "error_page_count": 3,
+                "first_page_at": None,
+                "last_page_at": None,
+            }
+
+    class FakeConnection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def execute(self, query, params=None):
+            return FakeResult()
+
+    monkeypatch.setattr(postgres_database, "initialize_postgres", lambda database_url: None)
+    monkeypatch.setattr(postgres_database, "connect_postgres", lambda database_url: FakeConnection())
+
+    status = postgres_database.web_catalog_429_circuit_breaker_status(
+        "postgresql:///fixture",
+        min_pages=4,
+        max_rate=0.5,
+    )
+
+    assert status["tripped"] is False
+    assert status["http_429_rate"] == 1.0
+
+
+def test_check_web_429_circuit_breaker_command_returns_two_when_tripped(monkeypatch, capsys):
+    monkeypatch.setattr(
+        "app_store_review_pipeline.cli.web_catalog_429_circuit_breaker_status",
+        lambda *args, **kwargs: {
+            "source": WEB_CATALOG_SOURCE,
+            "page_count": 4,
+            "http_429_page_count": 4,
+            "http_429_rate": 1.0,
+            "tripped": True,
+        },
+    )
+    args = argparse.Namespace(
+        database_url="postgresql:///fixture",
+        source=WEB_CATALOG_SOURCE,
+        since="2026-06-20T00:00:00Z",
+        lookback_minutes=60,
+        min_pages=4,
+        max_rate=0.5,
+    )
+
+    assert command_check_web_429_circuit_breaker(args) == 2
+    assert json.loads(capsys.readouterr().out)["tripped"] is True
 
 
 class FakeResponse:

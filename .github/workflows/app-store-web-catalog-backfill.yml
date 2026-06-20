@@ -61,7 +61,17 @@ on:
       max_parallel:
         description: "Maximum app backfill jobs to run in parallel. True parallelism requires multiple self-hosted runner instances."
         required: false
-        default: "8"
+        default: "4"
+        type: string
+      web_429_circuit_breaker_min_pages:
+        description: "Minimum current-run web catalog pages before the global HTTP 429 circuit breaker can trip"
+        required: false
+        default: "4"
+        type: string
+      web_429_circuit_breaker_max_rate:
+        description: "Fail fast when current-run HTTP 429 page rate is at or above this value"
+        required: false
+        default: "0.5"
         type: string
 
 permissions:
@@ -77,6 +87,7 @@ jobs:
     outputs:
       matrix: ${{ steps.build-matrix.outputs.matrix }}
       max_parallel: ${{ steps.build-matrix.outputs.max_parallel }}
+      run_started_at: ${{ steps.build-matrix.outputs.run_started_at }}
       selected_count: ${{ steps.build-matrix.outputs.selected_count }}
     steps:
       - name: Check out repository
@@ -87,9 +98,10 @@ jobs:
         env:
           INPUT_LIMIT: ${{ inputs.limit || '1' }}
           INPUT_TARGET_OFFSET: ${{ inputs.target_offset || '0' }}
-          INPUT_MAX_PARALLEL: ${{ inputs.max_parallel || '8' }}
+          INPUT_MAX_PARALLEL: ${{ inputs.max_parallel || '4' }}
         run: |
           set -euo pipefail
+          echo "run_started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import csv
           import json
@@ -127,7 +139,7 @@ jobs:
     runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 180
     strategy:
-      fail-fast: false
+      fail-fast: true
       max-parallel: ${{ fromJSON(needs.prepare-matrix.outputs.max_parallel) }}
       matrix: ${{ fromJSON(needs.prepare-matrix.outputs.matrix) }}
     env:
@@ -145,6 +157,9 @@ jobs:
       INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ inputs.web_429_backoff_multiplier || '1.5' }}
       INPUT_WEB_TIME_BUDGET_SECONDS: ${{ inputs.web_time_budget_seconds || '1800' }}
       INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS: ${{ inputs.web_scope_time_budget_seconds || '1800' }}
+      INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES: ${{ inputs.web_429_circuit_breaker_min_pages || '4' }}
+      INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE: ${{ inputs.web_429_circuit_breaker_max_rate || '0.5' }}
+      BACKFILL_RUN_STARTED_AT: ${{ needs.prepare-matrix.outputs.run_started_at }}
 
     steps:
       - name: Check out repository
@@ -166,6 +181,19 @@ jobs:
           set -euo pipefail
           database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
           .venv/bin/python app_store_pipeline.py init-postgres --database-url "$database_url"
+
+      - name: Check global web catalog 429 circuit breaker
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          .venv/bin/python app_store_pipeline.py check-web-429-circuit-breaker \
+            --database-url "$database_url" \
+            --source apple_app_store_web_catalog_reviews \
+            --since "$BACKFILL_RUN_STARTED_AT" \
+            --min-pages "$INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES" \
+            --max-rate "$INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE"
 
       - name: Run tests
         run: .venv/bin/python -m pytest -q
