@@ -57,7 +57,7 @@ Legacy RSS requests pages `1..10` from:
 https://itunes.apple.com/{country}/rss/customerreviews/page={page}/id={app_id}/sortby=mostrecent/json
 ```
 
-The default 10-page cap reflects the observed Apple RSS limit of about 500 recent reviews per app-country scope. On incremental runs, the fetcher stops earlier when a page contains review IDs that are already in Postgres.
+The default 5-page cap keeps the scheduled web catalog probe intentionally small while the safe Apple request rate is being measured. On incremental runs, the fetcher stops earlier when a page contains review IDs that are already in Postgres.
 
 Apple's legacy RSS can return sparse pages: an empty `feed.entry` page may still include a `next` link, and later pages may contain review rows. For that reason, empty pages with `next` links are skipped through by default until the page cap or `--max-consecutive-empty-pages` is reached.
 
@@ -395,7 +395,7 @@ Ten workflows are included:
 
 The daily workflow defaults to:
 
-- schedule: every 12 hours during web catalog cooldown/rate measurement, at `06:30` and `18:30` UTC
+- schedule: every 30 minutes during web catalog cooldown/rate measurement
 - source: web catalog reviews JSON
 - database: `postgresql:///app_store_reviews`
 - secret override: `APP_STORE_DATABASE_URL`
