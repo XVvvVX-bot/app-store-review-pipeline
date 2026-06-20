@@ -25,6 +25,7 @@ from app_store_review_pipeline.apple_web import (
 )
 from app_store_review_pipeline.cli import (
     command_check_web_429_circuit_breaker,
+    command_check_web_429_cooldown,
     command_daily_web_catalog,
     select_target_window,
     summarize_fetch_cli,
@@ -279,6 +280,91 @@ def test_check_web_429_circuit_breaker_command_returns_two_when_tripped(monkeypa
     )
 
     assert command_check_web_429_circuit_breaker(args) == 2
+    assert json.loads(capsys.readouterr().out)["tripped"] is True
+
+
+def test_web_catalog_429_cooldown_trips_on_recent_429(monkeypatch):
+    class FakeResult:
+        def fetchone(self):
+            return {
+                "last_http_429_at": "2026-06-20 06:17:49+00",
+                "minutes_since_last_http_429": 12.5,
+                "http_429_count_in_cooldown": 4,
+            }
+
+    class FakeConnection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def execute(self, query, params=None):
+            return FakeResult()
+
+    monkeypatch.setattr(postgres_database, "initialize_postgres", lambda database_url: None)
+    monkeypatch.setattr(postgres_database, "connect_postgres", lambda database_url: FakeConnection())
+
+    status = postgres_database.web_catalog_429_cooldown_status(
+        "postgresql:///fixture",
+        cooldown_minutes=720,
+    )
+
+    assert status["tripped"] is True
+    assert status["minutes_since_last_http_429"] == 12.5
+    assert status["http_429_count_in_cooldown"] == 4
+
+
+def test_web_catalog_429_cooldown_allows_after_window(monkeypatch):
+    class FakeResult:
+        def fetchone(self):
+            return {
+                "last_http_429_at": "2026-06-19 12:00:00+00",
+                "minutes_since_last_http_429": 900.0,
+                "http_429_count_in_cooldown": 0,
+            }
+
+    class FakeConnection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def execute(self, query, params=None):
+            return FakeResult()
+
+    monkeypatch.setattr(postgres_database, "initialize_postgres", lambda database_url: None)
+    monkeypatch.setattr(postgres_database, "connect_postgres", lambda database_url: FakeConnection())
+
+    status = postgres_database.web_catalog_429_cooldown_status(
+        "postgresql:///fixture",
+        cooldown_minutes=720,
+    )
+
+    assert status["tripped"] is False
+    assert status["http_429_count_in_cooldown"] == 0
+
+
+def test_check_web_429_cooldown_command_returns_two_when_tripped(monkeypatch, capsys):
+    monkeypatch.setattr(
+        "app_store_review_pipeline.cli.web_catalog_429_cooldown_status",
+        lambda *args, **kwargs: {
+            "source": WEB_CATALOG_SOURCE,
+            "cooldown_minutes": 720,
+            "last_http_429_at": "2026-06-20 06:17:49+00",
+            "minutes_since_last_http_429": 10.0,
+            "http_429_count_in_cooldown": 4,
+            "tripped": True,
+        },
+    )
+    args = argparse.Namespace(
+        database_url="postgresql:///fixture",
+        source=WEB_CATALOG_SOURCE,
+        cooldown_minutes=720,
+    )
+
+    assert command_check_web_429_cooldown(args) == 2
     assert json.loads(capsys.readouterr().out)["tripped"] is True
 
 

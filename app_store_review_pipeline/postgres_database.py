@@ -248,6 +248,53 @@ def web_catalog_429_circuit_breaker_status(
     }
 
 
+def web_catalog_429_cooldown_status(
+    database_url: str,
+    *,
+    source: str = WEB_CATALOG_SOURCE,
+    cooldown_minutes: int = 720,
+) -> dict:
+    initialize_postgres(database_url)
+    cooldown_minutes = max(0, int(cooldown_minutes))
+
+    with connect_postgres(database_url) as connection:
+        row = connection.execute(
+            """
+            SELECT
+                MAX(fetched_at::timestamptz) AS last_http_429_at,
+                EXTRACT(EPOCH FROM (now() - MAX(fetched_at::timestamptz))) / 60.0
+                    AS minutes_since_last_http_429,
+                COUNT(*) FILTER (
+                    WHERE fetched_at::timestamptz >= now() - (%s * INTERVAL '1 minute')
+                ) AS http_429_count_in_cooldown
+            FROM app_store_review_pages
+            WHERE source = %s
+                AND fetched_at IS NOT NULL
+                AND status_code = 429
+            """,
+            (cooldown_minutes, source),
+        ).fetchone()
+
+    last_http_429_at = row["last_http_429_at"]
+    minutes_since_last_http_429 = row["minutes_since_last_http_429"]
+    if minutes_since_last_http_429 is not None:
+        minutes_since_last_http_429 = float(minutes_since_last_http_429)
+    tripped = (
+        cooldown_minutes > 0
+        and last_http_429_at is not None
+        and minutes_since_last_http_429 is not None
+        and minutes_since_last_http_429 < cooldown_minutes
+    )
+    return {
+        "source": source,
+        "cooldown_minutes": cooldown_minutes,
+        "last_http_429_at": str(last_http_429_at) if last_http_429_at is not None else None,
+        "minutes_since_last_http_429": minutes_since_last_http_429,
+        "http_429_count_in_cooldown": int(row["http_429_count_in_cooldown"] or 0),
+        "tripped": tripped,
+    }
+
+
 def scope_key(app_id: str, country: str, sort_by: str = DEFAULT_SORT_BY) -> str:
     return f"{app_id}:{country.lower()}:{sort_by}"
 

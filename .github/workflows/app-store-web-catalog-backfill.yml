@@ -63,6 +63,11 @@ on:
         required: false
         default: "4"
         type: string
+      web_429_cooldown_minutes:
+        description: "Fail fast when the most recent web catalog HTTP 429 is still within this cooldown window"
+        required: false
+        default: "720"
+        type: string
       web_429_circuit_breaker_min_pages:
         description: "Minimum current-run web catalog pages before the global HTTP 429 circuit breaker can trip"
         required: false
@@ -157,6 +162,7 @@ jobs:
       INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ inputs.web_429_backoff_multiplier || '1.5' }}
       INPUT_WEB_TIME_BUDGET_SECONDS: ${{ inputs.web_time_budget_seconds || '1800' }}
       INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS: ${{ inputs.web_scope_time_budget_seconds || '1800' }}
+      INPUT_WEB_429_COOLDOWN_MINUTES: ${{ inputs.web_429_cooldown_minutes || '720' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES: ${{ inputs.web_429_circuit_breaker_min_pages || '4' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE: ${{ inputs.web_429_circuit_breaker_max_rate || '0.5' }}
       BACKFILL_RUN_STARTED_AT: ${{ needs.prepare-matrix.outputs.run_started_at }}
@@ -181,6 +187,17 @@ jobs:
           set -euo pipefail
           database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
           .venv/bin/python app_store_pipeline.py init-postgres --database-url "$database_url"
+
+      - name: Check web catalog 429 cooldown
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          .venv/bin/python app_store_pipeline.py check-web-429-cooldown \
+            --database-url "$database_url" \
+            --source apple_app_store_web_catalog_reviews \
+            --cooldown-minutes "$INPUT_WEB_429_COOLDOWN_MINUTES"
 
       - name: Check global web catalog 429 circuit breaker
         env:

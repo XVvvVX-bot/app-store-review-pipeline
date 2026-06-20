@@ -43,6 +43,7 @@ from app_store_review_pipeline.postgres_database import (
     review_counts_by_scope,
     validate_postgres,
     web_catalog_429_circuit_breaker_status,
+    web_catalog_429_cooldown_status,
 )
 from app_store_review_pipeline.provider_apptweak import probe_apptweak_reviews
 from app_store_review_pipeline.provider_appfigures import probe_appfigures_reviews
@@ -92,6 +93,15 @@ def build_parser() -> argparse.ArgumentParser:
     web_429_breaker.add_argument("--min-pages", type=int, default=4)
     web_429_breaker.add_argument("--max-rate", type=float, default=0.5)
     web_429_breaker.set_defaults(func=command_check_web_429_circuit_breaker)
+
+    web_429_cooldown = subparsers.add_parser(
+        "check-web-429-cooldown",
+        help="Fail fast when the most recent App Store web catalog HTTP 429 is still inside the cooldown window.",
+    )
+    web_429_cooldown.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
+    web_429_cooldown.add_argument("--source", default=WEB_CATALOG_SOURCE)
+    web_429_cooldown.add_argument("--cooldown-minutes", type=int, default=720)
+    web_429_cooldown.set_defaults(func=command_check_web_429_cooldown)
 
     load = subparsers.add_parser("load", aliases=["load-postgres"], help="Load raw Apple RSS pages into Postgres.")
     load.add_argument("--raw-dir", type=Path, required=True)
@@ -610,6 +620,16 @@ def command_check_web_429_circuit_breaker(args: argparse.Namespace) -> int:
         lookback_minutes=args.lookback_minutes,
         min_pages=args.min_pages,
         max_rate=args.max_rate,
+    )
+    print(json.dumps(status, indent=2, sort_keys=True))
+    return 2 if status["tripped"] else 0
+
+
+def command_check_web_429_cooldown(args: argparse.Namespace) -> int:
+    status = web_catalog_429_cooldown_status(
+        args.database_url,
+        source=args.source,
+        cooldown_minutes=args.cooldown_minutes,
     )
     print(json.dumps(status, indent=2, sort_keys=True))
     return 2 if status["tripped"] else 0

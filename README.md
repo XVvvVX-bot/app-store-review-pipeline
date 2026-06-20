@@ -411,6 +411,7 @@ The daily workflow defaults to:
 - web time budget: `1200` seconds
 - overlap stop: enabled
 - RSS-parity stopping: disabled by default while RSS is paused
+- hard HTTP 429 cooldown gate: last HTTP 429 must be at least `720` minutes old
 - pre-run HTTP 429 circuit breaker: last `720` minutes, minimum `4` pages, trips at `>= 50%` 429
 - current-run HTTP 429 circuit breaker: minimum `1` page, trips at `>= 50%` 429
 
@@ -473,9 +474,10 @@ The web catalog backfill workflow defaults to:
 - per app job web time budget: `1800` seconds
 - per app-country scope web time budget: `1800` seconds
 - overlap stop: disabled
+- hard HTTP 429 cooldown gate: last HTTP 429 must be at least `720` minutes old
 - global HTTP 429 circuit breaker: current-run minimum `4` pages, trips at `>= 50%` 429, with matrix `fail-fast` enabled
 
-Use the backfill workflow to test whether one or many app-country scopes can be exhausted. The workflow builds a GitHub Actions matrix from `data/targets/apple_apps.csv`; each matrix job runs exactly one app (`--limit 1`) and writes a separate artifact named with that app's target offset and app ID. `fail-fast` is enabled because Apple can throttle the public web catalog endpoint globally; once the shared circuit breaker trips, remaining matrix jobs should stop instead of continuing a bad run.
+Use the backfill workflow to test whether one or many app-country scopes can be exhausted. The workflow builds a GitHub Actions matrix from `data/targets/apple_apps.csv`; each matrix job runs exactly one app (`--limit 1`) and writes a separate artifact named with that app's target offset and app ID. The hard cooldown gate prevents backfill from starting if the most recent stored web catalog HTTP 429 is still inside the cooldown window. `fail-fast` is enabled because Apple can throttle the public web catalog endpoint globally; once the shared circuit breaker trips, remaining matrix jobs should stop instead of continuing a bad run.
 
 For a 200-app sweep, dispatch `App Store Web Catalog Backfill` with:
 
