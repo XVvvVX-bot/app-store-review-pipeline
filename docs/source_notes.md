@@ -143,7 +143,7 @@ Run a controlled web catalog ingestion trial with:
   --stop-at-rss-parity
 ```
 
-The primary `App Store Review Pipeline` workflow now runs this conservative web catalog profile on the self-hosted macOS ARM64 runner every 6 hours. It writes to the local Postgres database, stores rows with `source='apple_app_store_web_catalog_reviews'`, and uploads `data/raw/apple_web_catalog/` plus `data/reports/apple_web_catalog/` as audit artifacts. Keep `limit=1`, `target_offset=auto`, and RSS-parity stopping as the routine scheduled setting until the web catalog path has more operational history.
+At this point in the investigation, the primary `App Store Review Pipeline` workflow ran a conservative web catalog profile on the self-hosted macOS ARM64 runner every 6 hours with `limit=1`, `target_offset=auto`, and RSS-parity stopping. This profile proved useful for early migration testing, but it was later replaced by a cooldown-safe web-only schedule after sustained backfill tests triggered Apple HTTP 429 throttling.
 
 The manual `App Store Web Catalog Backfill` workflow is for complete-backfill probes. Its default `max_pages_per_app_country=0` disables page cap and follows web catalog `next` links until `no_next_href`, fetch error, non-200 response, or wall-clock budget. A `no_next_href` stop is the strongest public-path evidence that the observed catalog pagination is exhausted for that app-country scope; any other stop reason is a lower-bound result.
 
@@ -176,7 +176,7 @@ If `new_review_ids_after_scroll` is empty and no review-related network requests
 
 The `App Store Web Catalog Canary` workflow runs both the RSS path and the candidate web catalog path on the same bounded target window using GitHub-hosted Ubuntu. It uploads `data/reports/source_compare/{run_id}/source_comparison_report.json` and the readable `source_comparison_report.md`.
 
-Do not promote web catalog reviews into the production ingestion path until several scheduled canary runs show:
+Do not promote web catalog reviews into the production ingestion path until several controlled canary or scheduled ingestion runs show:
 
 - `web_catalog.web_catalog_page_status_counts` is dominated by `200` responses after bounded retry.
 - `comparison.web_unrecovered_429_page_count` is consistently `0`, or low enough that the source still completes within the intended runtime budget.
@@ -191,3 +191,23 @@ Do not promote web catalog reviews into the production ingestion path until seve
 - The source still works without login, CAPTCHA solving, proxy rotation, or private App Store Connect credentials.
 
 If the canary passes those gates, the next implementation step is a separate web-catalog ingestion mode with its own `source` value, not a silent replacement of RSS rows.
+
+## Cooldown And RSS Pause Decision - June 20, 2026
+
+After testing 4, 6, 8, and 10 local self-hosted runner configurations, local runner capacity was not the limiting factor. The 8-runner profile was mechanically stable on the Mac, but a later 200-target backfill run returned zero new reviews because Apple web catalog requests had shifted into HTTP 429 responses. A follow-up 4-runner canary with one page per app also returned 4/4 HTTP 429 pages, confirming that the endpoint was still throttling the current local access pattern.
+
+Current operating decision:
+
+- Pause scheduled RSS usage. The legacy RSS ingestion workflow remains manual-only, and the RSS-vs-web canary is manual-only while RSS value is considered too low for routine automation.
+- Keep web catalog as the primary candidate because it has already proven materially deeper coverage than visible HTML and can exceed the RSS 500-row/app window when Apple allows sustained pagination.
+- Use cooldown-aware web-only automation while finding a safe rate. The scheduled primary workflow now runs every 12 hours with a small 5-page cap, 10-second request delay, 2 HTTP 429 retries, and RSS-parity stopping disabled.
+- Use the Postgres-backed HTTP 429 circuit breaker before and after scheduled ingestion. Recent-lookback protection prevents a scheduled job from hitting Apple during an active throttling window, and current-run protection marks 429-heavy runs as failures instead of green no-data runs.
+- Backfill defaults to `max_parallel=4`, but full backfill should not be attempted until a post-cooldown one-runner liveness check and a small 4-runner canary both finish with clean 200-page rates.
+
+Recommended post-cooldown sequence:
+
+1. Wait at least 12 hours after a 429-heavy run before testing again.
+2. Run a one-runner liveness check: `limit=4`, `max_parallel=1`, `max_pages_per_app_country=1`.
+3. If clean, run a small 4-runner canary: `limit=8`, `max_parallel=4`, `max_pages_per_app_country=1`.
+4. If clean, test modest depth: `limit=8`, `max_parallel=4`, `max_pages_per_app_country=5`, `request_delay_seconds=10`.
+5. Only after repeated clean runs should continuation backfill resume with `max_parallel=4` and `start_page=auto`.

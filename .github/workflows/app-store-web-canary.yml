@@ -1,9 +1,6 @@
 name: App Store Web Catalog Canary
 
 on:
-  schedule:
-    # Rotating single-app canary for the candidate web catalog recent-review path.
-    - cron: "30 */6 * * *"
   workflow_dispatch:
     inputs:
       limit:

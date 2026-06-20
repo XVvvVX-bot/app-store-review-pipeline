@@ -2,8 +2,8 @@ name: App Store Review Pipeline
 
 on:
   schedule:
-    # Primary web catalog review ingestion. Keep this conservative while backfill coverage expands.
-    - cron: "0 */6 * * *"
+    # Cooldown-safe web catalog probe while the safe public-source rate is being measured.
+    - cron: "0 */12 * * *"
   workflow_dispatch:
     inputs:
       limit:
@@ -19,7 +19,7 @@ on:
       max_pages_per_app_country:
         description: "Maximum web catalog pages per app-country scope; use 0 only for manual complete-backfill probes"
         required: false
-        default: "35"
+        default: "5"
         type: string
       start_page:
         description: "First web catalog page to fetch"
@@ -34,12 +34,12 @@ on:
       request_delay_seconds:
         description: "Delay between web catalog requests"
         required: false
-        default: "5"
+        default: "10"
         type: string
       web_429_retries:
         description: "Retries after HTTP 429"
         required: false
-        default: "5"
+        default: "2"
         type: string
       web_429_retry_seconds:
         description: "Delay before retrying HTTP 429"
@@ -69,8 +69,23 @@ on:
       stop_at_rss_parity:
         description: "Migration mode: continue until web catalog reaches current RSS count, then stop"
         required: false
-        default: true
+        default: false
         type: boolean
+      web_429_circuit_breaker_lookback_minutes:
+        description: "Skip/fail when recent web catalog pages show too many HTTP 429s"
+        required: false
+        default: "720"
+        type: string
+      web_429_circuit_breaker_min_pages:
+        description: "Minimum pages before a 429 circuit breaker can trip"
+        required: false
+        default: "4"
+        type: string
+      web_429_circuit_breaker_max_rate:
+        description: "Fail when HTTP 429 page rate is at or above this value"
+        required: false
+        default: "0.5"
+        type: string
 
 permissions:
   contents: read
@@ -88,21 +103,28 @@ jobs:
       PIP_USER: "false"
       INPUT_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '1' }}
       INPUT_TARGET_OFFSET: ${{ github.event_name == 'workflow_dispatch' && inputs.target_offset || 'auto' }}
-      INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ github.event_name == 'workflow_dispatch' && inputs.max_pages_per_app_country || '35' }}
+      INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ github.event_name == 'workflow_dispatch' && inputs.max_pages_per_app_country || '5' }}
       INPUT_START_PAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.start_page || '1' }}
       INPUT_REVIEW_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.review_limit || '20' }}
-      INPUT_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '5' }}
-      INPUT_WEB_429_RETRIES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retries || '5' }}
+      INPUT_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '10' }}
+      INPUT_WEB_429_RETRIES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retries || '2' }}
       INPUT_WEB_429_RETRY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_seconds || '60' }}
       INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_backoff_multiplier || '1.5' }}
       INPUT_WEB_TIME_BUDGET_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_time_budget_seconds || '1200' }}
       INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_scope_time_budget_seconds || '0' }}
       INPUT_DISABLE_OVERLAP_STOP: ${{ github.event_name == 'workflow_dispatch' && inputs.disable_overlap_stop || 'false' }}
-      INPUT_STOP_AT_RSS_PARITY: ${{ github.event_name != 'workflow_dispatch' || inputs.stop_at_rss_parity }}
+      INPUT_STOP_AT_RSS_PARITY: ${{ github.event_name == 'workflow_dispatch' && inputs.stop_at_rss_parity || 'false' }}
+      INPUT_WEB_429_CIRCUIT_BREAKER_LOOKBACK_MINUTES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_circuit_breaker_lookback_minutes || '720' }}
+      INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_circuit_breaker_min_pages || '4' }}
+      INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_circuit_breaker_max_rate || '0.5' }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+
+      - name: Mark run window
+        id: run-window
+        run: echo "run_started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
       - name: Create Python virtualenv
         run: |
@@ -120,6 +142,19 @@ jobs:
           set -euo pipefail
           database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
           .venv/bin/python app_store_pipeline.py init-postgres --database-url "$database_url"
+
+      - name: Check recent web catalog 429 circuit breaker
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          .venv/bin/python app_store_pipeline.py check-web-429-circuit-breaker \
+            --database-url "$database_url" \
+            --source apple_app_store_web_catalog_reviews \
+            --lookback-minutes "$INPUT_WEB_429_CIRCUIT_BREAKER_LOOKBACK_MINUTES" \
+            --min-pages "$INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES" \
+            --max-rate "$INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE"
 
       - name: Run tests
         run: .venv/bin/python -m pytest -q
@@ -165,6 +200,20 @@ jobs:
             --web-scope-time-budget-seconds "$INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS" \
             $parity_flag \
             $overlap_flag
+
+      - name: Check current-run web catalog 429 circuit breaker
+        if: ${{ always() && !cancelled() }}
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          .venv/bin/python app_store_pipeline.py check-web-429-circuit-breaker \
+            --database-url "$database_url" \
+            --source apple_app_store_web_catalog_reviews \
+            --since "${{ steps.run-window.outputs.run_started_at }}" \
+            --min-pages 1 \
+            --max-rate "$INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE"
 
       - name: Upload App Store daily artifacts
         if: ${{ always() && !cancelled() }}

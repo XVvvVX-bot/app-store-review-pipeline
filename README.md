@@ -4,7 +4,7 @@ Apple App Store public-review ingestion pipeline for mainstream app-review analy
 
 The scheduled pipeline now uses Apple's public App Store web catalog reviews JSON path, stores cumulative review data in Postgres, and keeps each daily run incremental by stopping when already-known web catalog review IDs appear after the current coverage target is met.
 
-The legacy Apple public iTunes customer reviews RSS JSON feed remains available as a manual baseline and diagnostic source. It is useful for comparing recent-review windows, but it is no longer the scheduled primary ingestion path.
+The legacy Apple public iTunes customer reviews RSS JSON feed remains available as a manual baseline and diagnostic source. It is useful for occasional comparison, but all scheduled RSS usage is currently paused while the safer web catalog rate is measured.
 
 ## Boundaries
 
@@ -385,7 +385,7 @@ Ten workflows are included:
 - `CI`: runs unit tests on GitHub-hosted Ubuntu.
 - `App Store Review Pipeline`: runs the primary scheduled web catalog ingestion on a self-hosted macOS ARM64 runner so it can reach the local Postgres database on this Mac.
 - `Legacy App Store RSS Pipeline`: manual-only RSS ingestion for baseline checks and historical comparison.
-- `App Store Web Catalog Canary`: runs a bounded RSS vs web catalog `sort=recent` comparison on GitHub-hosted Ubuntu. It does not write Postgres and is used only to compare candidate source stability and review volume against RSS.
+- `App Store Web Catalog Canary`: manual-only RSS vs web catalog `sort=recent` comparison on GitHub-hosted Ubuntu. It does not write Postgres and should be used only when an RSS baseline is explicitly needed.
 - `App Store Web Catalog Ingestion`: manual-only web catalog ingestion for controlled probes that should not change the scheduled workflow.
 - `App Store Web Catalog Backfill`: manual-only complete-backfill probe. The default `max_pages_per_app_country=0` follows web catalog `next` links until terminal evidence, error, or budget.
 - `App Store Provider Compare`: manual-only RSS vs 42matters comparison on GitHub-hosted Ubuntu. It requires an `APP_STORE_42MATTERS_TOKEN` repository secret and does not write Postgres.
@@ -395,28 +395,30 @@ Ten workflows are included:
 
 The daily workflow defaults to:
 
-- schedule: every 6 hours
+- schedule: every 12 hours during web catalog cooldown/rate measurement
 - source: web catalog reviews JSON
 - database: `postgresql:///app_store_reviews`
 - secret override: `APP_STORE_DATABASE_URL`
 - target limit: `1`
 - target offset: `auto`, selected from Postgres coverage gaps
-- web catalog pages per app-country: `35`
+- web catalog pages per app-country: `5`
 - start page: `1`
 - web catalog reviews per page: `20`
-- web catalog request delay: `5` seconds
-- HTTP 429 retries: `5`
+- web catalog request delay: `10` seconds
+- HTTP 429 retries: `2`
 - HTTP 429 retry delay: `60` seconds
 - HTTP 429 backoff multiplier: `1.5`
 - web time budget: `1200` seconds
 - overlap stop: enabled
-- RSS-parity stopping during migration: enabled by default
+- RSS-parity stopping: disabled by default while RSS is paused
+- pre-run HTTP 429 circuit breaker: last `720` minutes, minimum `4` pages, trips at `>= 50%` 429
+- current-run HTTP 429 circuit breaker: minimum `1` page, trips at `>= 50%` 429
 
 Before relying on automation, register a self-hosted runner for this GitHub repository and make sure local Postgres is running.
 
 The web catalog canary defaults to:
 
-- schedule: every 6 hours, offset 30 minutes from the RSS workflow
+- schedule: manual-only while RSS is paused
 - runner: GitHub-hosted Ubuntu
 - target limit: `1`
 - target offset: `auto`
@@ -452,7 +454,7 @@ The web catalog ingestion workflow defaults to:
 - overlap stop: enabled
 - stop after each app-country matches its current RSS review count: enabled by default
 
-This workflow is a manual control surface for the same web catalog source used by the primary daily workflow. It stores web catalog rows with a separate source key, so analysts can compare legacy RSS and web catalog coverage in the same Postgres database without overwriting rows. The scheduled profile uses RSS-parity stopping during migration so high-volume apps can go beyond the old 25-page / 500-review ceiling when needed, while still stopping early once web catalog has matched the RSS-sized current window. When `target_offset=auto`, the workflow asks the source coverage scorecard for the highest-priority app-country scope below RSS parity, preferring scopes that can reach parity within the configured page cap.
+This workflow is a manual control surface for the same web catalog source used by the primary daily workflow. It stores web catalog rows with a separate source key, so analysts can compare legacy RSS and web catalog coverage in the same Postgres database without overwriting rows. During the current cooldown/rate-measurement phase, scheduled ingestion does not use RSS-parity stopping; it uses a small web-only page cap and circuit breakers instead. When `target_offset=auto`, the workflow asks the source coverage scorecard for the highest-priority app-country scope below the configured coverage target.
 
 The web catalog backfill workflow defaults to:
 
@@ -460,7 +462,7 @@ The web catalog backfill workflow defaults to:
 - runner: self-hosted macOS ARM64
 - matrix target limit: `1`
 - matrix target offset: `0`
-- max parallel app jobs: `2`
+- max parallel app jobs: `4`
 - start page: `auto`, meaning continue from the highest stored page plus one, and skip apps that already reached `no_next_href`
 - web catalog pages per app-country: `0`, meaning no page cap
 - web catalog reviews per page: `20`
@@ -471,8 +473,9 @@ The web catalog backfill workflow defaults to:
 - per app job web time budget: `1800` seconds
 - per app-country scope web time budget: `1800` seconds
 - overlap stop: disabled
+- global HTTP 429 circuit breaker: current-run minimum `4` pages, trips at `>= 50%` 429, with matrix `fail-fast` enabled
 
-Use the backfill workflow to test whether one or many app-country scopes can be exhausted. The workflow builds a GitHub Actions matrix from `data/targets/apple_apps.csv`; each matrix job runs exactly one app (`--limit 1`) and writes a separate artifact named with that app's target offset and app ID. `fail-fast` is disabled, so one app's throttling, failure, or timeout does not cancel the remaining app jobs. The overall workflow can still fail if any app job fails, which is useful because failures should remain visible.
+Use the backfill workflow to test whether one or many app-country scopes can be exhausted. The workflow builds a GitHub Actions matrix from `data/targets/apple_apps.csv`; each matrix job runs exactly one app (`--limit 1`) and writes a separate artifact named with that app's target offset and app ID. `fail-fast` is enabled because Apple can throttle the public web catalog endpoint globally; once the shared circuit breaker trips, remaining matrix jobs should stop instead of continuing a bad run.
 
 For a 200-app sweep, dispatch `App Store Web Catalog Backfill` with:
 
@@ -480,7 +483,7 @@ For a 200-app sweep, dispatch `App Store Web Catalog Backfill` with:
 - `limit`: `200`
 - `max_pages_per_app_country`: `0`
 - `start_page`: `auto`
-- `max_parallel`: start with `2`
+- `max_parallel`: start with `4` only after a cooldown canary is clean; use `1` for the first post-cooldown liveness check
 - `web_time_budget_seconds`: start with `1800`
 - `web_scope_time_budget_seconds`: start with `1800`
 
