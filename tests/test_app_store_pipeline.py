@@ -986,6 +986,72 @@ def test_fetch_web_catalog_targets_retries_malformed_json_soft_error(tmp_path):
     assert len(session.calls) == 2
 
 
+def test_fetch_web_catalog_targets_continues_across_sparse_404(tmp_path):
+    session = FakeWebSession(
+        [
+            FakeWebResponse(200, payload=web_catalog_payload(start=1, count=2, has_next=True)),
+            FakeWebResponse(404, content=b"not found"),
+            FakeWebResponse(200, payload=web_catalog_payload(start=5, count=1, has_next=False)),
+        ]
+    )
+
+    report = fetch_web_catalog_targets(
+        [fixture_target()],
+        tmp_path,
+        "run",
+        max_pages_per_app_country=0,
+        review_limit=2,
+        request_delay_seconds=0,
+        web_429_retries=0,
+        max_consecutive_sparse_fetch_errors=3,
+        session=session,
+    )
+
+    assert len(report["page_reports"]) == 3
+    assert report["fetched_pages"] == 2
+    assert report["fetch_errors"] == 1
+    assert report["sparse_fetch_error_pages"] == 1
+    assert report["review_count"] == 3
+    assert report["page_reports"][1]["status_code"] == 404
+    assert report["page_reports"][1]["terminal_reason"] is None
+    assert report["page_reports"][2]["terminal_reason"] == "no_next_href"
+    assert "offset=4" in session.calls[2]
+
+
+def test_fetch_web_catalog_targets_stops_after_sparse_404_threshold(tmp_path):
+    session = FakeWebSession(
+        [
+            FakeWebResponse(200, payload=web_catalog_payload(start=1, count=2, has_next=True)),
+            FakeWebResponse(404, content=b"not found"),
+            FakeWebResponse(404, content=b"not found"),
+            FakeWebResponse(404, content=b"not found"),
+            FakeWebResponse(200, payload=web_catalog_payload(start=9, count=1, has_next=False)),
+        ]
+    )
+
+    report = fetch_web_catalog_targets(
+        [fixture_target()],
+        tmp_path,
+        "run",
+        max_pages_per_app_country=0,
+        review_limit=2,
+        request_delay_seconds=0,
+        web_429_retries=0,
+        max_consecutive_sparse_fetch_errors=3,
+        session=session,
+    )
+
+    assert len(report["page_reports"]) == 4
+    assert report["fetched_pages"] == 1
+    assert report["fetch_errors"] == 3
+    assert report["sparse_fetch_error_pages"] == 2
+    assert report["review_count"] == 2
+    assert report["page_reports"][-1]["status_code"] == 404
+    assert report["page_reports"][-1]["terminal_reason"] == "sparse_fetch_error_threshold"
+    assert report["warning_scopes"][0]["reason"] == "sparse_fetch_error_threshold"
+    assert len(session.calls) == 4
+
+
 def test_fetch_web_catalog_targets_records_final_soft_error_status(tmp_path):
     session = FakeWebSession(
         [

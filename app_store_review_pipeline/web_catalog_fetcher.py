@@ -43,6 +43,7 @@ def fetch_web_catalog_targets(
     web_429_backoff_multiplier: float = 1.5,
     web_soft_retries: int = 2,
     web_soft_retry_seconds: float = 5.0,
+    max_consecutive_sparse_fetch_errors: int = 3,
     time_budget_seconds: float = 0.0,
     scope_time_budget_seconds: float = 0.0,
     known_review_ids_by_scope: dict[tuple[str, str, str], set[str]] | None = None,
@@ -92,6 +93,7 @@ def fetch_web_catalog_targets(
                 known_review_ids = known_review_ids_by_scope.get(scope, set())
                 target_review_count = target_review_counts_by_scope.get(scope)
                 scope_review_total = 0
+                consecutive_sparse_fetch_errors = 0
                 next_href: str | None = None
                 page_number = start_page
                 while page_cap is None or page_number <= page_cap:
@@ -167,6 +169,12 @@ def fetch_web_catalog_targets(
                         target_review_count=target_review_count,
                         next_href=next_href,
                         use_overlap_stop=use_overlap_stop,
+                        consecutive_sparse_fetch_errors=(
+                            consecutive_sparse_fetch_errors + 1
+                            if is_sparse_web_catalog_fetch_error(page_report)
+                            else 0
+                        ),
+                        max_consecutive_sparse_fetch_errors=max_consecutive_sparse_fetch_errors,
                     )
                     page_report = replace(
                         page_report,
@@ -175,6 +183,11 @@ def fetch_web_catalog_targets(
                     )
                     page_reports.append(asdict(page_report))
                     review_rows.extend(asdict(review) for review in reviews)
+
+                    if is_sparse_web_catalog_fetch_error(page_report):
+                        consecutive_sparse_fetch_errors += 1
+                    else:
+                        consecutive_sparse_fetch_errors = 0
 
                     if terminal_reason:
                         if terminal_reason == "target_review_count_reached":
@@ -188,7 +201,7 @@ def fetch_web_catalog_targets(
                                     "fetched_review_count": scope_review_total,
                                 }
                             )
-                        if terminal_reason in {"page_cap", "fetch_error"}:
+                        if terminal_reason in {"page_cap", "fetch_error", "sparse_fetch_error_threshold"}:
                             warning_scopes.append(
                                 {
                                     "app_id": target.apple_app_id,
@@ -227,11 +240,19 @@ def fetch_web_catalog_targets(
         "page_cap_enabled": page_cap is not None,
         "time_budget_seconds": time_budget_seconds,
         "scope_time_budget_seconds": scope_time_budget_seconds,
+        "max_consecutive_sparse_fetch_errors": max_consecutive_sparse_fetch_errors,
         "overall_time_budget_exceeded": overall_time_budget_exceeded,
         "page_reports": page_reports,
         "reviews": review_rows,
         "fetched_pages": sum(1 for page in page_reports if page.get("status") == "ok"),
         "fetch_errors": sum(1 for page in page_reports if page.get("status") == "error"),
+        "sparse_fetch_error_pages": sum(
+            1
+            for page in page_reports
+            if page.get("status") == "error"
+            and page.get("status_code") == 404
+            and not page.get("terminal_reason")
+        ),
         "empty_pages": sum(1 for page in page_reports if page.get("status") == "ok" and page.get("review_count") == 0),
         "review_count": len(review_rows),
         "unique_review_count": len({row.get("review_key") for row in review_rows if row.get("review_key")}),
@@ -299,7 +320,7 @@ def fetch_web_catalog_page(
 ) -> tuple[ReviewPage, list[AppReview], str | None]:
     country = country.lower()
     page_key = make_page_key(run_id, target.apple_app_id, country, sort_by, page_number)
-    if page_number == start_page:
+    if page_number == start_page or not next_href:
         request_url = app_store_web_reviews_url(
             target.apple_app_id,
             country,
@@ -449,10 +470,17 @@ def web_terminal_reason_for_page(
     target_review_count: int | None,
     next_href: str | None,
     use_overlap_stop: bool,
+    consecutive_sparse_fetch_errors: int = 0,
+    max_consecutive_sparse_fetch_errors: int = 3,
 ) -> str | None:
     if page_report.terminal_reason:
         return page_report.terminal_reason
     if page_report.status != "ok":
+        if is_sparse_web_catalog_fetch_error(page_report):
+            threshold = max(1, max_consecutive_sparse_fetch_errors)
+            if consecutive_sparse_fetch_errors < threshold:
+                return None
+            return "sparse_fetch_error_threshold"
         return "fetch_error"
     if target_review_count is not None and target_review_count <= 0:
         return "target_review_count_zero"
@@ -472,6 +500,10 @@ def web_terminal_reason_for_page(
     if page_report.review_count == 0:
         return "empty_page"
     return None
+
+
+def is_sparse_web_catalog_fetch_error(page_report: ReviewPage) -> bool:
+    return page_report.status == "error" and page_report.status_code == 404
 
 
 def web_error_page(

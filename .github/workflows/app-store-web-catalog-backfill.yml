@@ -251,7 +251,7 @@ jobs:
               exit 0
             fi
             start_page="$(psql "$database_url" \
-              -Atc "select coalesce(max(page_number) + 1, 1) from app_store_review_pages where source = 'apple_app_store_web_catalog_reviews' and app_id = '$MATRIX_APP_ID';")"
+              -Atc "select coalesce(max(page_number) filter (where status = 'ok') + 1, 1) from app_store_review_pages where source = 'apple_app_store_web_catalog_reviews' and app_id = '$MATRIX_APP_ID';")"
           fi
           echo "Using start page: $start_page"
 
