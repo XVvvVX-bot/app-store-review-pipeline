@@ -480,37 +480,39 @@ The web catalog backfill workflow defaults to:
 
 - schedule: manual-only
 - runner: self-hosted macOS ARM64
-- matrix target limit: `1`
+- matrix target limit: `200`
 - matrix target offset: `0`
-- max parallel app jobs: `4`
+- max parallel app jobs: `5`
 - start page: `auto`, meaning continue from the highest stored page plus one, and skip apps that already reached `no_next_href`
-- web catalog pages per app-country: `5`
+- web catalog pages per app-country: `0`, meaning each app is bounded by time rather than page count
 - web catalog reviews per page: `20`
 - web catalog request delay: `10` seconds
 - HTTP 429 retries: `1`
 - HTTP 429 retry delay: `60` seconds
 - HTTP 429 backoff multiplier: `1.5`
-- per app job web time budget: `2700` seconds
-- per app-country scope web time budget: `2700` seconds
+- per app job web time budget: `1200` seconds
+- per app-country scope web time budget: `1200` seconds
 - overlap stop: disabled
 - hard HTTP 429 cooldown gate: last HTTP 429 must be at least `720` minutes old
 - global HTTP 429 circuit breaker: current-run minimum `4` pages, trips at `>= 50%` 429, with matrix `fail-fast` enabled
+- round continuation: default `limit=200`, `max_parallel=5`, and auto-dispatches the next full selected-target round after a clean round until all selected apps have `no_next_href`
 
-Use the backfill workflow to advance coverage in bounded chunks and to test whether one or many app-country scopes can eventually be exhausted. The workflow builds a GitHub Actions matrix from `data/targets/apple_apps.csv`; each matrix job runs exactly one app (`--limit 1`) and writes a separate artifact named with that app's target offset and app ID. The hard cooldown gate prevents backfill from starting if the most recent stored web catalog HTTP 429 is still inside the cooldown window. `fail-fast` is enabled because Apple can throttle the public web catalog endpoint globally; once the shared circuit breaker trips, remaining matrix jobs should stop instead of continuing a bad run.
+Use the backfill workflow to advance coverage in bounded rounds and to test whether all selected app-country scopes can eventually be exhausted. The workflow builds a GitHub Actions matrix from `data/targets/apple_apps.csv`; each matrix job runs exactly one app (`--limit 1`) and writes a separate artifact named with that app's target offset and app ID. The hard cooldown gate prevents backfill from starting if the most recent stored web catalog HTTP 429 is still inside the cooldown window. `fail-fast` is enabled because Apple can throttle the public web catalog endpoint globally; once the shared circuit breaker trips, remaining matrix jobs should stop instead of continuing a bad run. If a full selected-target round succeeds, the workflow checks local Postgres and immediately dispatches the next round over the same selected targets unless every selected app already has a `no_next_href` terminal page.
 
-For routine chunked backfill after a clean cooldown window, dispatch `App Store Web Catalog Backfill` with:
+For routine round-based backfill after a clean cooldown window, dispatch `App Store Web Catalog Backfill` with:
 
 - `target_offset`: `0`
 - `limit`: `200`
-- `max_pages_per_app_country`: `5`
+- `max_pages_per_app_country`: `0`
 - `start_page`: `auto`
-- `max_parallel`: `4`
+- `max_parallel`: `5`
 - `request_delay_seconds`: `10`
 - `web_429_retries`: `1`
-- `web_time_budget_seconds`: `2700`
-- `web_scope_time_budget_seconds`: `2700`
+- `web_time_budget_seconds`: `1200`
+- `web_scope_time_budget_seconds`: `1200`
+- `auto_continue`: `true`
 
-Use `max_pages_per_app_country=0` only for explicit no-cap exhaustion probes after repeated clean chunked batches.
+This backfill profile uses `max_pages_per_app_country=0` because the 20-minute per-app budget is now the bounded control.
 
 True parallelism requires multiple self-hosted runner instances. With only one runner process on the Mac, matrix jobs queue one at a time even though the workflow is matrix-ready. If you add more local runner instances, install each one in a separate runner directory so concurrent jobs do not share a working folder.
 

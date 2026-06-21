@@ -6,7 +6,7 @@ on:
       limit:
         description: "Maximum active targets to backfill"
         required: false
-        default: "1"
+        default: "200"
         type: string
       target_offset:
         description: "Number of active targets to skip before applying limit"
@@ -16,7 +16,7 @@ on:
       max_pages_per_app_country:
         description: "Maximum web catalog pages per app-country scope; use 0 only for explicit no-cap exhaustion probes"
         required: false
-        default: "5"
+        default: "0"
         type: string
       start_page:
         description: "First web catalog page to fetch, or auto to continue from Postgres max page + 1"
@@ -51,17 +51,32 @@ on:
       web_time_budget_seconds:
         description: "Overall wall-clock budget per app job; 0 means no overall budget"
         required: false
-        default: "2700"
+        default: "1200"
         type: string
       web_scope_time_budget_seconds:
         description: "Wall-clock budget per app-country scope; 0 means no per-scope budget"
         required: false
-        default: "2700"
+        default: "1200"
         type: string
       max_parallel:
         description: "Maximum app backfill jobs to run in parallel. True parallelism requires multiple self-hosted runner instances."
         required: false
-        default: "4"
+        default: "5"
+        type: string
+      auto_continue:
+        description: "Dispatch the next full selected-target round after a clean round"
+        required: false
+        default: true
+        type: boolean
+      chain_depth:
+        description: "Internal continuation counter"
+        required: false
+        default: "0"
+        type: string
+      max_chain_depth:
+        description: "Maximum automatic continuation rounds"
+        required: false
+        default: "100"
         type: string
       web_429_cooldown_minutes:
         description: "Fail fast when the most recent web catalog HTTP 429 is still within this cooldown window"
@@ -80,6 +95,7 @@ on:
         type: string
 
 permissions:
+  actions: write
   contents: read
 
 concurrency:
@@ -101,9 +117,9 @@ jobs:
       - name: Build app backfill matrix
         id: build-matrix
         env:
-          INPUT_LIMIT: ${{ inputs.limit || '1' }}
+          INPUT_LIMIT: ${{ inputs.limit || '200' }}
           INPUT_TARGET_OFFSET: ${{ inputs.target_offset || '0' }}
-          INPUT_MAX_PARALLEL: ${{ inputs.max_parallel || '4' }}
+          INPUT_MAX_PARALLEL: ${{ inputs.max_parallel || '5' }}
         run: |
           set -euo pipefail
           echo "run_started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
@@ -153,15 +169,15 @@ jobs:
       INPUT_LIMIT: "1"
       INPUT_TARGET_OFFSET: ${{ matrix.target_offset }}
       MATRIX_APP_ID: ${{ matrix.app_id }}
-      INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ inputs.max_pages_per_app_country || '5' }}
+      INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ inputs.max_pages_per_app_country || '0' }}
       INPUT_START_PAGE: ${{ inputs.start_page || 'auto' }}
       INPUT_REVIEW_LIMIT: ${{ inputs.review_limit || '20' }}
       INPUT_REQUEST_DELAY_SECONDS: ${{ inputs.request_delay_seconds || '10' }}
       INPUT_WEB_429_RETRIES: ${{ inputs.web_429_retries || '1' }}
       INPUT_WEB_429_RETRY_SECONDS: ${{ inputs.web_429_retry_seconds || '60' }}
       INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ inputs.web_429_backoff_multiplier || '1.5' }}
-      INPUT_WEB_TIME_BUDGET_SECONDS: ${{ inputs.web_time_budget_seconds || '2700' }}
-      INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS: ${{ inputs.web_scope_time_budget_seconds || '2700' }}
+      INPUT_WEB_TIME_BUDGET_SECONDS: ${{ inputs.web_time_budget_seconds || '1200' }}
+      INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS: ${{ inputs.web_scope_time_budget_seconds || '1200' }}
       INPUT_WEB_429_COOLDOWN_MINUTES: ${{ inputs.web_429_cooldown_minutes || '720' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES: ${{ inputs.web_429_circuit_breaker_min_pages || '4' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE: ${{ inputs.web_429_circuit_breaker_max_rate || '0.5' }}
@@ -264,3 +280,93 @@ jobs:
           path: |
             data/raw/apple_web_catalog/
             data/reports/apple_web_catalog/
+
+  continue-backfill:
+    needs:
+      - prepare-matrix
+      - backfill
+    if: ${{ needs.backfill.result == 'success' && fromJSON(needs.prepare-matrix.outputs.selected_count) > 0 && (inputs.auto_continue == true || inputs.auto_continue == 'true') && fromJSON(inputs.chain_depth || '0') < fromJSON(inputs.max_chain_depth || '100') }}
+    runs-on: [self-hosted, macOS, ARM64]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Dispatch next backfill round
+        id: dispatch
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+          GH_TOKEN: ${{ github.token }}
+          INPUT_CHAIN_DEPTH: ${{ inputs.chain_depth || '0' }}
+          INPUT_LIMIT: ${{ inputs.limit || '200' }}
+          INPUT_TARGET_OFFSET: ${{ inputs.target_offset || '0' }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          selected_ids="$(
+            python3 - <<'PY'
+          import csv
+          import os
+
+          limit = max(0, int(os.environ["INPUT_LIMIT"]))
+          start_offset = max(0, int(os.environ["INPUT_TARGET_OFFSET"]))
+          ids = []
+          active_index = 0
+          with open("data/targets/apple_apps.csv", newline="", encoding="utf-8") as handle:
+              for row in csv.DictReader(handle):
+                  if str(row.get("active", "")).lower() != "true":
+                      continue
+                  if active_index >= start_offset:
+                      ids.append(row["apple_app_id"])
+                  active_index += 1
+                  if limit and len(ids) >= limit:
+                      break
+          print(",".join("'" + app_id.replace("'", "''") + "'" for app_id in ids))
+          PY
+          )"
+          if [[ -z "$selected_ids" ]]; then
+            echo "No selected targets remain; stopping auto-continuation."
+            exit 0
+          fi
+          remaining_count="$(
+            psql "$database_url" -Atc "
+              WITH selected(app_id) AS (
+                SELECT unnest(ARRAY[$selected_ids]::text[])
+              )
+              SELECT count(*)
+              FROM selected s
+              WHERE NOT EXISTS (
+                SELECT 1
+                FROM app_store_review_pages p
+                WHERE p.source = 'apple_app_store_web_catalog_reviews'
+                  AND p.app_id = s.app_id
+                  AND p.terminal_reason = 'no_next_href'
+              );
+            "
+          )"
+          echo "Selected targets without no_next_href: $remaining_count"
+          if (( remaining_count == 0 )); then
+            echo "All selected targets have no_next_href; stopping auto-continuation."
+            exit 0
+          fi
+
+          next_depth="$(( INPUT_CHAIN_DEPTH + 1 ))"
+          gh workflow run app-store-web-catalog-backfill.yml \
+            --ref "${GITHUB_REF_NAME:-main}" \
+            -f limit="${{ inputs.limit || '200' }}" \
+            -f target_offset="${{ inputs.target_offset || '0' }}" \
+            -f max_pages_per_app_country="${{ inputs.max_pages_per_app_country || '0' }}" \
+            -f start_page="${{ inputs.start_page || 'auto' }}" \
+            -f review_limit="${{ inputs.review_limit || '20' }}" \
+            -f request_delay_seconds="${{ inputs.request_delay_seconds || '10' }}" \
+            -f web_429_retries="${{ inputs.web_429_retries || '1' }}" \
+            -f web_429_retry_seconds="${{ inputs.web_429_retry_seconds || '60' }}" \
+            -f web_429_backoff_multiplier="${{ inputs.web_429_backoff_multiplier || '1.5' }}" \
+            -f web_time_budget_seconds="${{ inputs.web_time_budget_seconds || '1200' }}" \
+            -f web_scope_time_budget_seconds="${{ inputs.web_scope_time_budget_seconds || '1200' }}" \
+            -f max_parallel="${{ inputs.max_parallel || '5' }}" \
+            -f auto_continue="${{ inputs.auto_continue }}" \
+            -f chain_depth="$next_depth" \
+            -f max_chain_depth="${{ inputs.max_chain_depth || '100' }}" \
+            -f web_429_cooldown_minutes="${{ inputs.web_429_cooldown_minutes || '720' }}" \
+            -f web_429_circuit_breaker_min_pages="${{ inputs.web_429_circuit_breaker_min_pages || '4' }}" \
+            -f web_429_circuit_breaker_max_rate="${{ inputs.web_429_circuit_breaker_max_rate || '0.5' }}"
