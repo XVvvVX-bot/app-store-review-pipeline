@@ -162,6 +162,7 @@ def fetch_web_catalog_targets(
                     terminal_reason = web_terminal_reason_for_page(
                         page_report,
                         page_number=page_number,
+                        start_page=start_page,
                         max_pages_per_app_country=page_cap,
                         overlap_count=overlap_count,
                         known_review_count=len(known_review_ids),
@@ -464,6 +465,7 @@ def web_terminal_reason_for_page(
     page_report: ReviewPage,
     *,
     page_number: int,
+    start_page: int,
     max_pages_per_app_country: int | None,
     overlap_count: int,
     known_review_count: int,
@@ -498,6 +500,8 @@ def web_terminal_reason_for_page(
     if max_pages_per_app_country is not None and page_number >= max_pages_per_app_country:
         return "page_cap"
     if not next_href:
+        if start_page > 1 and page_number == start_page and page_report.review_count > 0:
+            return None
         if review_limit is not None and page_report.review_count >= review_limit:
             return None
         return "no_next_href"

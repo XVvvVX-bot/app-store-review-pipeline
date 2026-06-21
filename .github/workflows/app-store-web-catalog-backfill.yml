@@ -248,14 +248,8 @@ jobs:
           fi
           start_page="$INPUT_START_PAGE"
           if [[ "$start_page" == "auto" ]]; then
-            no_next_count="$(psql "$database_url" \
-              -Atc "select count(*) from app_store_review_pages where source = 'apple_app_store_web_catalog_reviews' and app_id = '$MATRIX_APP_ID' and terminal_reason = 'no_next_href' and review_count < $INPUT_REVIEW_LIMIT;")"
-            if [[ "$no_next_count" != "0" ]]; then
-              echo "App already has a partial no_next_href web catalog page in Postgres; skipping completed backfill scope."
-              exit 0
-            fi
             start_page="$(psql "$database_url" \
-              -Atc "select coalesce(max(page_number) filter (where status = 'ok') + 1, 1) from app_store_review_pages where source = 'apple_app_store_web_catalog_reviews' and app_id = '$MATRIX_APP_ID';")"
+              -Atc "select coalesce(max(page_number) filter (where status = 'ok'), 1) from app_store_review_pages where source = 'apple_app_store_web_catalog_reviews' and app_id = '$MATRIX_APP_ID';")"
           fi
           echo "Using start page: $start_page"
 
@@ -336,29 +330,6 @@ jobs:
             echo "No selected targets remain; stopping auto-continuation."
             exit 0
           fi
-          remaining_count="$(
-            psql "$database_url" -Atc "
-              WITH selected(app_id) AS (
-                SELECT unnest(ARRAY[$selected_ids]::text[])
-              )
-              SELECT count(*)
-              FROM selected s
-              WHERE NOT EXISTS (
-                SELECT 1
-                FROM app_store_review_pages p
-                WHERE p.source = 'apple_app_store_web_catalog_reviews'
-                  AND p.app_id = s.app_id
-                  AND p.terminal_reason = 'no_next_href'
-                  AND p.review_count < $INPUT_REVIEW_LIMIT
-              );
-            "
-          )"
-          echo "Selected targets without partial no_next_href: $remaining_count"
-          if (( remaining_count == 0 )); then
-            echo "All selected targets have partial no_next_href; stopping auto-continuation."
-            exit 0
-          fi
-
           next_depth="$(( INPUT_CHAIN_DEPTH + 1 ))"
           gh workflow run app-store-web-catalog-backfill.yml \
             --ref "${GITHUB_REF_NAME:-main}" \

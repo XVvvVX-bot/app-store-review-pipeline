@@ -1137,6 +1137,35 @@ def test_fetch_web_catalog_targets_continues_when_full_page_omits_next_href(tmp_
     assert "offset=2" in session.calls[1]
 
 
+def test_fetch_web_catalog_targets_reprobes_deep_partial_tail_page(tmp_path):
+    session = FakeWebSession(
+        [
+            FakeWebResponse(200, payload=web_catalog_payload(start=213, count=1, has_next=False)),
+            FakeWebResponse(200, payload=web_catalog_payload(start=215, count=1, has_next=False)),
+        ]
+    )
+
+    report = fetch_web_catalog_targets(
+        [fixture_target()],
+        tmp_path,
+        "run",
+        start_page=107,
+        max_pages_per_app_country=0,
+        review_limit=2,
+        request_delay_seconds=0,
+        web_429_retries=0,
+        session=session,
+    )
+
+    assert report["fetched_pages"] == 2
+    assert report["page_reports"][0]["page_number"] == 107
+    assert report["page_reports"][0]["terminal_reason"] is None
+    assert report["page_reports"][1]["page_number"] == 108
+    assert report["page_reports"][1]["terminal_reason"] == "no_next_href"
+    assert "offset=212" in session.calls[0]
+    assert "offset=214" in session.calls[1]
+
+
 def test_fetch_web_catalog_targets_scope_time_budget_stops_one_scope(tmp_path):
     session = FakeWebSession(
         [
