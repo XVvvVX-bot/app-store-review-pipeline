@@ -466,7 +466,7 @@ def test_web_catalog_pressure_starts_at_base_without_state(monkeypatch):
     assert status["selected_max_pages_per_app_country"] == 5
 
 
-def test_web_catalog_pressure_resets_on_retries(monkeypatch):
+def test_web_catalog_pressure_allows_recovered_retries(monkeypatch):
     rows = [
         {
             "page_count": 100,
@@ -513,9 +513,64 @@ def test_web_catalog_pressure_resets_on_retries(monkeypatch):
 
     status = postgres_database.web_catalog_pressure_status("postgresql:///fixture", base_pages=5, max_pages=25)
 
-    assert status["clean_for_ramp"] is False
-    assert status["reason"] == "recent_errors_or_retries"
+    assert status["clean_for_ramp"] is True
+    assert status["reason"] == "stored_pressure_state"
     assert status["selected_max_pages_per_app_country"] == 5
+    assert status["retried_page_count"] == 1
+
+
+def test_web_catalog_pressure_blocks_on_clustered_soft_errors(monkeypatch):
+    rows = [
+        {
+            "page_count": 100,
+            "ok_page_count": 98,
+            "error_page_count": 2,
+            "http_429_page_count": 0,
+            "final_non_200_page_count": 0,
+            "soft_error_page_count": 2,
+            "retried_page_count": 0,
+            "first_page_at": "2026-06-20 19:00:00+00",
+            "last_page_at": "2026-06-20 20:00:00+00",
+        },
+        {
+            "source": WEB_CATALOG_SOURCE,
+            "next_max_pages_per_app_country": 20,
+            "safe_max_pages_per_app_country": 5,
+            "candidate_max_pages_per_app_country": 20,
+            "safe_max_parallel": 1,
+            "candidate_max_parallel": 4,
+            "safe_scope_time_budget_seconds": 1800,
+            "candidate_scope_time_budget_seconds": 1800,
+            "clean_run_count": 5,
+        },
+    ]
+
+    class FakeResult:
+        def __init__(self, row):
+            self.row = row
+
+        def fetchone(self):
+            return self.row
+
+    class FakeConnection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def execute(self, query, params=None):
+            return FakeResult(rows.pop(0))
+
+    monkeypatch.setattr(postgres_database, "initialize_postgres", lambda database_url: None)
+    monkeypatch.setattr(postgres_database, "connect_postgres", lambda database_url: FakeConnection())
+
+    status = postgres_database.web_catalog_pressure_status("postgresql:///fixture", base_pages=5, max_pages=25)
+
+    assert status["clean_for_ramp"] is False
+    assert status["reason"] == "recent_pressure_errors"
+    assert status["soft_error_threshold_exceeded"] is True
+    assert status["soft_error_page_count"] == 2
 
 
 def test_record_web_catalog_pressure_result_raises_parallel_after_clean_run(monkeypatch):
@@ -903,6 +958,64 @@ def test_fetch_web_catalog_targets_follows_next_pages_and_preserves_source(tmp_p
     assert len(session.calls) == 2
 
 
+def test_fetch_web_catalog_targets_retries_malformed_json_soft_error(tmp_path):
+    session = FakeWebSession(
+        [
+            FakeWebResponse(200, content=b"not json"),
+            FakeWebResponse(200, payload=web_catalog_payload(start=1, count=2, has_next=False)),
+        ]
+    )
+
+    report = fetch_web_catalog_targets(
+        [fixture_target()],
+        tmp_path,
+        "run",
+        max_pages_per_app_country=1,
+        review_limit=2,
+        request_delay_seconds=0,
+        web_429_retries=0,
+        web_soft_retries=1,
+        web_soft_retry_seconds=0,
+        session=session,
+    )
+
+    assert report["fetch_errors"] == 0
+    assert report["fetched_pages"] == 1
+    assert report["review_count"] == 2
+    assert report["page_reports"][0]["attempt_count"] == 2
+    assert len(session.calls) == 2
+
+
+def test_fetch_web_catalog_targets_records_final_soft_error_status(tmp_path):
+    session = FakeWebSession(
+        [
+            FakeWebResponse(200, content=b"not json"),
+            FakeWebResponse(200, content=b"still not json"),
+        ]
+    )
+
+    report = fetch_web_catalog_targets(
+        [fixture_target()],
+        tmp_path,
+        "run",
+        max_pages_per_app_country=1,
+        review_limit=2,
+        request_delay_seconds=0,
+        web_429_retries=0,
+        web_soft_retries=1,
+        web_soft_retry_seconds=0,
+        session=session,
+    )
+
+    page = report["page_reports"][0]
+    assert report["fetch_errors"] == 1
+    assert page["status"] == "error"
+    assert page["status_code"] == 200
+    assert page["response_bytes"] > 0
+    assert page["attempt_count"] == 2
+    assert page["terminal_reason"] == "fetch_error"
+
+
 def test_fetch_web_catalog_targets_zero_page_cap_follows_until_no_next(tmp_path):
     session = FakeWebSession(
         [
@@ -1078,6 +1191,8 @@ def test_daily_web_catalog_passes_start_page_to_fetcher(tmp_path, monkeypatch):
         web_429_retries=0,
         web_429_retry_seconds=0.0,
         web_429_backoff_multiplier=1.0,
+        web_soft_retries=2,
+        web_soft_retry_seconds=5.0,
         web_time_budget_seconds=120.0,
         web_scope_time_budget_seconds=30.0,
         disable_overlap_stop=True,
@@ -1137,6 +1252,8 @@ def test_daily_web_catalog_can_pass_rss_parity_targets_to_fetcher(tmp_path, monk
         web_429_retries=0,
         web_429_retry_seconds=0.0,
         web_429_backoff_multiplier=1.0,
+        web_soft_retries=2,
+        web_soft_retry_seconds=5.0,
         web_time_budget_seconds=0.0,
         web_scope_time_budget_seconds=0.0,
         disable_overlap_stop=False,

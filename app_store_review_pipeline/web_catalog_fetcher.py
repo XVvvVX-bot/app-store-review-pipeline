@@ -41,6 +41,8 @@ def fetch_web_catalog_targets(
     web_429_retries: int = 5,
     web_429_retry_seconds: float = 60.0,
     web_429_backoff_multiplier: float = 1.5,
+    web_soft_retries: int = 2,
+    web_soft_retry_seconds: float = 5.0,
     time_budget_seconds: float = 0.0,
     scope_time_budget_seconds: float = 0.0,
     known_review_ids_by_scope: dict[tuple[str, str, str], set[str]] | None = None,
@@ -147,6 +149,8 @@ def fetch_web_catalog_targets(
                         web_429_retries=web_429_retries,
                         web_429_retry_seconds=web_429_retry_seconds,
                         web_429_backoff_multiplier=web_429_backoff_multiplier,
+                        web_soft_retries=web_soft_retries,
+                        web_soft_retry_seconds=web_soft_retry_seconds,
                         deadline_monotonic=effective_deadline,
                         monotonic_fn=monotonic_fn,
                         sleep_fn=sleep_fn,
@@ -287,6 +291,8 @@ def fetch_web_catalog_page(
     web_429_retries: int,
     web_429_retry_seconds: float,
     web_429_backoff_multiplier: float,
+    web_soft_retries: int,
+    web_soft_retry_seconds: float,
     deadline_monotonic: float | None,
     monotonic_fn: Callable[[], float],
     sleep_fn: Callable[[float], None],
@@ -312,23 +318,63 @@ def fetch_web_catalog_page(
         "Origin": "https://apps.apple.com",
     }
 
-    try:
-        response, attempts = get_with_429_retries(
-            session,
-            request_url,
-            headers=headers,
-            timeout_seconds=timeout_seconds,
-            web_429_retries=web_429_retries,
-            web_429_retry_seconds=web_429_retry_seconds,
-            web_429_backoff_multiplier=web_429_backoff_multiplier,
-            deadline_monotonic=deadline_monotonic,
-            monotonic_fn=monotonic_fn,
-            sleep_fn=sleep_fn,
-        )
-        payload = response.json()
-        if not isinstance(payload, dict):
-            raise ValueError("web catalog response JSON was not an object")
-    except (requests.RequestException, ValueError, json.JSONDecodeError) as exc:
+    response: requests.Response | None = None
+    payload: dict[str, Any] | None = None
+    attempts: list[dict[str, Any]] = []
+    last_error: Exception | None = None
+    last_status_code: int | None = None
+    last_response_bytes = 0
+    max_soft_attempts = max(1, int(web_soft_retries) + 1)
+    soft_retry_delay = max(0.0, float(web_soft_retry_seconds))
+    soft_attempts_made = 0
+
+    for soft_attempt_number in range(1, max_soft_attempts + 1):
+        soft_attempts_made = soft_attempt_number
+        try:
+            response, current_attempts = get_with_429_retries(
+                session,
+                request_url,
+                headers=headers,
+                timeout_seconds=timeout_seconds,
+                web_429_retries=web_429_retries,
+                web_429_retry_seconds=web_429_retry_seconds,
+                web_429_backoff_multiplier=web_429_backoff_multiplier,
+                deadline_monotonic=deadline_monotonic,
+                monotonic_fn=monotonic_fn,
+                sleep_fn=sleep_fn,
+            )
+            for attempt in current_attempts:
+                attempt["soft_attempt_number"] = soft_attempt_number
+            attempts.extend(current_attempts)
+            last_status_code = response.status_code
+            last_response_bytes = len(response.content or b"")
+            payload_candidate = response.json()
+            if not isinstance(payload_candidate, dict):
+                raise ValueError("web catalog response JSON was not an object")
+            payload = payload_candidate
+            break
+        except requests.RequestException as exc:
+            last_error = exc
+            last_status_code = None
+            last_response_bytes = 0
+        except (ValueError, json.JSONDecodeError) as exc:
+            last_error = exc
+
+        is_soft_error = last_status_code is None or 200 <= last_status_code < 300
+        if not is_soft_error or soft_attempt_number >= max_soft_attempts:
+            break
+        if soft_retry_delay and not can_sleep_before_deadline(
+            soft_retry_delay,
+            deadline_monotonic,
+            monotonic_fn,
+        ):
+            if attempts:
+                attempts[-1]["retry_skipped_reason"] = "soft_retry_time_budget_exceeded"
+            break
+        if soft_retry_delay:
+            sleep_fn(soft_retry_delay)
+
+    if payload is None or response is None:
         return web_error_page(
             target,
             page_key,
@@ -338,7 +384,10 @@ def fetch_web_catalog_page(
             page_number=page_number,
             request_url=request_url,
             fetched_at=fetched_at,
-            error_message=str(exc),
+            status_code=last_status_code,
+            response_bytes=last_response_bytes,
+            attempt_count=max(1, len(attempts), soft_attempts_made),
+            error_message=str(last_error) if last_error else "web catalog response could not be parsed",
         ), [], None
 
     write_json(raw_json_path, payload)
@@ -436,6 +485,9 @@ def web_error_page(
     request_url: str,
     fetched_at: str,
     error_message: str,
+    status_code: int | None = None,
+    response_bytes: int = 0,
+    attempt_count: int = 1,
 ) -> ReviewPage:
     return ReviewPage(
         page_key=page_key,
@@ -449,10 +501,10 @@ def web_error_page(
         page_number=page_number,
         request_url=request_url,
         status="error",
-        status_code=None,
+        status_code=status_code,
         fetched_at=fetched_at,
         raw_json_path=None,
-        response_bytes=0,
+        response_bytes=response_bytes,
         review_count=0,
         unique_review_count=0,
         duplicate_count=0,
@@ -462,7 +514,7 @@ def web_error_page(
         max_updated_epoch_seconds=None,
         min_updated_epoch_seconds=None,
         has_next_link=False,
-        attempt_count=1,
+        attempt_count=attempt_count,
         error_message=error_message,
         terminal_reason=None,
         overlap_review_count=0,

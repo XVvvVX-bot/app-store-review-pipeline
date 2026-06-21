@@ -16,6 +16,11 @@ from app_store_review_pipeline.targets import load_targets
 from app_store_review_pipeline.utils import utc_timestamp
 
 
+PRESSURE_SOFT_ERROR_MIN_PAGES = 100
+PRESSURE_SOFT_ERROR_MAX_RATE = 0.01
+PRESSURE_SOFT_ERROR_MAX_COUNT = 3
+
+
 POSTGRES_SCHEMA = """
 CREATE TABLE IF NOT EXISTS app_store_runs (
     run_id TEXT PRIMARY KEY,
@@ -555,6 +560,13 @@ def web_catalog_recent_pressure_metrics(
                 WHERE status_code IS NOT NULL
                     AND (status_code < 200 OR status_code >= 300)
             ) AS final_non_200_page_count,
+            COUNT(*) FILTER (
+                WHERE status = 'error'
+                    AND (
+                        status_code IS NULL
+                        OR (status_code >= 200 AND status_code < 300)
+                    )
+            ) AS soft_error_page_count,
             COUNT(*) FILTER (WHERE attempt_count > 1) AS retried_page_count,
             MIN(fetched_at::timestamptz) AS first_page_at,
             MAX(fetched_at::timestamptz) AS last_page_at
@@ -569,19 +581,32 @@ def web_catalog_recent_pressure_metrics(
         "error_page_count": int(row["error_page_count"] or 0),
         "http_429_page_count": int(row["http_429_page_count"] or 0),
         "final_non_200_page_count": int(row["final_non_200_page_count"] or 0),
+        "soft_error_page_count": int(row.get("soft_error_page_count") or 0),
         "retried_page_count": int(row["retried_page_count"] or 0),
         "first_page_at": row["first_page_at"],
         "last_page_at": row["last_page_at"],
     }
 
 
+def pressure_soft_error_threshold_exceeded(metrics: dict) -> bool:
+    page_count = int(metrics["page_count"] or 0)
+    soft_error_page_count = int(metrics.get("soft_error_page_count") or 0)
+    if soft_error_page_count <= 0:
+        return False
+    if soft_error_page_count > PRESSURE_SOFT_ERROR_MAX_COUNT:
+        return True
+    return (
+        page_count >= PRESSURE_SOFT_ERROR_MIN_PAGES
+        and soft_error_page_count / max(page_count, 1) > PRESSURE_SOFT_ERROR_MAX_RATE
+    )
+
+
 def pressure_metrics_are_clean(metrics: dict) -> bool:
     return (
         int(metrics["page_count"] or 0) > 0
         and int(metrics["http_429_page_count"] or 0) == 0
-        and int(metrics["error_page_count"] or 0) == 0
         and int(metrics["final_non_200_page_count"] or 0) == 0
-        and int(metrics["retried_page_count"] or 0) == 0
+        and not pressure_soft_error_threshold_exceeded(metrics)
     )
 
 
@@ -629,6 +654,9 @@ def web_catalog_pressure_status(
 
     page_count = int(metrics["page_count"] or 0)
     clean_for_ramp = pressure_metrics_are_clean(metrics)
+    soft_error_page_count = int(metrics.get("soft_error_page_count") or 0)
+    soft_error_rate = soft_error_page_count / page_count if page_count else 0.0
+    soft_error_threshold_exceeded = pressure_soft_error_threshold_exceeded(metrics)
     safe_pages = clamp_pressure_pages(
         pressure_state_int(state, "safe_max_pages_per_app_country", base_pages),
         base_pages=base_pages,
@@ -673,7 +701,7 @@ def web_catalog_pressure_status(
     elif not page_count:
         reason = "no_recent_pages"
     elif not clean_for_ramp:
-        reason = "recent_errors_or_retries"
+        reason = "recent_pressure_errors"
     else:
         reason = "stored_pressure_state"
 
@@ -726,6 +754,9 @@ def web_catalog_pressure_status(
         "error_page_count": int(metrics["error_page_count"] or 0),
         "http_429_page_count": int(metrics["http_429_page_count"] or 0),
         "final_non_200_page_count": int(metrics["final_non_200_page_count"] or 0),
+        "soft_error_page_count": soft_error_page_count,
+        "soft_error_rate": soft_error_rate,
+        "soft_error_threshold_exceeded": soft_error_threshold_exceeded,
         "retried_page_count": int(metrics["retried_page_count"] or 0),
         "first_page_at": str(metrics["first_page_at"]) if metrics["first_page_at"] is not None else None,
         "last_page_at": str(metrics["last_page_at"]) if metrics["last_page_at"] is not None else None,
@@ -888,7 +919,7 @@ def record_web_catalog_pressure_result(
             safe_pages = previous_safe_pages
             safe_parallel = previous_safe_parallel
             safe_scope_time_budget_seconds = previous_safe_scope_time_budget_seconds
-            if phase == "retry_after_429":
+            if phase in {"retry_after_429", "retry_after_pressure_error"}:
                 rollback_config = {
                     "max_pages_per_app_country": previous_safe_pages,
                     "max_parallel": previous_safe_parallel,
@@ -915,7 +946,7 @@ def record_web_catalog_pressure_result(
                 candidate_pages = safe_pages
                 candidate_parallel = safe_parallel
                 candidate_scope_time_budget_seconds = safe_scope_time_budget_seconds
-                result = "confirmed_429_rollback"
+                result = "confirmed_pressure_rollback"
                 search_phase = "rollback_verify"
                 confirmed_429_count += 1
                 next_action = "cooldown_retry_rollback"
@@ -939,7 +970,7 @@ def record_web_catalog_pressure_result(
                 candidate_pages = safe_pages
                 candidate_parallel = safe_parallel
                 candidate_scope_time_budget_seconds = safe_scope_time_budget_seconds
-                result = "rollback_still_429_lower_pressure"
+                result = "rollback_still_unstable_lower_pressure"
                 search_phase = "rollback_verify"
                 confirmed_429_count += 1
                 next_action = "cooldown_retry_rollback"
@@ -949,8 +980,8 @@ def record_web_catalog_pressure_result(
                 candidate_pages = used_pages
                 candidate_parallel = used_parallel
                 candidate_scope_time_budget_seconds = used_scope_time_budget_seconds
-                result = "first_429_cooldown_retry"
-                search_phase = "retry_after_429"
+                result = "first_pressure_error_cooldown_retry"
+                search_phase = "retry_after_pressure_error"
                 confirmed_429_count = max(confirmed_429_count, 1)
                 next_action = "cooldown_retry_same_pressure"
                 next_after_seconds = cooldown_minutes * 60
@@ -1097,6 +1128,13 @@ def record_web_catalog_pressure_result(
         "http_429_page_count": int(metrics["http_429_page_count"] or 0),
         "error_page_count": int(metrics["error_page_count"] or 0),
         "final_non_200_page_count": int(metrics["final_non_200_page_count"] or 0),
+        "soft_error_page_count": int(metrics.get("soft_error_page_count") or 0),
+        "soft_error_rate": (
+            int(metrics.get("soft_error_page_count") or 0) / int(metrics["page_count"] or 1)
+            if int(metrics["page_count"] or 0)
+            else 0.0
+        ),
+        "soft_error_threshold_exceeded": pressure_soft_error_threshold_exceeded(metrics),
         "retried_page_count": int(metrics["retried_page_count"] or 0),
     }
 

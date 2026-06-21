@@ -63,8 +63,18 @@ on:
         required: false
         default: "1.5"
         type: string
+      web_soft_retries:
+        description: "Retries for transient empty or malformed 2xx web catalog responses"
+        required: false
+        default: "2"
+        type: string
+      web_soft_retry_seconds:
+        description: "Delay before retrying transient web catalog soft errors"
+        required: false
+        default: "5"
+        type: string
       cooldown_minutes:
-        description: "Cooldown before retrying after HTTP 429"
+        description: "Cooldown before retrying after pressure errors"
         required: false
         default: "30"
         type: string
@@ -230,6 +240,8 @@ jobs:
       INPUT_WEB_429_RETRIES: ${{ inputs.web_429_retries || '0' }}
       INPUT_WEB_429_RETRY_SECONDS: ${{ inputs.web_429_retry_seconds || '60' }}
       INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ inputs.web_429_backoff_multiplier || '1.5' }}
+      INPUT_WEB_SOFT_RETRIES: ${{ inputs.web_soft_retries || '2' }}
+      INPUT_WEB_SOFT_RETRY_SECONDS: ${{ inputs.web_soft_retry_seconds || '5' }}
       INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS: ${{ needs.prepare-pressure.outputs.selected_scope_time_budget_seconds }}
       PRESSURE_RUN_STARTED_AT: ${{ needs.prepare-pressure.outputs.run_started_at }}
       INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES: ${{ inputs.web_429_circuit_breaker_min_pages || '1' }}
@@ -299,6 +311,8 @@ jobs:
             --web-429-retries "$INPUT_WEB_429_RETRIES" \
             --web-429-retry-seconds "$INPUT_WEB_429_RETRY_SECONDS" \
             --web-429-backoff-multiplier "$INPUT_WEB_429_BACKOFF_MULTIPLIER" \
+            --web-soft-retries "$INPUT_WEB_SOFT_RETRIES" \
+            --web-soft-retry-seconds "$INPUT_WEB_SOFT_RETRY_SECONDS" \
             --web-time-budget-seconds "$INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS" \
             --web-scope-time-budget-seconds "$INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS" \
             --disable-overlap-stop
@@ -438,6 +452,8 @@ jobs:
             -f web_429_retries="${{ inputs.web_429_retries || '0' }}" \
             -f web_429_retry_seconds="${{ inputs.web_429_retry_seconds || '60' }}" \
             -f web_429_backoff_multiplier="${{ inputs.web_429_backoff_multiplier || '1.5' }}" \
+            -f web_soft_retries="${{ inputs.web_soft_retries || '2' }}" \
+            -f web_soft_retry_seconds="${{ inputs.web_soft_retry_seconds || '5' }}" \
             -f cooldown_minutes="${{ inputs.cooldown_minutes || '30' }}" \
             -f web_429_circuit_breaker_min_pages="${{ inputs.web_429_circuit_breaker_min_pages || '1' }}" \
             -f web_429_circuit_breaker_max_rate="${{ inputs.web_429_circuit_breaker_max_rate || '0.5' }}" \
