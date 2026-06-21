@@ -242,12 +242,16 @@ jobs:
             echo "Invalid matrix app id: $MATRIX_APP_ID" >&2
             exit 1
           fi
+          if [[ ! "$INPUT_REVIEW_LIMIT" =~ ^[0-9]+$ ]]; then
+            echo "Invalid review limit: $INPUT_REVIEW_LIMIT" >&2
+            exit 1
+          fi
           start_page="$INPUT_START_PAGE"
           if [[ "$start_page" == "auto" ]]; then
             no_next_count="$(psql "$database_url" \
-              -Atc "select count(*) from app_store_review_pages where source = 'apple_app_store_web_catalog_reviews' and app_id = '$MATRIX_APP_ID' and terminal_reason = 'no_next_href';")"
+              -Atc "select count(*) from app_store_review_pages where source = 'apple_app_store_web_catalog_reviews' and app_id = '$MATRIX_APP_ID' and terminal_reason = 'no_next_href' and review_count < $INPUT_REVIEW_LIMIT;")"
             if [[ "$no_next_count" != "0" ]]; then
-              echo "App already has a no_next_href web catalog page in Postgres; skipping completed backfill scope."
+              echo "App already has a partial no_next_href web catalog page in Postgres; skipping completed backfill scope."
               exit 0
             fi
             start_page="$(psql "$database_url" \
@@ -299,9 +303,14 @@ jobs:
           INPUT_CHAIN_DEPTH: ${{ inputs.chain_depth || '0' }}
           INPUT_LIMIT: ${{ inputs.limit || '200' }}
           INPUT_TARGET_OFFSET: ${{ inputs.target_offset || '0' }}
+          INPUT_REVIEW_LIMIT: ${{ inputs.review_limit || '20' }}
         run: |
           set -euo pipefail
           database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          if [[ ! "$INPUT_REVIEW_LIMIT" =~ ^[0-9]+$ ]]; then
+            echo "Invalid review limit: $INPUT_REVIEW_LIMIT" >&2
+            exit 1
+          fi
           selected_ids="$(
             python3 - <<'PY'
           import csv
@@ -340,12 +349,13 @@ jobs:
                 WHERE p.source = 'apple_app_store_web_catalog_reviews'
                   AND p.app_id = s.app_id
                   AND p.terminal_reason = 'no_next_href'
+                  AND p.review_count < $INPUT_REVIEW_LIMIT
               );
             "
           )"
-          echo "Selected targets without no_next_href: $remaining_count"
+          echo "Selected targets without partial no_next_href: $remaining_count"
           if (( remaining_count == 0 )); then
-            echo "All selected targets have no_next_href; stopping auto-continuation."
+            echo "All selected targets have partial no_next_href; stopping auto-continuation."
             exit 0
           fi
 

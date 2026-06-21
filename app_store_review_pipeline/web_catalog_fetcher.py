@@ -168,6 +168,7 @@ def fetch_web_catalog_targets(
                         page_review_total=scope_review_total,
                         target_review_count=target_review_count,
                         next_href=next_href,
+                        review_limit=review_limit,
                         use_overlap_stop=use_overlap_stop,
                         consecutive_sparse_fetch_errors=(
                             consecutive_sparse_fetch_errors + 1
@@ -470,6 +471,7 @@ def web_terminal_reason_for_page(
     target_review_count: int | None,
     next_href: str | None,
     use_overlap_stop: bool,
+    review_limit: int | None = None,
     consecutive_sparse_fetch_errors: int = 0,
     max_consecutive_sparse_fetch_errors: int = 3,
 ) -> str | None:
@@ -496,6 +498,8 @@ def web_terminal_reason_for_page(
     if max_pages_per_app_country is not None and page_number >= max_pages_per_app_country:
         return "page_cap"
     if not next_href:
+        if review_limit is not None and page_report.review_count >= review_limit:
+            return None
         return "no_next_href"
     if page_report.review_count == 0:
         return "empty_page"

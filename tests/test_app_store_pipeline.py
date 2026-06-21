@@ -1109,6 +1109,34 @@ def test_fetch_web_catalog_targets_zero_page_cap_follows_until_no_next(tmp_path)
     assert len(session.calls) == 3
 
 
+def test_fetch_web_catalog_targets_continues_when_full_page_omits_next_href(tmp_path):
+    session = FakeWebSession(
+        [
+            FakeWebResponse(200, payload=web_catalog_payload(start=1, count=2, has_next=False)),
+            FakeWebResponse(200, payload=web_catalog_payload(start=3, count=1, has_next=False)),
+        ]
+    )
+
+    report = fetch_web_catalog_targets(
+        [fixture_target()],
+        tmp_path,
+        "run",
+        max_pages_per_app_country=0,
+        review_limit=2,
+        request_delay_seconds=0,
+        web_429_retries=0,
+        session=session,
+    )
+
+    assert report["fetched_pages"] == 2
+    assert report["review_count"] == 3
+    assert report["page_reports"][0]["review_count"] == 2
+    assert report["page_reports"][0]["has_next_link"] is False
+    assert report["page_reports"][0]["terminal_reason"] is None
+    assert report["page_reports"][1]["terminal_reason"] == "no_next_href"
+    assert "offset=2" in session.calls[1]
+
+
 def test_fetch_web_catalog_targets_scope_time_budget_stops_one_scope(tmp_path):
     session = FakeWebSession(
         [
