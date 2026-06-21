@@ -1,10 +1,7 @@
 name: App Store Review Pipeline
 
 on:
-  schedule:
-    # Daily production-style incremental run using the latest proven safe pressure state.
-    # The separate pressure-search workflow performs active boundary testing.
-    - cron: "17 9 * * *"
+  # Scheduled ingestion is paused while full web catalog backfill is running.
   workflow_dispatch:
     inputs:
       limit:
