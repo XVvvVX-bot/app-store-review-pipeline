@@ -214,6 +214,7 @@ Post-cooldown evidence from June 20, 2026:
 - Modest 4-runner depth canary `27880973587` fetched 4 apps x 5 pages with `max_parallel=4` and `request_delay_seconds=10`: 20/20 pages returned HTTP 200, 0 pages returned HTTP 429.
 - Larger chunk canary `27881027486` fetched 8 apps x 5 pages with the same rate: 40/40 pages returned HTTP 200, 0 pages returned HTTP 429.
 - Combined post-cooldown evidence from `19:01:47` to `19:10:45` UTC was 73/73 HTTP 200 pages, 0 HTTP 429 pages, and 1,460 fetched review rows. This supports `max_parallel=4`, 5-page chunks, and 10-second per-job page delay as the current provisional safe mode, not no-cap full backfill.
+- Pressure-search probes later proved `max_parallel=4` with `2700` seconds/app cleanly, so 4 runners and 45 minutes/app is now the selected safe operating profile. A `3600` seconds/app probe also completed without 429s, but it is intentionally not adopted because 60-90 minute per-app jobs are too slow for the current development cycle.
 
 Recommended post-cooldown sequence:
 

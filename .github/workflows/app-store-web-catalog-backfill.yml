@@ -51,12 +51,12 @@ on:
       web_time_budget_seconds:
         description: "Overall wall-clock budget per app job; 0 means no overall budget"
         required: false
-        default: "1800"
+        default: "2700"
         type: string
       web_scope_time_budget_seconds:
         description: "Wall-clock budget per app-country scope; 0 means no per-scope budget"
         required: false
-        default: "1800"
+        default: "2700"
         type: string
       max_parallel:
         description: "Maximum app backfill jobs to run in parallel. True parallelism requires multiple self-hosted runner instances."
@@ -160,8 +160,8 @@ jobs:
       INPUT_WEB_429_RETRIES: ${{ inputs.web_429_retries || '1' }}
       INPUT_WEB_429_RETRY_SECONDS: ${{ inputs.web_429_retry_seconds || '60' }}
       INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ inputs.web_429_backoff_multiplier || '1.5' }}
-      INPUT_WEB_TIME_BUDGET_SECONDS: ${{ inputs.web_time_budget_seconds || '1800' }}
-      INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS: ${{ inputs.web_scope_time_budget_seconds || '1800' }}
+      INPUT_WEB_TIME_BUDGET_SECONDS: ${{ inputs.web_time_budget_seconds || '2700' }}
+      INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS: ${{ inputs.web_scope_time_budget_seconds || '2700' }}
       INPUT_WEB_429_COOLDOWN_MINUTES: ${{ inputs.web_429_cooldown_minutes || '720' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES: ${{ inputs.web_429_circuit_breaker_min_pages || '4' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE: ${{ inputs.web_429_circuit_breaker_max_rate || '0.5' }}

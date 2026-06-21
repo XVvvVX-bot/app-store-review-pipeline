@@ -31,7 +31,7 @@ on:
       max_scope_time_budget_seconds:
         description: "Maximum per-app-country time budget to prove"
         required: false
-        default: "7200"
+        default: "2700"
         type: string
       start_page:
         description: "First web catalog page to fetch, or auto to continue from Postgres max page + 1"
@@ -131,7 +131,7 @@ jobs:
       INPUT_BASE_PARALLEL: ${{ inputs.base_parallel || '1' }}
       INPUT_MAX_PARALLEL: ${{ inputs.max_parallel || '4' }}
       INPUT_BASE_SCOPE_TIME_BUDGET_SECONDS: ${{ inputs.base_scope_time_budget_seconds || '1800' }}
-      INPUT_MAX_SCOPE_TIME_BUDGET_SECONDS: ${{ inputs.max_scope_time_budget_seconds || '7200' }}
+      INPUT_MAX_SCOPE_TIME_BUDGET_SECONDS: ${{ inputs.max_scope_time_budget_seconds || '2700' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -358,7 +358,7 @@ jobs:
       INPUT_BASE_PARALLEL: ${{ inputs.base_parallel || '1' }}
       INPUT_SCOPE_TIME_BUDGET_SECONDS: ${{ needs.prepare-pressure.outputs.selected_scope_time_budget_seconds }}
       INPUT_BASE_SCOPE_TIME_BUDGET_SECONDS: ${{ inputs.base_scope_time_budget_seconds || '1800' }}
-      INPUT_MAX_SCOPE_TIME_BUDGET_SECONDS: ${{ inputs.max_scope_time_budget_seconds || '7200' }}
+      INPUT_MAX_SCOPE_TIME_BUDGET_SECONDS: ${{ inputs.max_scope_time_budget_seconds || '2700' }}
       INPUT_COOLDOWN_MINUTES: ${{ inputs.cooldown_minutes || '30' }}
       INPUT_AUTO_CONTINUE: ${{ inputs.auto_continue }}
       INPUT_CHAIN_DEPTH: ${{ inputs.chain_depth || '0' }}
@@ -445,7 +445,7 @@ jobs:
             -f base_parallel="${{ inputs.base_parallel || '1' }}" \
             -f max_parallel="${{ inputs.max_parallel || '4' }}" \
             -f base_scope_time_budget_seconds="${{ inputs.base_scope_time_budget_seconds || '1800' }}" \
-            -f max_scope_time_budget_seconds="${{ inputs.max_scope_time_budget_seconds || '7200' }}" \
+            -f max_scope_time_budget_seconds="${{ inputs.max_scope_time_budget_seconds || '2700' }}" \
             -f start_page="${{ inputs.start_page || 'auto' }}" \
             -f review_limit="${{ inputs.review_limit || '20' }}" \
             -f request_delay_seconds="${{ inputs.request_delay_seconds || '10' }}" \

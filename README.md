@@ -154,7 +154,7 @@ For manual complete-backfill probes, set `--max-pages-per-app-country 0` and dis
   --web-429-retries 5 \
   --web-429-retry-seconds 60 \
   --web-429-backoff-multiplier 1.5 \
-  --web-time-budget-seconds 1800 \
+  --web-time-budget-seconds 2700 \
   --disable-overlap-stop
 ```
 
@@ -169,7 +169,7 @@ For manual depth-limit probes, use `--start-page` to continue beyond an earlier 
   --max-pages-per-app-country 100 \
   --review-limit 20 \
   --request-delay-seconds 5 \
-  --web-time-budget-seconds 1800 \
+  --web-time-budget-seconds 2700 \
   --disable-overlap-stop
 ```
 
@@ -429,12 +429,12 @@ The pressure-search workflow defaults to:
 - page cap: `0`, meaning the run is bounded by time instead of page count
 - starting per-app-country time budget: `1800` seconds, or 30 minutes
 - max parallel app jobs: starts at `1`, then increases to `2`, `3`, and `4` after clean runs
-- after parallel `4` is clean: increase the per-app-country time budget through `2700`, `3600`, `5400`, and `7200` seconds
+- after parallel `4` is clean: prove a 45-minute per-app-country time budget (`2700` seconds), then stop
 - request delay: `10` seconds per runner
 - HTTP 429 retries: `0` during pressure search so throttling is visible immediately
 - cooldown: `30` minutes after the first HTTP 429/error, then retry the same pressure once
 - rollback: if the same pressure fails after cooldown, cool down again and retry the previous safe pressure
-- stop condition: once rollback verification is clean, record that pressure as `stable`; if the configured maximum is clean, record `stable_at_configured_max`
+- stop condition: once 4 parallel jobs and `2700` seconds/app are clean, record that pressure as `stable_at_configured_max`
 
 The web catalog canary defaults to:
 
@@ -490,8 +490,8 @@ The web catalog backfill workflow defaults to:
 - HTTP 429 retries: `1`
 - HTTP 429 retry delay: `60` seconds
 - HTTP 429 backoff multiplier: `1.5`
-- per app job web time budget: `1800` seconds
-- per app-country scope web time budget: `1800` seconds
+- per app job web time budget: `2700` seconds
+- per app-country scope web time budget: `2700` seconds
 - overlap stop: disabled
 - hard HTTP 429 cooldown gate: last HTTP 429 must be at least `720` minutes old
 - global HTTP 429 circuit breaker: current-run minimum `4` pages, trips at `>= 50%` 429, with matrix `fail-fast` enabled
@@ -507,8 +507,8 @@ For routine chunked backfill after a clean cooldown window, dispatch `App Store 
 - `max_parallel`: `4`
 - `request_delay_seconds`: `10`
 - `web_429_retries`: `1`
-- `web_time_budget_seconds`: start with `900`
-- `web_scope_time_budget_seconds`: start with `900`
+- `web_time_budget_seconds`: `2700`
+- `web_scope_time_budget_seconds`: `2700`
 
 Use `max_pages_per_app_country=0` only for explicit no-cap exhaustion probes after repeated clean chunked batches.
 
