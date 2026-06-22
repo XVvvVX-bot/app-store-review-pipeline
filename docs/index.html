@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>App Store Review Pipeline Evidence Package</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --text: #172033;
+      --muted: #5e6b7f;
+      --border: #d9e1ec;
+      --accent: #2563eb;
+      --accent-soft: #e7efff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.55;
+    }
+    main {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 48px 24px 64px;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(32px, 5vw, 54px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 0 0 10px;
+      font-size: 22px;
+      letter-spacing: 0;
+    }
+    p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 760px;
+    }
+    .hero {
+      margin-bottom: 28px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .primary {
+      border-color: #9bb9ff;
+      background: linear-gradient(180deg, #ffffff, var(--accent-soft));
+    }
+    a {
+      color: var(--accent);
+      font-weight: 700;
+      text-decoration: none;
+    }
+    a:hover { text-decoration: underline; }
+    .link-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .pill {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 10px;
+      color: var(--muted);
+      background: #fff;
+      font-size: 13px;
+      font-weight: 650;
+    }
+    .note {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <h1>App Store Review Pipeline Evidence Package</h1>
+      <p>
+        Review package for the Apple public web-catalog ingestion pipeline:
+        source decision logic, production architecture, EDA results, and known limitations.
+      </p>
+    </section>
+
+    <section class="grid">
+      <div class="panel primary">
+        <h2>EDA Dashboard</h2>
+        <p>Visual summary of dataset shape, rating signal, freshness, text quality, pipeline health, and analyst tables.</p>
+        <div class="link-list">
+          <a href="eda/apple_review_data_quality_dashboard.html">Open the rendered dashboard</a>
+          <a href="eda/apple_review_data_quality.md">Open the markdown report</a>
+          <a href="eda/apple_review_data_quality_summary.json">Open the machine-readable summary</a>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Source Decision</h2>
+        <p>Why the current primary source is Apple public web-catalog review JSON, and what it is not.</p>
+        <div class="link-list">
+          <a href="source_decision_notes.md">Read source decision notes</a>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Pipeline Structure</h2>
+        <p>Target list, fetch, raw storage, normalization, Postgres upsert, validation, EDA, and GitHub Actions operations.</p>
+        <div class="link-list">
+          <a href="architecture.md">Read architecture notes</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" style="margin-top: 16px;">
+      <h2>Known Boundaries</h2>
+      <p>
+        This project uses Apple-hosted public structured catalog data, not App Store Connect owner credentials.
+        Historical completeness is proven only when a backfill reaches <code>no_next_href</code>.
+        The current development store is local Postgres, and scheduled ingestion is paused while EDA and safe refresh strategy are reviewed.
+      </p>
+      <div class="pill-row">
+        <span class="pill">No login</span>
+        <span class="pill">No proxies</span>
+        <span class="pill">No CAPTCHA bypass</span>
+        <span class="pill">Postgres source of truth</span>
+        <span class="pill">Manual backfill only for now</span>
+      </div>
+    </section>
+
+    <p class="note">
+      Repository: <a href="https://github.com/XVvvVX-bot/app-store-review-pipeline">XVvvVX-bot/app-store-review-pipeline</a>
+    </p>
+  </main>
+</body>
+</html>
