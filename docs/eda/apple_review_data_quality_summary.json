@@ -85,7 +85,7 @@
   },
   "metadata": {
     "database_url": "postgresql:///app_store_reviews",
-    "generated_at": "2026-06-22T21:29:14+00:00",
+    "generated_at": "2026-06-22T21:33:09+00:00",
     "source": "apple_app_store_web_catalog_reviews"
   },
   "missingness": {
@@ -1791,7 +1791,7 @@
         "app_name": "HotSchedules",
         "category": "business",
         "max_updated_epoch_seconds": 1778824592,
-        "newest_review_age_days": 38.6,
+        "newest_review_age_days": 38.7,
         "review_count": 1400,
         "reviews_last_30_days": 0,
         "reviews_last_7_days": 0
@@ -1811,7 +1811,7 @@
         "app_name": "onX Hunt: GPS Hunting Maps",
         "category": "navigation",
         "max_updated_epoch_seconds": 1779316967,
-        "newest_review_age_days": 32.9,
+        "newest_review_age_days": 33,
         "review_count": 1900,
         "reviews_last_30_days": 0,
         "reviews_last_7_days": 0
@@ -1957,6 +1957,16 @@
         "reviews_last_7_days": 0
       },
       {
+        "app_id": "1098157959",
+        "app_name": "Evony",
+        "category": "games",
+        "max_updated_epoch_seconds": 1781200590,
+        "newest_review_age_days": 11.2,
+        "review_count": 1780,
+        "reviews_last_30_days": 19,
+        "reviews_last_7_days": 0
+      },
+      {
         "app_id": "1531467766",
         "app_name": "ViX: TV, Sports and News",
         "category": "entertainment",
@@ -1964,16 +1974,6 @@
         "newest_review_age_days": 11.1,
         "review_count": 2140,
         "reviews_last_30_days": 37,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "1098157959",
-        "app_name": "Evony",
-        "category": "games",
-        "max_updated_epoch_seconds": 1781200590,
-        "newest_review_age_days": 11.1,
-        "review_count": 1780,
-        "reviews_last_30_days": 19,
         "reviews_last_7_days": 0
       },
       {
@@ -2143,7 +2143,7 @@
         "max_updated_epoch_seconds": 1781531620,
         "newest_review_age_days": 7.3,
         "review_count": 1480,
-        "reviews_last_30_days": 84,
+        "reviews_last_30_days": 83,
         "reviews_last_7_days": 0
       },
       {
@@ -2164,7 +2164,7 @@
         "newest_review_age_days": 6.7,
         "review_count": 1900,
         "reviews_last_30_days": 103,
-        "reviews_last_7_days": 5
+        "reviews_last_7_days": 4
       },
       {
         "app_id": "1195621598",
@@ -2378,7 +2378,7 @@
         "max_updated_epoch_seconds": 1781878575,
         "min_updated_epoch_seconds": 1671666073,
         "review_count": 68776,
-        "reviews_last_30_days": 2853
+        "reviews_last_30_days": 2850
       },
       {
         "app_id": "297430070",
@@ -2396,7 +2396,7 @@
         "max_updated_epoch_seconds": 1781878676,
         "min_updated_epoch_seconds": 1737125589,
         "review_count": 50433,
-        "reviews_last_30_days": 2574
+        "reviews_last_30_days": 2572
       },
       {
         "app_id": "529379082",
@@ -2450,7 +2450,7 @@
         "max_updated_epoch_seconds": 1781878560,
         "min_updated_epoch_seconds": 1711386035,
         "review_count": 34348,
-        "reviews_last_30_days": 1079
+        "reviews_last_30_days": 1078
       },
       {
         "app_id": "341232718",
@@ -2531,7 +2531,7 @@
         "max_updated_epoch_seconds": 1781878675,
         "min_updated_epoch_seconds": 1774462334,
         "review_count": 26893,
-        "reviews_last_30_days": 11641
+        "reviews_last_30_days": 11638
       },
       {
         "app_id": "401626263",
@@ -2585,7 +2585,7 @@
         "max_updated_epoch_seconds": 1781750127,
         "min_updated_epoch_seconds": 1751291858,
         "review_count": 14185,
-        "reviews_last_30_days": 1056
+        "reviews_last_30_days": 1055
       },
       {
         "app_id": "310633997",
@@ -2612,7 +2612,7 @@
         "max_updated_epoch_seconds": 1781779814,
         "min_updated_epoch_seconds": 1760378708,
         "review_count": 5974,
-        "reviews_last_30_days": 659
+        "reviews_last_30_days": 658
       },
       {
         "app_id": "6670324846",
@@ -2648,7 +2648,7 @@
         "max_updated_epoch_seconds": 1781742378,
         "min_updated_epoch_seconds": 1714576789,
         "review_count": 5420,
-        "reviews_last_30_days": 645
+        "reviews_last_30_days": 644
       },
       {
         "app_id": "384830320",
@@ -2820,7 +2820,7 @@
         "avg_rating": 3.502,
         "category": "shopping",
         "review_count": 242376,
-        "reviews_last_30_days": 15689
+        "reviews_last_30_days": 15686
       },
       {
         "app_count": 8,
@@ -2828,7 +2828,7 @@
         "avg_rating": 3.584,
         "category": "travel",
         "review_count": 185438,
-        "reviews_last_30_days": 5446
+        "reviews_last_30_days": 5444
       },
       {
         "app_count": 27,
@@ -2836,7 +2836,7 @@
         "avg_rating": 3.13,
         "category": "entertainment",
         "review_count": 153757,
-        "reviews_last_30_days": 22937
+        "reviews_last_30_days": 22933
       },
       {
         "app_count": 9,
@@ -2844,7 +2844,7 @@
         "avg_rating": 2.673,
         "category": "finance",
         "review_count": 115741,
-        "reviews_last_30_days": 5160
+        "reviews_last_30_days": 5159
       },
       {
         "app_count": 52,
@@ -2852,7 +2852,7 @@
         "avg_rating": 3.282,
         "category": "games",
         "review_count": 88876,
-        "reviews_last_30_days": 15899
+        "reviews_last_30_days": 15897
       },
       {
         "app_count": 2,
@@ -2860,7 +2860,7 @@
         "avg_rating": 2.486,
         "category": "food_delivery",
         "review_count": 68259,
-        "reviews_last_30_days": 4583
+        "reviews_last_30_days": 4582
       },
       {
         "app_count": 11,
@@ -2884,7 +2884,7 @@
         "avg_rating": 3.348,
         "category": "productivity",
         "review_count": 47522,
-        "reviews_last_30_days": 4862
+        "reviews_last_30_days": 4861
       },
       {
         "app_count": 5,
@@ -2916,7 +2916,7 @@
         "avg_rating": 2.937,
         "category": "photo_and_video",
         "review_count": 30444,
-        "reviews_last_30_days": 6890
+        "reviews_last_30_days": 6889
       },
       {
         "app_count": 7,
@@ -2932,7 +2932,7 @@
         "avg_rating": 2.333,
         "category": "lifestyle",
         "review_count": 20232,
-        "reviews_last_30_days": 3129
+        "reviews_last_30_days": 3128
       },
       {
         "app_count": 7,
@@ -2940,7 +2940,7 @@
         "avg_rating": 2.636,
         "category": "business",
         "review_count": 13520,
-        "reviews_last_30_days": 978
+        "reviews_last_30_days": 977
       },
       {
         "app_count": 5,
@@ -2956,7 +2956,7 @@
         "avg_rating": 2.65,
         "category": "sports",
         "review_count": 8348,
-        "reviews_last_30_days": 1572
+        "reviews_last_30_days": 1571
       },
       {
         "app_count": 4,
@@ -2964,7 +2964,7 @@
         "avg_rating": 3.781,
         "category": "music",
         "review_count": 8200,
-        "reviews_last_30_days": 1996
+        "reviews_last_30_days": 1994
       },
       {
         "app_count": 3,

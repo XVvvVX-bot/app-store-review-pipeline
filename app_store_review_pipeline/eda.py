@@ -721,9 +721,10 @@ def render_eda_markdown(summary: dict[str, Any]) -> str:
         "",
         "## Known Limitations",
         "",
-        "- Apple public web catalog reviews are public structured catalog data, not a contractual App Store Connect API.",
-        "- A scope is only historically exhausted when a backfill reaches `no_next_href`; page cap, time budget, overlap, and error stops are lower-bound evidence.",
-        "- `vote_sum` and `vote_count` availability depends on the fields Apple returns in the public catalog response.",
+        "- The pipeline reads Apple-hosted public web catalog review payloads exposed to the App Store web experience. This is not the App Store Connect Customer Reviews API, does not use owner credentials, and does not carry an Apple SLA for third-party bulk ingestion.",
+        "- Completeness is empirical per app, country, and source scope. A scope is only treated as historically exhausted when pagination reaches `no_next_href`; page cap, time budget, overlap, final non-200, and fetch-error stops mean the current row count is a lower bound.",
+        "- Daily/incremental interpretation depends on stable review keys and Postgres upserts. Repeated runs can add new rows or update existing rows, but source-side ordering, removed reviews, and Apple response changes should be monitored through page and terminal-reason metrics.",
+        "- Public web catalog payloads do not currently provide every owner-API field. Version, vote sum, vote count, and similar App Store Connect-style review metadata should be treated as unavailable unless Apple exposes them in the public response.",
         "- Normalized duplicate detection uses lowercased whitespace-normalized content hashes; it is useful for triage, not semantic near-duplicate modeling.",
         "- Runtime by app is a page-window proxy based on stored page timestamps, not full GitHub job wall-clock time.",
         "",
@@ -881,6 +882,13 @@ def render_eda_html(summary: dict[str, Any]) -> str:
       font-size: 12px;
       margin-top: 8px;
     }
+    .limitation-list {
+      margin: 10px 0 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .limitation-list li { margin: 0 0 8px; }
     .pill {
       display: inline-block;
       border: 1px solid var(--border);
@@ -1008,7 +1016,13 @@ def render_eda_html(summary: dict[str, Any]) -> str:
         </div>
         <div class="panel">
           <h3>Known Limitations</h3>
-          <p class="note">The web catalog source is public Apple-hosted structured catalog data, not a contractual App Store Connect API. Historical completeness is proven per app-country scope only when a backfill reaches no_next_href. Page cap, time budget, overlap, final non-200, or fetch error stops are lower-bound evidence.</p>
+          <p class="note">This dashboard separates what the pipeline has collected from what the public source can prove.</p>
+          <ul class="limitation-list">
+            <li>The source is Apple-hosted public web catalog review data exposed to the App Store web experience. It is not the App Store Connect Customer Reviews API, does not use app-owner credentials, and does not come with a third-party bulk-ingestion SLA.</li>
+            <li>Historical completeness is empirical per app-country-source scope. A scope is only treated as exhausted when pagination reaches <code>no_next_href</code>; page cap, time budget, overlap, final non-200, or fetch-error stops mean the stored review count is still a lower bound.</li>
+            <li>Incremental runs rely on stable review keys and Postgres upserts. New rows and updated rows can be captured across repeated runs, but source ordering, removed reviews, and Apple response-shape changes should be monitored through page, retry, and terminal-reason metrics.</li>
+            <li>The public payload does not currently include every owner-API field. Version, vote sum, vote count, and similar App Store Connect-style fields should be treated as unavailable unless they appear in the public response.</li>
+          </ul>
           <p><span class="pill">No login</span><span class="pill">No proxies</span><span class="pill">No CAPTCHA bypass</span><span class="pill">Postgres source of truth</span></p>
         </div>
       </div>
