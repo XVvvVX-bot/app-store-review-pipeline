@@ -119,6 +119,7 @@ Research-era workflows have been moved to `docs/archive/workflows/` so they rema
 
 ## Reports And Docs
 
+- GitHub Pages review package: https://xvvvvx-bot.github.io/app-store-review-pipeline/
 - Data-quality report: `docs/eda/apple_review_data_quality.md`
 - Data-quality summary JSON: `docs/eda/apple_review_data_quality_summary.json`
 - Data-quality HTML dashboard: `docs/eda/apple_review_data_quality_dashboard.html`
