@@ -857,6 +857,7 @@ def render_eda_html(summary: dict[str, Any]) -> str:
     .chart { width: 100%; min-height: 260px; }
     .chart.tall { min-height: 380px; }
     .chart.short { min-height: 190px; }
+    .chart.roomy { min-height: 290px; height: 290px; }
     svg { width: 100%; height: 100%; display: block; }
     .axis text, .label-text { fill: var(--muted); font-size: 11px; }
     .axis line, .axis path { stroke: var(--grid); }
@@ -976,16 +977,16 @@ def render_eda_html(summary: dict[str, Any]) -> str:
       <div class="grid three">
         <div class="panel">
           <h3>Review Length Quantiles</h3>
-          <div id="lengthBox" class="chart short"></div>
+          <div id="lengthBox" class="chart roomy"></div>
           <div class="note">Distribution is measured in characters per review.</div>
         </div>
         <div class="panel">
           <h3>Low-Signal And Formatting Flags</h3>
-          <div id="lowSignal" class="chart short"></div>
+          <div id="lowSignal" class="chart roomy"></div>
         </div>
         <div class="panel">
           <h3>Missingness By Field</h3>
-          <div id="missingness" class="chart short"></div>
+          <div id="missingness" class="chart roomy"></div>
         </div>
       </div>
     </section>
@@ -1117,18 +1118,28 @@ def render_eda_html(summary: dict[str, Any]) -> str:
       const data = rows.slice(0, options.limit || rows.length);
       const width = 900;
       const rowH = options.rowHeight || 24;
-      const margin = { top: 18, right: 110, bottom: 24, left: options.left || 180 };
+      const margin = { top: 18, right: options.right || 110, bottom: options.bottom || 24, left: options.left || 180 };
       const height = margin.top + margin.bottom + data.length * rowH;
-      const max = Math.max(...data.map(r => value(r, options.valueKey)), 1);
-      const scale = x => (x / max) * (width - margin.left - margin.right);
+      const dataMax = Math.max(...data.map(r => value(r, options.valueKey)), 0);
+      const max = options.scaleMax || Math.max(dataMax, 1);
+      const plotW = width - margin.left - margin.right;
+      const scale = x => (Math.min(x, max) / max) * plotW;
       let out = svgEl(width, height);
       out += `<line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" stroke="${palette.grid}"/>`;
+      (options.tickValues || []).forEach(tick => {
+        const tx = margin.left + scale(tick);
+        out += `<line x1="${tx}" y1="${margin.top - 6}" x2="${tx}" y2="${height - margin.bottom}" stroke="${palette.grid}"/>`;
+        out += text(tx, height - 8, options.tickFormat ? options.tickFormat(tick) : fmtInt(tick), "label-text", "middle");
+      });
       data.forEach((row, i) => {
         const y = margin.top + i * rowH;
         const w = Math.max(1, scale(value(row, options.valueKey)));
+        out += `<line x1="${margin.left}" y1="${y + rowH - 5}" x2="${width - margin.right}" y2="${y + rowH - 5}" stroke="${palette.grid}" opacity="0.55"/>`;
         out += `<rect x="${margin.left}" y="${y}" width="${w}" height="${Math.max(10, rowH - 8)}" rx="3" fill="${options.color || palette.blue}"/>`;
         out += text(margin.left - 8, y + rowH - 12, truncate(row[options.labelKey], options.labelMax || 28), "label-text", "end");
-        out += text(margin.left + w + 7, y + rowH - 12, options.format ? options.format(value(row, options.valueKey), row) : fmtInt(value(row, options.valueKey)), "bar-label");
+        const valueLabel = options.format ? options.format(value(row, options.valueKey), row) : fmtInt(value(row, options.valueKey));
+        const valueX = options.valueColumn ? width - margin.right + 12 : margin.left + w + 7;
+        out += text(valueX, y + rowH - 12, valueLabel, "bar-label");
       });
       out += "</svg>";
       byId(id).innerHTML = out;
@@ -1289,8 +1300,14 @@ def render_eda_html(summary: dict[str, Any]) -> str:
         valueKey: "rate",
         limit: rows.length,
         left: options.left || 170,
-        rowHeight: 26,
-        labelMax: 30,
+        right: options.right || 110,
+        bottom: options.bottom || 24,
+        rowHeight: options.rowHeight || 26,
+        labelMax: options.labelMax || 30,
+        scaleMax: options.scaleMax,
+        valueColumn: options.valueColumn,
+        tickValues: options.tickValues,
+        tickFormat: options.tickFormat,
         color: options.color,
         format: (rate, r) => `${fmtPct(rate)} (${fmtInt(r.count)})`
       });
@@ -1345,7 +1362,17 @@ def render_eda_html(summary: dict[str, Any]) -> str:
         ["url_like_content", "URL-like"],
         ["html_like_content", "HTML-like"],
         ["blank_content", "Blank content"]
-      ], { color: palette.amber, left: 140 });
+      ], {
+        color: palette.amber,
+        left: 150,
+        right: 210,
+        bottom: 42,
+        rowHeight: 38,
+        scaleMax: 0.5,
+        valueColumn: true,
+        tickValues: [0.25, 0.5],
+        tickFormat: fmtPct
+      });
       qualityRateBars("missingness", summary.missingness, [
         ["missing_version", "Version"],
         ["missing_vote_sum", "Vote sum"],
