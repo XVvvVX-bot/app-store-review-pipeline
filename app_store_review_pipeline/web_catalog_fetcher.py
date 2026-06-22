@@ -136,6 +136,29 @@ def fetch_web_catalog_targets(
                             if stop_reason == "time_budget_exceeded":
                                 overall_time_budget_exceeded = True
                             break
+                    retry_budget_stop = request_retry_budget_stop_reason(
+                        minimum_request_retry_budget_seconds(
+                            timeout_seconds=timeout_seconds,
+                            web_soft_retries=web_soft_retries,
+                            web_soft_retry_seconds=web_soft_retry_seconds,
+                        ),
+                        deadline_monotonic,
+                        scope_deadline_monotonic,
+                        monotonic_fn,
+                    )
+                    if page_number > start_page and retry_budget_stop:
+                        warning_scopes.append(
+                            {
+                                "app_id": target.apple_app_id,
+                                "app_name": target.app_name,
+                                "country": country.lower(),
+                                "sort_by": sort_by,
+                                "reason": retry_budget_stop,
+                            }
+                        )
+                        if retry_budget_stop == "time_budget_retry_window_exceeded":
+                            overall_time_budget_exceeded = True
+                        break
                     page_report, reviews, next_href = fetch_web_catalog_page(
                         target,
                         raw_dir,
@@ -298,6 +321,32 @@ def deadline_sleep_stop_reason(
     return deadline_stop_reason(overall_deadline_monotonic, scope_deadline_monotonic, monotonic_fn) or "time_budget_exceeded"
 
 
+def minimum_request_retry_budget_seconds(
+    *,
+    timeout_seconds: float,
+    web_soft_retries: int,
+    web_soft_retry_seconds: float,
+) -> float:
+    if web_soft_retries <= 0:
+        return 0.0
+    return max(1.0, float(timeout_seconds)) + max(0.0, float(web_soft_retry_seconds))
+
+
+def request_retry_budget_stop_reason(
+    seconds: float,
+    overall_deadline_monotonic: float | None,
+    scope_deadline_monotonic: float | None,
+    monotonic_fn: Callable[[], float],
+) -> str | None:
+    if seconds <= 0:
+        return None
+    if not can_sleep_before_deadline(seconds, overall_deadline_monotonic, monotonic_fn):
+        return "time_budget_retry_window_exceeded"
+    if not can_sleep_before_deadline(seconds, scope_deadline_monotonic, monotonic_fn):
+        return "scope_time_budget_retry_window_exceeded"
+    return None
+
+
 def fetch_web_catalog_page(
     target: AppTarget,
     raw_dir: Path,
@@ -347,6 +396,7 @@ def fetch_web_catalog_page(
     last_error: Exception | None = None
     last_status_code: int | None = None
     last_response_bytes = 0
+    last_body_preview = ""
     max_soft_attempts = max(1, int(web_soft_retries) + 1)
     soft_retry_delay = max(0.0, float(web_soft_retry_seconds))
     soft_attempts_made = 0
@@ -371,15 +421,19 @@ def fetch_web_catalog_page(
             attempts.extend(current_attempts)
             last_status_code = response.status_code
             last_response_bytes = len(response.content or b"")
+            last_body_preview = response.text[:160] if response.text else ""
             payload_candidate = response.json()
             if not isinstance(payload_candidate, dict):
                 raise ValueError("web catalog response JSON was not an object")
             payload = payload_candidate
             break
+        except requests.exceptions.JSONDecodeError as exc:
+            last_error = exc
         except requests.RequestException as exc:
             last_error = exc
             last_status_code = None
             last_response_bytes = 0
+            last_body_preview = ""
         except (ValueError, json.JSONDecodeError) as exc:
             last_error = exc
 
@@ -410,7 +464,12 @@ def fetch_web_catalog_page(
             status_code=last_status_code,
             response_bytes=last_response_bytes,
             attempt_count=max(1, len(attempts), soft_attempts_made),
-            error_message=str(last_error) if last_error else "web catalog response could not be parsed",
+            error_message=web_catalog_error_message(
+                last_error,
+                status_code=last_status_code,
+                response_bytes=last_response_bytes,
+                body_preview=last_body_preview,
+            ),
         ), [], None
 
     write_json(raw_json_path, payload)
@@ -512,6 +571,23 @@ def web_terminal_reason_for_page(
 
 def is_sparse_web_catalog_fetch_error(page_report: ReviewPage) -> bool:
     return page_report.status == "error" and page_report.status_code == 404
+
+
+def web_catalog_error_message(
+    error: Exception | None,
+    *,
+    status_code: int | None,
+    response_bytes: int,
+    body_preview: str,
+) -> str:
+    parts = [str(error) if error else "web catalog response could not be parsed"]
+    if status_code is not None:
+        parts.append(f"status_code={status_code}")
+    parts.append(f"response_bytes={response_bytes}")
+    if body_preview:
+        preview = " ".join(body_preview.split())
+        parts.append(f"body_preview={preview[:160]!r}")
+    return "; ".join(parts)
 
 
 def web_error_page(

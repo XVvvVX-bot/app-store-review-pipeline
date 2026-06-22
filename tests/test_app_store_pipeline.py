@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import pytest
+import requests
 
 from app_store_review_pipeline.apple_rss import apple_rss_url, normalize_entries, parse_apple_review
 from app_store_review_pipeline.apple_web import (
@@ -773,6 +774,11 @@ class FakeWebSession:
         return self.responses.pop(0)
 
 
+class RequestsJsonDecodeWebResponse(FakeWebResponse):
+    def json(self):
+        raise requests.exceptions.JSONDecodeError("Expecting value", "", 0)
+
+
 def empty_payload(has_next=True):
     links = [{"attributes": {"rel": "next", "href": "https://example.test/next"}}] if has_next else []
     return {"feed": {"title": {"label": "iTunes Store: Customer Reviews"}, "link": links}}
@@ -1132,6 +1138,76 @@ def test_fetch_web_catalog_targets_records_final_soft_error_status(tmp_path):
     assert page["response_bytes"] > 0
     assert page["attempt_count"] == 2
     assert page["terminal_reason"] == "fetch_error"
+    assert "status_code=200" in page["error_message"]
+    assert "response_bytes=" in page["error_message"]
+
+
+def test_fetch_web_catalog_targets_preserves_requests_json_decode_status(tmp_path):
+    session = FakeWebSession([RequestsJsonDecodeWebResponse(200, content=b"")])
+
+    report = fetch_web_catalog_targets(
+        [fixture_target()],
+        tmp_path,
+        "run",
+        max_pages_per_app_country=1,
+        review_limit=2,
+        request_delay_seconds=0,
+        web_429_retries=0,
+        web_soft_retries=0,
+        session=session,
+    )
+
+    page = report["page_reports"][0]
+    assert report["fetch_errors"] == 1
+    assert page["status_code"] == 200
+    assert page["response_bytes"] == 0
+    assert page["terminal_reason"] == "fetch_error"
+    assert "status_code=200" in page["error_message"]
+    assert "response_bytes=0" in page["error_message"]
+
+
+def test_fetch_web_catalog_targets_stops_before_request_without_retry_window(tmp_path):
+    session = FakeWebSession(
+        [
+            FakeWebResponse(200, payload=web_catalog_payload(start=1, count=2, has_next=True)),
+            FakeWebResponse(200, payload=web_catalog_payload(start=3, count=2, has_next=False)),
+        ]
+    )
+    calls = {"count": 0}
+
+    def monotonic():
+        calls["count"] += 1
+        return 1176.0 if calls["count"] >= 5 else 0.0
+
+    report = fetch_web_catalog_targets(
+        [fixture_target()],
+        tmp_path,
+        "run",
+        max_pages_per_app_country=0,
+        review_limit=2,
+        timeout_seconds=20,
+        request_delay_seconds=0,
+        web_429_retries=0,
+        web_soft_retries=1,
+        web_soft_retry_seconds=5,
+        time_budget_seconds=1200,
+        monotonic_fn=monotonic,
+        session=session,
+    )
+
+    assert len(session.calls) == 1
+    assert report["fetched_pages"] == 1
+    assert report["fetch_errors"] == 0
+    assert report["overall_time_budget_exceeded"] is True
+    assert report["warning_scopes"] == [
+        {
+            "app_id": "123456789",
+            "app_name": "Fixture",
+            "country": "us",
+            "sort_by": "recent",
+            "reason": "time_budget_retry_window_exceeded",
+        }
+    ]
 
 
 def test_fetch_web_catalog_targets_zero_page_cap_follows_until_no_next(tmp_path):
