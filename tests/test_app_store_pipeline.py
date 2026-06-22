@@ -184,6 +184,58 @@ def test_initialize_postgres_serializes_schema_creation(monkeypatch):
     assert calls[-1] == ("commit", None)
 
 
+def test_load_pipeline_run_postgres_retries_retryable_write_conflicts(monkeypatch, tmp_path):
+    raw_dir = tmp_path / "run-1"
+    raw_dir.mkdir()
+    (raw_dir / "review_pages.jsonl").write_text("", encoding="utf-8")
+    (raw_dir / "reviews.jsonl").write_text("", encoding="utf-8")
+    targets_path = tmp_path / "targets.csv"
+    targets_path.write_text(
+        "app_name,category,apple_app_id,apple_slug,countries,active,notes\n"
+        "Fixture,shopping,123,fixture,us,true,\n",
+        encoding="utf-8",
+    )
+    calls = []
+
+    monkeypatch.setattr(postgres_database, "initialize_postgres", lambda database_url: calls.append("initialize"))
+    monkeypatch.setattr(postgres_database.time, "sleep", lambda seconds: calls.append(("sleep", seconds)))
+
+    def fake_load_once(**kwargs):
+        calls.append(("load_once", kwargs["run_id"]))
+        if sum(1 for call in calls if call == ("load_once", "run-1")) == 1:
+            raise postgres_database.psycopg.errors.DeadlockDetected("deadlock detected")
+        return {
+            "run_id": kwargs["run_id"],
+            "page_rows": 0,
+            "review_rows": 0,
+            "inserted": 0,
+            "updated": 0,
+            "duplicates_skipped": 0,
+            "fetch_errors": 0,
+            "capped_scopes": 0,
+        }
+
+    monkeypatch.setattr(postgres_database, "_load_pipeline_run_postgres_once", fake_load_once)
+
+    summary = postgres_database.load_pipeline_run_postgres("postgresql:///fixture", raw_dir, targets_path)
+
+    assert summary["run_id"] == "run-1"
+    assert calls == ["initialize", ("load_once", "run-1"), ("sleep", 2.0), ("load_once", "run-1")]
+
+
+def test_retryable_postgres_write_error_classifies_transient_conflicts():
+    assert postgres_database.retryable_postgres_write_error(
+        postgres_database.psycopg.errors.DeadlockDetected("deadlock detected")
+    )
+    assert postgres_database.retryable_postgres_write_error(
+        postgres_database.psycopg.errors.SerializationFailure("could not serialize")
+    )
+    assert postgres_database.retryable_postgres_write_error(
+        postgres_database.psycopg.errors.LockNotAvailable("lock not available")
+    )
+    assert not postgres_database.retryable_postgres_write_error(ValueError("not a postgres conflict"))
+
+
 def test_web_catalog_429_circuit_breaker_trips_on_high_rate(monkeypatch):
     queries = []
 

@@ -208,6 +208,13 @@ POSTGRES_SCHEMA_MIGRATIONS = (
 POSTGRES_SCHEMA_ADVISORY_LOCK_ID = 63206438020260619
 POSTGRES_SCHEMA_MAX_ATTEMPTS = 5
 POSTGRES_SCHEMA_RETRY_SECONDS = 0.5
+POSTGRES_LOAD_MAX_ATTEMPTS = 4
+POSTGRES_LOAD_RETRY_SECONDS = 2.0
+POSTGRES_RETRYABLE_WRITE_ERRORS = (
+    psycopg.errors.DeadlockDetected,
+    psycopg.errors.SerializationFailure,
+    psycopg.errors.LockNotAvailable,
+)
 
 
 def connect_postgres(database_url: str) -> psycopg.Connection:
@@ -231,6 +238,10 @@ def initialize_postgres(database_url: str) -> None:
             if attempt >= POSTGRES_SCHEMA_MAX_ATTEMPTS:
                 raise
             time.sleep(POSTGRES_SCHEMA_RETRY_SECONDS * attempt)
+
+
+def retryable_postgres_write_error(error: BaseException) -> bool:
+    return isinstance(error, POSTGRES_RETRYABLE_WRITE_ERRORS)
 
 
 def mask_database_url(database_url: str) -> str:
@@ -1213,6 +1224,42 @@ def load_pipeline_run_postgres(database_url: str, raw_dir: Path, targets_path: P
     source = infer_field_value(page_rows, review_rows, "source", SOURCE)
 
     initialize_postgres(database_url)
+    for attempt in range(1, POSTGRES_LOAD_MAX_ATTEMPTS + 1):
+        try:
+            return _load_pipeline_run_postgres_once(
+                database_url=database_url,
+                run_id=run_id,
+                raw_dir=raw_dir,
+                targets_path=targets_path,
+                targets=targets,
+                page_rows=page_rows,
+                review_rows=review_rows,
+                loaded_at=loaded_at,
+                platform=platform,
+                source=source,
+            )
+        except POSTGRES_RETRYABLE_WRITE_ERRORS:
+            if attempt >= POSTGRES_LOAD_MAX_ATTEMPTS:
+                raise
+            time.sleep(POSTGRES_LOAD_RETRY_SECONDS * attempt)
+    raise RuntimeError("Postgres load retry loop exited unexpectedly")
+
+
+def _load_pipeline_run_postgres_once(
+    *,
+    database_url: str,
+    run_id: str,
+    raw_dir: Path,
+    targets_path: Path,
+    targets: list,
+    page_rows: list[dict],
+    review_rows: list[dict],
+    loaded_at: str,
+    platform: str,
+    source: str,
+) -> dict:
+    target_ids = {str(row.get("app_id")) for row in [*page_rows, *review_rows] if row.get("app_id")}
+    targets_to_upsert = [target for target in targets if str(target.apple_app_id) in target_ids] if target_ids else targets
     with connect_postgres(database_url) as connection:
         upsert_run(
             connection,
@@ -1224,7 +1271,7 @@ def load_pipeline_run_postgres(database_url: str, raw_dir: Path, targets_path: P
             platform=platform,
             source=source,
         )
-        upsert_targets(connection, targets, run_id)
+        upsert_targets(connection, targets_to_upsert, run_id)
         insert_pages(connection, page_rows)
         review_summary = upsert_reviews(connection, review_rows, run_id)
         fetch_errors = sum(1 for row in page_rows if row.get("status") == "error")

@@ -160,7 +160,7 @@ jobs:
     runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 180
     strategy:
-      fail-fast: true
+      fail-fast: false
       max-parallel: ${{ fromJSON(needs.prepare-matrix.outputs.max_parallel) }}
       matrix: ${{ fromJSON(needs.prepare-matrix.outputs.matrix) }}
     env:
