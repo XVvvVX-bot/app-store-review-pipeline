@@ -33,6 +33,7 @@ from app_store_review_pipeline.cli import (
     summarize_fetch_cli,
 )
 from app_store_review_pipeline.config import WEB_CATALOG_SOURCE
+from app_store_review_pipeline.eda import add_rates, calculate_concentration, render_eda_markdown
 from app_store_review_pipeline.fetcher import fetch_targets, terminal_reason_for_page
 from app_store_review_pipeline.models import AppTarget, ReviewPage
 from app_store_review_pipeline import postgres_database
@@ -475,6 +476,82 @@ def test_web_catalog_pressure_uses_stored_next_page_cap_after_clean_recent_pages
     assert status["selected_max_pages_per_app_country"] == 12
     assert status["selected_max_parallel"] == 2
     assert status["candidate_max_parallel"] == 3
+
+
+def test_eda_helpers_render_core_sections():
+    rows = [{"review_count": 70}, {"review_count": 20}, {"review_count": 10}]
+    assert calculate_concentration(rows) == {
+        "review_count": 100,
+        "app_count": 3,
+        "top_1_share": 0.7,
+        "top_5_share": 1.0,
+        "top_10_share": 1.0,
+        "hhi": 0.54,
+    }
+    assert add_rates({"review_count": 100, "missing_title": 25})["missing_title_rate"] == 0.25
+
+    markdown = render_eda_markdown(
+        {
+            "metadata": {
+                "generated_at": "2026-06-22T00:00:00+00:00",
+                "database_url": "postgresql:///app_store_reviews",
+                "source": WEB_CATALOG_SOURCE,
+            },
+            "inventory": {
+                "primary_source": {
+                    "review_count": 100,
+                    "app_count": 3,
+                    "category_count": 2,
+                    "country_count": 1,
+                },
+                "rows_by_source": [{"source": WEB_CATALOG_SOURCE, "review_count": 100, "app_count": 3}],
+            },
+            "volume": {
+                "concentration": calculate_concentration(rows),
+                "by_app_top_50": [{"app_name": "Fixture", "category": "shopping", "review_count": 70}],
+                "by_category": [{"category": "shopping", "app_count": 1, "review_count": 70}],
+            },
+            "ratings": {
+                "overall": [{"rating": 5, "review_count": 60}],
+                "by_category": [{"category": "shopping", "review_count": 70, "avg_rating": 4.5}],
+            },
+            "text_quality": {
+                "length_summary": {"review_count": 100, "avg_chars": 120},
+                "low_signal": {"review_count": 100, "blank_content": 0},
+                "duplicate_summary": {
+                    "review_count": 100,
+                    "distinct_review_keys": 100,
+                    "normalized_duplicate_group_count": 1,
+                },
+                "duplicate_examples": [{"row_count": 2, "app_count": 1, "sample": "great app"}],
+            },
+            "time_coverage": {
+                "monthly_recent_24": [{"month": "2026-06", "review_count": 100, "app_count": 3}],
+                "freshness_by_app_stalest_50": [{"app_name": "Fixture", "category": "shopping", "review_count": 70}],
+            },
+            "missingness": {"review_count": 100, "missing_title": 25},
+            "pipeline_behavior": {
+                "runs_summary": {"run_count": 1, "page_count": 5},
+                "status_codes": [{"status_code": "200", "page_count": 5}],
+                "terminal_reasons": [{"terminal_reason": "none", "page_count": 5}],
+                "attempt_counts": [{"attempt_count": 1, "page_count": 5}],
+                "empty_and_error_pages": {
+                    "empty_pages": 0,
+                    "empty_pages_with_next_link": 0,
+                    "empty_pages_without_next_link": 0,
+                    "http_429_pages": 0,
+                    "final_non_200_pages": 0,
+                    "retried_pages": 0,
+                    "error_pages": 0,
+                },
+                "by_app_top_50_pages": [{"app_name": "Fixture", "category": "shopping", "page_count": 5}],
+            },
+        }
+    )
+
+    assert "# Apple App Store Review Data Quality Report" in markdown
+    assert "## Pipeline Behavior" in markdown
+    assert "Fixture" in markdown
 
 
 def test_web_catalog_pressure_starts_at_base_without_state(monkeypatch):

@@ -2,83 +2,82 @@
 
 ## Source
 
-The scheduled primary source is Apple's public App Store web catalog reviews JSON path. It returns structured public review rows, including review ID, date, rating, title, text, and user name. The web catalog source is stored as:
+The production source is Apple's public App Store web catalog review JSON path, stored as:
 
 ```text
 apple_app_store_web_catalog_reviews
 ```
 
-Apple's legacy public iTunes customer reviews RSS JSON feed remains in the repository as a manual-only baseline. It returns structured recent-review rows for an app, country storefront, page number, and sort order, but it should not be treated as a complete historical source.
+The source returns structured public review rows, including observed review ID, author name, rating, title, full review text, version when present, vote fields when present, updated timestamp, app identity, and country storefront.
 
-This project does not use Apple App Store Connect API credentials. That official API is useful for owned or authorized apps, but this pipeline is for public third-party app-review monitoring.
+This project does not use App Store Connect credentials because the target use case is public third-party app-review monitoring rather than owned-app review management.
 
-## Target List
+## Data Flow
 
-Targets live at `data/targets/apple_apps.csv`.
-
-Columns:
-
-- `app_name`
-- `category`
-- `apple_app_id`
-- `apple_slug`
-- `countries`
-- `active`
-- `notes`
-
-`countries` accepts `|` or comma-separated country codes. Each app-country pair becomes a separate incremental scope.
-
-## Fetch
-
-For each active scope, the scheduled fetcher reads web catalog pages from page 1 with `sort=recent`, `limit=20`, bounded 429 retry/backoff, and a wall-clock budget. It saves raw JSON files under:
-
-```text
-data/raw/apple_web_catalog/{run_id}/
+```mermaid
+flowchart TD
+    A["Target CSV"] --> B["Web catalog fetcher"]
+    B --> C["Raw JSON + JSONL run files"]
+    C --> D["Normalizer"]
+    D --> E["Postgres upsert"]
+    E --> F["Validation report"]
+    E --> G["EDA report"]
 ```
 
-The manual legacy RSS fetcher saves raw JSON files under:
+Targets live at `data/targets/apple_apps.csv`. Each active `app_id + country` pair is a scope.
 
-```text
-data/raw/apple_rss/{run_id}/
-```
+The fetcher requests web catalog review pages with `sort=recent` and `limit=20`, follows Apple's returned `next` href, and records page-level metadata such as status code, attempts, response bytes, review counts, `has_next_link`, terminal reason, and missing-field counts.
 
-The web catalog fetcher also writes:
+## Storage
 
-- `review_pages.jsonl`
-- `reviews.jsonl`
-- `fetch_report.json`
+Postgres is the cumulative store:
 
-## Load
+- `app_store_targets`: app metadata and active flag.
+- `app_store_runs`: run-level load metrics.
+- `app_store_review_pages`: one row per fetched page.
+- `app_store_reviews`: one row per unique review key.
+- `app_store_review_changes`: inserted/updated review audit rows.
+- `app_store_sync_state`: app-country incremental state.
+- `app_store_pressure_state`: safe/candidate pressure settings and cooldown state.
 
-The loader upserts into Postgres. Review identity is:
+Review identity is:
 
 ```text
 platform + source + country + app_id + review_id
 ```
 
-This means repeated daily runs do not duplicate old reviews. If Apple changes a review's timestamp, text, rating, version, title, or vote fields, the row is updated and an audit row is written to `app_store_review_changes`.
+Repeated runs therefore update existing reviews rather than duplicating them.
 
-## Incremental Completeness
+## Completeness Semantics
 
-The primary web catalog path is sorted by recent reviews. The project treats completeness in two separate ways:
+Daily incremental completeness and historical backfill completeness are intentionally separate:
 
-- Daily incremental completeness: once the run has reached its configured coverage target and then sees already-known web catalog review IDs, the scope is considered caught up.
-- Backfill completeness: a manual backfill can disable page cap with `--max-pages-per-app-country 0` and disable overlap stop. The strongest completion signal is `no_next_href`, meaning Apple's returned page did not advertise another page.
+- Daily incremental runs can stop after they reach their configured recent coverage target and encounter already-known review IDs.
+- Historical backfill runs are complete only when the observed terminal reason is `no_next_href`.
 
-Other stop reasons are intentionally weaker:
+Weaker stop reasons include `page_cap`, `caught_up_to_existing_reviews`, `time_budget_exceeded`, `scope_time_budget_exceeded`, `non_200_page`, and `fetch_error`. These are useful operational signals, but they are lower-bound evidence rather than proof that Apple has no more review pages.
 
-- `target_review_count_reached`: enough for migration parity, not historical exhaustion.
-- `caught_up_to_existing_reviews`: enough for daily incremental, not historical exhaustion.
-- `page_cap`: lower-bound depth only.
-- `time_budget_exceeded`: profile too heavy for that budget.
-- `non_200_page` or `fetch_error`: incomplete and should be retried or continued later.
+## Operations
 
-For high-volume apps, the safest response is a controlled backfill plan with continuations via `start_page`, or a licensed provider with stronger historical guarantees if the public path becomes unstable.
+GitHub Actions uses self-hosted Mac runners because local Postgres is the development store. The active workflows are CI, dispatch-only daily ingestion, and manual web-catalog backfill. Scheduled ingestion is currently paused while data quality and safe long-run behavior are evaluated.
 
-The legacy RSS path still uses review-ID overlap as a recent-window monitor. If RSS reaches page 10 without overlap, the scope is marked `backlogged`.
+The backfill workflow uses:
 
-The `App Store Review Pipeline` workflow runs the scheduled web catalog profile on the self-hosted runner. The `App Store Web Catalog Backfill` workflow is manual-only and is used for complete-backfill probes.
+- local Postgres initialization before every job
+- global writer concurrency through GitHub Actions
+- HTTP 429 cooldown and current-run circuit breaker checks
+- per-app time budgets
+- retry tracking and page-level status recording
 
-## Storage
+## Reporting
 
-Postgres is the cumulative store. Raw JSON and daily reports are artifacts for audit/debugging; they are not the source of truth after loading.
+The reproducible EDA report is generated from Postgres:
+
+```bash
+.venv/bin/python app_store_pipeline.py eda-report \
+  --database-url postgresql:///app_store_reviews
+```
+
+The report writes `docs/eda/apple_review_data_quality.md` and `docs/eda/apple_review_data_quality_summary.json`.
+
+Historical source probes, provider comparisons, legacy RSS notes, and rendered-HTML experiments are preserved under `docs/archive/` but are not part of the active production path.

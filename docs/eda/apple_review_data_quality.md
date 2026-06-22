@@ -1,0 +1,313 @@
+# Apple App Store Review Data Quality Report
+
+Generated at: `2026-06-22T20:40:58+00:00`
+Database: `postgresql:///app_store_reviews`
+Primary source: `apple_app_store_web_catalog_reviews`
+
+## Executive Summary
+
+The current primary-source dataset contains **1,256,909** deduplicated web-catalog reviews across **200** apps, **26** categories, and **1** country storefronts.
+Top-app concentration is material but not extreme: top 1 app share is **5.8%**, top 5 share is **23.0%**, and top 10 share is **36.8%**.
+Operationally, the stored page history includes **221** HTTP 429 pages, **2,171** retried pages, and **344** final non-200 pages.
+
+## Inventory
+
+| source | review_count | app_count | country_count | min_updated_epoch_seconds | max_updated_epoch_seconds |
+| --- | --- | --- | --- | --- | --- |
+| apple_app_store_web_catalog_reviews | 1,256,909 | 200 | 1 | 1,289,776,286 | 1,781,920,486 |
+| apple_itunes_customerreviews_rss | 66,953 | 200 | 1 | 1,557,790,841 | 1,781,723,829 |
+
+## Volume Distribution
+
+### Top Apps By Review Count
+
+| app_name | category | review_count | reviews_last_30_days | min_updated_epoch_seconds | max_updated_epoch_seconds |
+| --- | --- | --- | --- | --- | --- |
+| Amazon Shopping | shopping | 72,303 | 1,208 | 1,612,624,173 | 1,781,877,450 |
+| Walmart | shopping | 68,776 | 2,855 | 1,671,666,073 | 1,781,878,575 |
+| Target | shopping | 59,905 | 359 | 1,293,713,404 | 1,781,870,926 |
+| Uber | travel | 50,433 | 2,576 | 1,737,125,589 | 1,781,878,676 |
+| Lyft | travel | 37,592 | 1,208 | 1,688,881,175 | 1,781,878,776 |
+| Expedia | travel | 35,301 | 446 | 1,462,368,917 | 1,781,876,451 |
+| Venmo | finance | 35,290 | 1,000 | 1,675,024,056 | 1,781,878,132 |
+| Netflix | entertainment | 34,466 | 1,707 | 1,730,567,010 | 1,781,878,238 |
+| Uber Eats | food_delivery | 34,348 | 1,082 | 1,711,386,035 | 1,781,878,560 |
+| MyFitnessPal | health | 33,960 | 384 | 1,664,671,650 | 1,781,878,771 |
+| DoorDash | food_delivery | 33,911 | 3,514 | 1,740,457,863 | 1,781,878,340 |
+| PayPal | finance | 33,744 | 195 | 1,623,611,285 | 1,781,872,209 |
+| Cash App | finance | 33,685 | 894 | 1,686,940,861 | 1,781,877,953 |
+| Booking.com | travel | 33,634 | 401 | 1,570,304,118 | 1,781,874,015 |
+| Duolingo | education | 33,317 | 6,507 | 1,768,787,399 | 1,781,878,748 |
+| ChatGPT | ai_tools | 33,204 | 7,459 | 1,770,609,195 | 1,781,878,746 |
+| Peacock TV: Stream TV & Movies | entertainment | 32,176 | 561 | 1,616,204,571 | 1,781,749,709 |
+| TikTok | social | 31,513 | 2,651 | 1,753,325,426 | 1,781,876,909 |
+| Spotify | entertainment | 26,893 | 11,658 | 1,774,462,334 | 1,781,878,675 |
+| Airbnb | travel | 24,318 | 106 | 1,289,776,286 | 1,781,858,414 |
+| Instagram | social | 21,669 | 3,307 | 1,765,630,634 | 1,781,877,454 |
+| Google Gemini | productivity | 14,947 | 1,426 | 1,735,137,529 | 1,781,750,481 |
+| Google | utilities | 14,614 | 909 | 1,738,170,885 | 1,781,749,699 |
+| Threads | social_networking | 14,532 | 559 | 1,723,196,806 | 1,781,746,512 |
+| CapCut: Photo & Video Editor | photo_and_video | 14,185 | 1,056 | 1,751,291,858 | 1,781,750,127 |
+
+### Category Coverage
+
+| category | app_count | review_count | avg_rating | avg_content_chars | reviews_last_30_days |
+| --- | --- | --- | --- | --- | --- |
+| shopping | 15 | 242,376 | 3.502 | 171.4 | 15,711 |
+| travel | 8 | 185,438 | 3.584 | 181.5 | 5,452 |
+| entertainment | 27 | 151,462 | 3.142 | 147.8 | 22,969 |
+| finance | 9 | 115,741 | 2.673 | 186.2 | 5,172 |
+| games | 52 | 88,876 | 3.282 | 172.5 | 15,927 |
+| food_delivery | 2 | 68,259 | 2.486 | 207 | 4,596 |
+| social_networking | 11 | 55,505 | 2.997 | 132.8 | 9,382 |
+| social | 2 | 53,182 | 2.372 | 172.7 | 5,958 |
+| productivity | 10 | 47,522 | 3.348 | 158.5 | 4,869 |
+| education | 5 | 40,061 | 4.071 | 172.1 | 7,362 |
+| health | 1 | 33,960 | 2.866 | 217.7 | 384 |
+| ai_tools | 1 | 33,204 | 3.731 | 127.2 | 7,459 |
+| photo_and_video | 7 | 30,444 | 2.937 | 172.2 | 6,892 |
+| utilities | 7 | 28,110 | 3.345 | 115.1 | 2,099 |
+| lifestyle | 8 | 20,232 | 2.333 | 227.2 | 3,132 |
+| business | 7 | 13,520 | 2.636 | 175.4 | 979 |
+| health_and_fitness | 5 | 9,375 | 3.823 | 190.7 | 1,694 |
+| sports | 7 | 8,348 | 2.65 | 149.6 | 1,574 |
+| music | 4 | 8,200 | 3.781 | 137.4 | 1,999 |
+| news | 3 | 6,595 | 2.852 | 168.8 | 2,776 |
+| navigation | 2 | 5,800 | 3.321 | 190.6 | 640 |
+| food_and_drink | 2 | 3,300 | 1.804 | 205.6 | 1,068 |
+| graphics_and_design | 1 | 2,119 | 3.353 | 224.2 | 15 |
+| books | 1 | 2,020 | 3.927 | 215.9 | 534 |
+| weather | 2 | 1,860 | 3.789 | 268.5 | 10 |
+| medical | 1 | 1,400 | 3.598 | 185.2 | 877 |
+
+## Rating Distribution
+
+| rating | review_count |
+| --- | --- |
+| 1 | 443,835 |
+| 2 | 82,939 |
+| 3 | 80,850 |
+| 4 | 76,336 |
+| 5 | 572,949 |
+
+### Rating By Category
+
+| category | review_count | avg_rating | rating_1 | rating_2 | rating_3 | rating_4 | rating_5 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| shopping | 242,376 | 3.502 | 66,379 | 15,978 | 16,645 | 16,394 | 126,980 |
+| travel | 185,438 | 3.584 | 54,023 | 7,998 | 7,264 | 7,920 | 108,233 |
+| entertainment | 151,462 | 3.142 | 53,621 | 11,477 | 11,150 | 10,231 | 64,983 |
+| finance | 115,741 | 2.673 | 58,143 | 7,029 | 5,551 | 4,576 | 40,442 |
+| games | 88,876 | 3.282 | 27,315 | 7,043 | 7,441 | 7,406 | 39,671 |
+| food_delivery | 68,259 | 2.486 | 37,056 | 4,456 | 3,831 | 2,345 | 20,571 |
+| social_networking | 55,505 | 2.997 | 22,565 | 3,429 | 3,603 | 3,403 | 22,505 |
+| social | 53,182 | 2.372 | 28,515 | 4,556 | 4,360 | 3,330 | 12,421 |
+| productivity | 47,522 | 3.348 | 15,544 | 2,686 | 2,772 | 2,721 | 23,799 |
+| education | 40,061 | 4.071 | 5,217 | 1,925 | 2,892 | 4,786 | 25,241 |
+| health | 33,960 | 2.866 | 12,500 | 4,293 | 3,580 | 2,416 | 11,171 |
+| ai_tools | 33,204 | 3.731 | 8,952 | 968 | 1,078 | 1,260 | 20,946 |
+| photo_and_video | 30,444 | 2.937 | 11,681 | 2,548 | 2,895 | 2,659 | 10,661 |
+| utilities | 28,110 | 3.345 | 9,299 | 1,481 | 1,636 | 1,618 | 14,076 |
+| lifestyle | 20,232 | 2.333 | 10,651 | 2,318 | 1,690 | 1,026 | 4,547 |
+| business | 13,520 | 2.636 | 6,270 | 1,312 | 1,057 | 830 | 4,051 |
+| health_and_fitness | 9,375 | 3.823 | 1,882 | 571 | 574 | 643 | 5,705 |
+| sports | 8,348 | 2.65 | 4,185 | 544 | 420 | 406 | 2,793 |
+| music | 8,200 | 3.781 | 1,545 | 559 | 678 | 784 | 4,634 |
+| news | 6,595 | 2.852 | 2,969 | 415 | 380 | 282 | 2,549 |
+| navigation | 5,800 | 3.321 | 1,858 | 403 | 384 | 329 | 2,826 |
+| food_and_drink | 3,300 | 1.804 | 2,185 | 396 | 249 | 121 | 349 |
+| graphics_and_design | 2,119 | 3.353 | 456 | 198 | 311 | 449 | 705 |
+| books | 2,020 | 3.927 | 370 | 109 | 116 | 129 | 1,296 |
+| weather | 1,860 | 3.789 | 351 | 125 | 149 | 175 | 1,060 |
+| medical | 1,400 | 3.598 | 303 | 122 | 144 | 97 | 734 |
+
+## Text Quality
+
+### Review Length
+
+| review_count | avg_chars | p10_chars | p25_chars | p50_chars | p75_chars | p90_chars | p95_chars | max_chars |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1,256,909 | 171.4 | 16 | 43 | 105 | 219 | 394 | 551 | 6,000 |
+
+### Low-Signal And Formatting Patterns
+
+| review_count | blank_content | content_1_to_20_chars | content_21_to_50_chars | blank_title | url_like_content | html_like_content | multiline_content | non_ascii_content |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1,256,909 | 0 | 163,050 | 199,474 | 0 | 49 | 42 | 0 | 567,126 |
+
+### Duplicate Patterns
+
+| review_count | distinct_review_keys | normalized_duplicate_group_count | normalized_duplicate_row_count | largest_normalized_duplicate_group |
+| --- | --- | --- | --- | --- |
+| 1,256,909 | 1,256,909 | 13,289 | 107,302 | 3,196 |
+
+Top normalized duplicate examples:
+
+| row_count | app_count | sample |
+| --- | --- | --- |
+| 3,196 | 170 | good |
+| 2,162 | 160 | love it |
+| 2,110 | 153 | great |
+| 1,357 | 139 | awesome |
+| 1,274 | 108 | excelente |
+| 1,252 | 123 | excellent |
+| 1,213 | 121 | great app |
+| 1,026 | 137 | amazing |
+| 984 | 138 | i love it |
+| 853 | 115 | very good |
+| 774 | 122 | nice |
+| 719 | 115 | the best |
+| 606 | 86 | thank you |
+| 573 | 54 | great service |
+| 534 | 97 | love this app |
+
+## Freshness And Time Coverage
+
+### Recent Monthly Density
+
+| month | review_count | app_count |
+| --- | --- | --- |
+| 2026-06 | 89,410 | 189 |
+| 2026-05 | 124,346 | 194 |
+| 2026-04 | 87,834 | 184 |
+| 2026-03 | 83,643 | 175 |
+| 2026-02 | 63,786 | 155 |
+| 2026-01 | 58,508 | 140 |
+| 2025-12 | 44,467 | 128 |
+| 2025-11 | 33,879 | 119 |
+| 2025-10 | 35,632 | 116 |
+| 2025-09 | 29,904 | 106 |
+| 2025-08 | 28,022 | 100 |
+| 2025-07 | 26,583 | 93 |
+| 2025-06 | 22,976 | 86 |
+| 2025-05 | 20,276 | 79 |
+| 2025-04 | 19,625 | 76 |
+| 2025-03 | 21,437 | 73 |
+| 2025-02 | 20,339 | 70 |
+| 2025-01 | 19,878 | 68 |
+| 2024-12 | 14,872 | 66 |
+| 2024-11 | 15,316 | 61 |
+| 2024-10 | 12,471 | 61 |
+| 2024-09 | 12,228 | 55 |
+| 2024-08 | 12,651 | 52 |
+| 2024-07 | 12,214 | 51 |
+
+### Stalest Apps By Newest Review
+
+| app_name | category | review_count | newest_review_age_days | reviews_last_7_days | reviews_last_30_days |
+| --- | --- | --- | --- | --- | --- |
+| Papa's Freezeria To Go! | games | 1,384 | 219.7 | 0 | 0 |
+| SkyView® | education | 2,260 | 119.9 | 0 | 0 |
+| RadarScope | weather | 1,660 | 67.8 | 0 | 0 |
+| AnkiMobile Flashcards | education | 1,184 | 62.2 | 0 | 0 |
+| Raya | lifestyle | 794 | 39.7 | 0 | 0 |
+| HotSchedules | business | 1,400 | 38.6 | 0 | 0 |
+| Backyard Baseball '01 | games | 223 | 33 | 0 | 0 |
+| onX Hunt: GPS Hunting Maps | navigation | 1,900 | 32.9 | 0 | 0 |
+| Shadowrocket | utilities | 1,420 | 29.7 | 0 | 1 |
+| STARZ | entertainment | 1,900 | 25 | 0 | 5 |
+| Heads Up! | games | 1,180 | 22.9 | 0 | 8 |
+| Candy Crush Soda Saga | games | 1,900 | 19.8 | 0 | 12 |
+| Balatro | games | 1,900 | 17.6 | 0 | 26 |
+| Clapper: Video, Live, Chat | social_networking | 1,879 | 16.3 | 0 | 16 |
+| GroupMe | social_networking | 1,400 | 15.9 | 0 | 32 |
+| Stardew Valley | games | 1,780 | 15.2 | 0 | 15 |
+| Cleaner Guru: Clean Up Storage | utilities | 2,000 | 15.1 | 0 | 36 |
+| MONOPOLY: The Board Game | games | 2,020 | 15 | 0 | 29 |
+| Plague Inc. | games | 1,660 | 14.2 | 0 | 35 |
+| Google Authenticator | utilities | 1,780 | 13.4 | 0 | 35 |
+| Last War:Survival | games | 1,780 | 12.3 | 0 | 53 |
+| Red's First Flight | games | 1,780 | 11.8 | 0 | 53 |
+| ViX: TV, Sports and News | entertainment | 2,140 | 11.1 | 0 | 37 |
+| Evony | games | 1,780 | 11.1 | 0 | 19 |
+| BIGO LIVE-Live Stream, Go Live | social_networking | 1,899 | 10.9 | 0 | 50 |
+
+## Missingness
+
+| review_count | missing_version | missing_vote_sum | missing_vote_count | missing_author_name | missing_title | missing_content | missing_updated_at | missing_updated_epoch_seconds | missing_rating |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1,256,909 | 1,256,909 | 1,256,909 | 1,256,909 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+## Pipeline Behavior
+
+### Run Summary
+
+| run_count | first_loaded_at | last_loaded_at | page_count | raw_review_rows | reviews_inserted | reviews_updated | fetch_errors | capped_scopes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 822 | 2026-06-18T19:00:24.473852+00:00 | 2026-06-22T20:27:16.721328+00:00 | 64,061 | 1,272,817 | 1,256,909 | 1 | 392 | 38 |
+
+### Page Status Codes
+
+| status_code | page_count | review_rows |
+| --- | --- | --- |
+| 200 | 63,669 | 1,272,817 |
+| 429 | 221 | 0 |
+| 404 | 123 | 0 |
+| null | 48 | 0 |
+
+### Terminal Reasons
+
+| terminal_reason | page_count | review_rows |
+| --- | --- | --- |
+| none | 63,663 | 1,271,357 |
+| fetch_error | 282 | 0 |
+| page_cap | 38 | 728 |
+| no_next_href | 31 | 296 |
+| sparse_fetch_error_threshold | 24 | 0 |
+| target_review_count_reached | 21 | 420 |
+| caught_up_to_existing_reviews | 2 | 16 |
+
+### Retry Attempts
+
+| attempt_count | page_count | review_rows |
+| --- | --- | --- |
+| 1 | 61,890 | 1,234,198 |
+| 2 | 1,543 | 30,519 |
+| 3 | 319 | 6,160 |
+| 4 | 84 | 1,640 |
+| 5 | 12 | 240 |
+| 6 | 213 | 60 |
+
+### Empty And Error Page Summary
+
+| empty_pages | empty_pages_with_next_link | empty_pages_without_next_link | http_429_pages | final_non_200_pages | retried_pages | error_pages |
+| --- | --- | --- | --- | --- | --- | --- |
+| 392 | 0 | 392 | 221 | 344 | 2,171 | 392 |
+
+### Apps With The Most Fetched Pages
+
+| app_name | category | run_count | page_count | page_review_rows | http_429_pages | final_non_200_pages | retried_pages | avg_run_page_window_minutes | max_run_page_window_minutes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Amazon Shopping | shopping | 32 | 3,686 | 73,580 | 3 | 5 | 44 | 18.65 | 59.97 |
+| Walmart | shopping | 27 | 3,495 | 69,800 | 2 | 3 | 37 | 20.93 | 59.99 |
+| Target | shopping | 24 | 3,011 | 60,120 | 2 | 3 | 31 | 20.64 | 59.97 |
+| Uber | travel | 22 | 2,595 | 51,800 | 3 | 4 | 37 | 19.11 | 59.85 |
+| Lyft | travel | 17 | 1,901 | 37,960 | 2 | 2 | 22 | 16.52 | 30 |
+| Venmo | finance | 16 | 1,806 | 36,080 | 2 | 2 | 20 | 16.4 | 29.96 |
+| Expedia | travel | 14 | 1,780 | 35,560 | 1 | 2 | 18 | 18.46 | 29.98 |
+| Netflix | entertainment | 15 | 1,744 | 34,860 | 1 | 1 | 23 | 17.44 | 29.98 |
+| Uber Eats | food_delivery | 15 | 1,734 | 34,640 | 1 | 2 | 25 | 17.39 | 29.98 |
+| DoorDash | food_delivery | 15 | 1,733 | 34,620 | 1 | 1 | 26 | 17.44 | 29.94 |
+| ChatGPT | ai_tools | 14 | 1,720 | 34,380 | 1 | 1 | 28 | 18.52 | 29.98 |
+| Duolingo | education | 14 | 1,715 | 34,260 | 1 | 1 | 24 | 18.46 | 29.98 |
+| MyFitnessPal | health | 14 | 1,712 | 34,200 | 1 | 1 | 24 | 18.41 | 29.97 |
+| PayPal | finance | 16 | 1,702 | 34,000 | 2 | 2 | 30 | 16.21 | 29.92 |
+| Cash App | finance | 16 | 1,701 | 33,980 | 2 | 2 | 20 | 15.27 | 29.98 |
+| Booking.com | travel | 14 | 1,696 | 33,880 | 1 | 2 | 26 | 18.52 | 30 |
+| Peacock TV: Stream TV & Movies | entertainment | 12 | 1,619 | 32,360 | 1 | 1 | 26 | 19.93 | 29.96 |
+| TikTok | social | 15 | 1,607 | 32,040 | 1 | 4 | 26 | 17.38 | 29.99 |
+| Spotify | entertainment | 14 | 1,423 | 28,400 | 2 | 3 | 27 | 16.6 | 29.92 |
+| Airbnb | travel | 14 | 1,235 | 24,475 | 1 | 10 | 14 | 11.97 | 29.94 |
+| Instagram | social | 15 | 1,150 | 22,240 | 1 | 37 | 30 | 14.28 | 19.94 |
+| Google Gemini | productivity | 4 | 752 | 15,020 | 1 | 1 | 10 | 19.95 | 30 |
+| Google | utilities | 4 | 734 | 14,660 | 1 | 1 | 10 | 19.94 | 29.95 |
+| Threads | social_networking | 4 | 729 | 14,560 | 1 | 1 | 12 | 19.97 | 29.97 |
+| CapCut: Photo & Video Editor | photo_and_video | 4 | 713 | 14,240 | 1 | 1 | 16 | 19.97 | 29.99 |
+
+## Known Limitations
+
+- Apple public web catalog reviews are public structured catalog data, not a contractual App Store Connect API.
+- A scope is only historically exhausted when a backfill reaches `no_next_href`; page cap, time budget, overlap, and error stops are lower-bound evidence.
+- `vote_sum` and `vote_count` availability depends on the fields Apple returns in the public catalog response.
+- Normalized duplicate detection uses lowercased whitespace-normalized content hashes; it is useful for triage, not semantic near-duplicate modeling.
+- Runtime by app is a page-window proxy based on stored page timestamps, not full GitHub job wall-clock time.

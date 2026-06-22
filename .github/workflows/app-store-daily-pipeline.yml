@@ -83,11 +83,6 @@ on:
         required: false
         default: false
         type: boolean
-      stop_at_rss_parity:
-        description: "Migration mode: continue until web catalog reaches current RSS count, then stop"
-        required: false
-        default: false
-        type: boolean
       web_429_circuit_breaker_lookback_minutes:
         description: "Skip/fail when recent web catalog pages show too many HTTP 429s"
         required: false
@@ -138,7 +133,6 @@ jobs:
       INPUT_WEB_TIME_BUDGET_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_time_budget_seconds || '1200' }}
       INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_scope_time_budget_seconds || '0' }}
       INPUT_DISABLE_OVERLAP_STOP: ${{ github.event_name == 'workflow_dispatch' && inputs.disable_overlap_stop || 'false' }}
-      INPUT_STOP_AT_RSS_PARITY: ${{ github.event_name == 'workflow_dispatch' && inputs.stop_at_rss_parity || 'false' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_LOOKBACK_MINUTES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_circuit_breaker_lookback_minutes || '720' }}
       INPUT_WEB_429_COOLDOWN_MINUTES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_cooldown_minutes || '720' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_circuit_breaker_min_pages || '4' }}
@@ -248,11 +242,6 @@ jobs:
           if [ "$INPUT_DISABLE_OVERLAP_STOP" = "true" ]; then
             overlap_flag="--disable-overlap-stop"
           fi
-          parity_flag=""
-          if [ "$INPUT_STOP_AT_RSS_PARITY" = "true" ]; then
-            parity_flag="--stop-at-rss-parity"
-          fi
-
           .venv/bin/python app_store_pipeline.py daily-web-catalog \
             --database-url "$database_url" \
             --limit "$INPUT_LIMIT" \
@@ -266,7 +255,6 @@ jobs:
             --web-429-backoff-multiplier "$INPUT_WEB_429_BACKOFF_MULTIPLIER" \
             --web-time-budget-seconds "$INPUT_WEB_TIME_BUDGET_SECONDS" \
             --web-scope-time-budget-seconds "$INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS" \
-            $parity_flag \
             $overlap_flag
 
       - name: Check current-run web catalog 429 circuit breaker
