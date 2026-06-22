@@ -220,8 +220,7 @@ def build_eda_summary(database_url: str, *, source: str = WEB_CATALOG_SOURCE) ->
                 COUNT(*) FILTER (WHERE LENGTH(BTRIM(COALESCE(content, ''))) BETWEEN 1 AND 20)::bigint AS content_1_to_20_chars,
                 COUNT(*) FILTER (WHERE LENGTH(BTRIM(COALESCE(content, ''))) BETWEEN 21 AND 50)::bigint AS content_21_to_50_chars,
                 COUNT(*) FILTER (WHERE BTRIM(COALESCE(title, '')) = '')::bigint AS blank_title,
-                COUNT(*) FILTER (WHERE COALESCE(content, '') ~* '(https?://|www\\.)')::bigint AS url_like_content,
-                COUNT(*) FILTER (WHERE COALESCE(content, '') ~ '<[^>]+>')::bigint AS html_like_content,
+                COUNT(*) FILTER (WHERE COALESCE(content, '') ~ '<[^>]+>')::bigint AS angle_bracket_content,
                 COUNT(*) FILTER (WHERE POSITION(CHR(10) IN COALESCE(content, '')) > 0)::bigint AS multiline_content,
                 COUNT(*) FILTER (WHERE COALESCE(content, '') ~ '[^[:ascii:]]')::bigint AS non_ascii_content
             FROM app_store_reviews
@@ -625,8 +624,7 @@ def render_eda_markdown(summary: dict[str, Any]) -> str:
             "content_1_to_20_chars",
             "content_21_to_50_chars",
             "blank_title",
-            "url_like_content",
-            "html_like_content",
+            "angle_bracket_content",
             "multiline_content",
             "non_ascii_content",
         ]),
@@ -969,6 +967,7 @@ def render_eda_html(summary: dict[str, Any]) -> str:
         <div class="panel">
           <h3>Low-Signal And Formatting Flags</h3>
           <div id="lowSignal" class="chart roomy"></div>
+          <div class="note">Angle-bracket text means the review contains literal &lt;...&gt; sequences. Spot checks show user-written placeholders, code/log snippets, or app-rendered tags, not parser-created HTML.</div>
         </div>
       </div>
     </section>
@@ -1478,8 +1477,7 @@ def render_eda_html(summary: dict[str, Any]) -> str:
         ["content_1_to_20_chars", "1 to 20 chars"],
         ["content_21_to_50_chars", "21 to 50 chars"],
         ["non_ascii_content", "Non-ASCII"],
-        ["url_like_content", "URL-like"],
-        ["html_like_content", "HTML-like"],
+        ["angle_bracket_content", "Angle-bracket text"],
         ["blank_content", "Blank content"]
       ], {
         color: palette.amber,
