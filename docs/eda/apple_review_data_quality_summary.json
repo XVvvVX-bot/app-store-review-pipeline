@@ -85,7 +85,7 @@
   },
   "metadata": {
     "database_url": "postgresql:///app_store_reviews",
-    "generated_at": "2026-06-22T21:25:42+00:00",
+    "generated_at": "2026-06-22T21:29:14+00:00",
     "source": "apple_app_store_web_catalog_reviews"
   },
   "missingness": {
@@ -1983,7 +1983,7 @@
         "max_updated_epoch_seconds": 1781215274,
         "newest_review_age_days": 11,
         "review_count": 1899,
-        "reviews_last_30_days": 50,
+        "reviews_last_30_days": 49,
         "reviews_last_7_days": 0
       },
       {
@@ -2051,7 +2051,7 @@
         "app_name": "All in Hole: Black Hole Games",
         "category": "games",
         "max_updated_epoch_seconds": 1781364361,
-        "newest_review_age_days": 9.2,
+        "newest_review_age_days": 9.3,
         "review_count": 1880,
         "reviews_last_30_days": 67,
         "reviews_last_7_days": 0
@@ -2513,7 +2513,7 @@
         "max_updated_epoch_seconds": 1781878746,
         "min_updated_epoch_seconds": 1770609195,
         "review_count": 33204,
-        "reviews_last_30_days": 7442
+        "reviews_last_30_days": 7440
       },
       {
         "app_id": "835599320",
@@ -2810,7 +2810,7 @@
         "max_updated_epoch_seconds": 1781761318,
         "min_updated_epoch_seconds": 1765574831,
         "review_count": 3900,
-        "reviews_last_30_days": 639
+        "reviews_last_30_days": 638
       }
     ],
     "by_category": [
@@ -2836,7 +2836,7 @@
         "avg_rating": 3.13,
         "category": "entertainment",
         "review_count": 153757,
-        "reviews_last_30_days": 22938
+        "reviews_last_30_days": 22937
       },
       {
         "app_count": 9,
@@ -2868,7 +2868,7 @@
         "avg_rating": 2.997,
         "category": "social_networking",
         "review_count": 55505,
-        "reviews_last_30_days": 9373
+        "reviews_last_30_days": 9372
       },
       {
         "app_count": 2,
@@ -2884,7 +2884,7 @@
         "avg_rating": 3.348,
         "category": "productivity",
         "review_count": 47522,
-        "reviews_last_30_days": 4863
+        "reviews_last_30_days": 4862
       },
       {
         "app_count": 5,
@@ -2908,7 +2908,7 @@
         "avg_rating": 3.731,
         "category": "ai_tools",
         "review_count": 33204,
-        "reviews_last_30_days": 7442
+        "reviews_last_30_days": 7440
       },
       {
         "app_count": 7,
@@ -2980,7 +2980,7 @@
         "avg_rating": 3.321,
         "category": "navigation",
         "review_count": 5800,
-        "reviews_last_30_days": 639
+        "reviews_last_30_days": 638
       },
       {
         "app_count": 2,
@@ -3004,7 +3004,7 @@
         "avg_rating": 3.927,
         "category": "books",
         "review_count": 2020,
-        "reviews_last_30_days": 534
+        "reviews_last_30_days": 533
       },
       {
         "app_count": 2,
