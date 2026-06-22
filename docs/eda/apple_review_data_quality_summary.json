@@ -85,7 +85,7 @@
   },
   "metadata": {
     "database_url": "postgresql:///app_store_reviews",
-    "generated_at": "2026-06-22T21:22:14+00:00",
+    "generated_at": "2026-06-22T21:25:42+00:00",
     "source": "apple_app_store_web_catalog_reviews"
   },
   "missingness": {
@@ -2097,6 +2097,16 @@
         "reviews_last_7_days": 0
       },
       {
+        "app_id": "1176027022",
+        "app_name": "Toon Blast",
+        "category": "games",
+        "max_updated_epoch_seconds": 1781485145,
+        "newest_review_age_days": 7.9,
+        "review_count": 2000,
+        "reviews_last_30_days": 195,
+        "reviews_last_7_days": 0
+      },
+      {
         "app_id": "6449094229",
         "app_name": "Match Factory!",
         "category": "games",
@@ -2114,16 +2124,6 @@
         "newest_review_age_days": 7.9,
         "review_count": 1520,
         "reviews_last_30_days": 86,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "1176027022",
-        "app_name": "Toon Blast",
-        "category": "games",
-        "max_updated_epoch_seconds": 1781485145,
-        "newest_review_age_days": 7.8,
-        "review_count": 2000,
-        "reviews_last_30_days": 195,
         "reviews_last_7_days": 0
       },
       {
@@ -2504,7 +2504,7 @@
         "max_updated_epoch_seconds": 1781878748,
         "min_updated_epoch_seconds": 1768787399,
         "review_count": 33317,
-        "reviews_last_30_days": 6502
+        "reviews_last_30_days": 6501
       },
       {
         "app_id": "6448311069",
@@ -2513,7 +2513,7 @@
         "max_updated_epoch_seconds": 1781878746,
         "min_updated_epoch_seconds": 1770609195,
         "review_count": 33204,
-        "reviews_last_30_days": 7443
+        "reviews_last_30_days": 7442
       },
       {
         "app_id": "835599320",
@@ -2531,7 +2531,7 @@
         "max_updated_epoch_seconds": 1781878675,
         "min_updated_epoch_seconds": 1774462334,
         "review_count": 26893,
-        "reviews_last_30_days": 11642
+        "reviews_last_30_days": 11641
       },
       {
         "app_id": "401626263",
@@ -2612,7 +2612,7 @@
         "max_updated_epoch_seconds": 1781779814,
         "min_updated_epoch_seconds": 1760378708,
         "review_count": 5974,
-        "reviews_last_30_days": 660
+        "reviews_last_30_days": 659
       },
       {
         "app_id": "6670324846",
@@ -2657,7 +2657,7 @@
         "max_updated_epoch_seconds": 1781723324,
         "min_updated_epoch_seconds": 1771371336,
         "review_count": 5326,
-        "reviews_last_30_days": 1783
+        "reviews_last_30_days": 1782
       },
       {
         "app_id": "897446215",
@@ -2765,7 +2765,7 @@
         "max_updated_epoch_seconds": 1781778602,
         "min_updated_epoch_seconds": 1763872559,
         "review_count": 4337,
-        "reviews_last_30_days": 868
+        "reviews_last_30_days": 867
       },
       {
         "app_id": "422689480",
@@ -2820,7 +2820,7 @@
         "avg_rating": 3.502,
         "category": "shopping",
         "review_count": 242376,
-        "reviews_last_30_days": 15690
+        "reviews_last_30_days": 15689
       },
       {
         "app_count": 8,
@@ -2836,7 +2836,7 @@
         "avg_rating": 3.13,
         "category": "entertainment",
         "review_count": 153757,
-        "reviews_last_30_days": 22940
+        "reviews_last_30_days": 22938
       },
       {
         "app_count": 9,
@@ -2844,7 +2844,7 @@
         "avg_rating": 2.673,
         "category": "finance",
         "review_count": 115741,
-        "reviews_last_30_days": 5161
+        "reviews_last_30_days": 5160
       },
       {
         "app_count": 52,
@@ -2852,7 +2852,7 @@
         "avg_rating": 3.282,
         "category": "games",
         "review_count": 88876,
-        "reviews_last_30_days": 15900
+        "reviews_last_30_days": 15899
       },
       {
         "app_count": 2,
@@ -2868,7 +2868,7 @@
         "avg_rating": 2.997,
         "category": "social_networking",
         "review_count": 55505,
-        "reviews_last_30_days": 9374
+        "reviews_last_30_days": 9373
       },
       {
         "app_count": 2,
@@ -2892,7 +2892,7 @@
         "avg_rating": 4.071,
         "category": "education",
         "review_count": 40061,
-        "reviews_last_30_days": 7356
+        "reviews_last_30_days": 7354
       },
       {
         "app_count": 1,
@@ -2908,7 +2908,7 @@
         "avg_rating": 3.731,
         "category": "ai_tools",
         "review_count": 33204,
-        "reviews_last_30_days": 7443
+        "reviews_last_30_days": 7442
       },
       {
         "app_count": 7,
@@ -2932,7 +2932,7 @@
         "avg_rating": 2.333,
         "category": "lifestyle",
         "review_count": 20232,
-        "reviews_last_30_days": 3130
+        "reviews_last_30_days": 3129
       },
       {
         "app_count": 7,
@@ -2972,7 +2972,7 @@
         "avg_rating": 2.852,
         "category": "news",
         "review_count": 6595,
-        "reviews_last_30_days": 2774
+        "reviews_last_30_days": 2773
       },
       {
         "app_count": 2,

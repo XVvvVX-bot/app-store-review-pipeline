@@ -1,6 +1,6 @@
 # Apple App Store Review Data Quality Report
 
-Generated at: `2026-06-22T21:22:14+00:00`
+Generated at: `2026-06-22T21:25:42+00:00`
 Database: `postgresql:///app_store_reviews`
 Primary source: `apple_app_store_web_catalog_reviews`
 
@@ -38,10 +38,10 @@ Operationally, the stored page history includes **221** HTTP 429 pages, **2,171*
 | PayPal | finance | 33,744 | 194 | 1,623,611,285 | 1,781,872,209 |
 | Cash App | finance | 33,685 | 892 | 1,686,940,861 | 1,781,877,953 |
 | Booking.com | travel | 33,634 | 399 | 1,570,304,118 | 1,781,874,015 |
-| Duolingo | education | 33,317 | 6,502 | 1,768,787,399 | 1,781,878,748 |
-| ChatGPT | ai_tools | 33,204 | 7,443 | 1,770,609,195 | 1,781,878,746 |
+| Duolingo | education | 33,317 | 6,501 | 1,768,787,399 | 1,781,878,748 |
+| ChatGPT | ai_tools | 33,204 | 7,442 | 1,770,609,195 | 1,781,878,746 |
 | TikTok | social | 31,513 | 2,647 | 1,753,325,426 | 1,781,876,909 |
-| Spotify | entertainment | 26,893 | 11,642 | 1,774,462,334 | 1,781,878,675 |
+| Spotify | entertainment | 26,893 | 11,641 | 1,774,462,334 | 1,781,878,675 |
 | Airbnb | travel | 24,318 | 106 | 1,289,776,286 | 1,781,858,414 |
 | Instagram | social | 21,669 | 3,303 | 1,765,630,634 | 1,781,877,454 |
 | Google Gemini | productivity | 14,947 | 1,425 | 1,735,137,529 | 1,781,750,481 |
@@ -53,26 +53,26 @@ Operationally, the stored page history includes **221** HTTP 429 pages, **2,171*
 
 | category | app_count | review_count | avg_rating | avg_content_chars | reviews_last_30_days |
 | --- | --- | --- | --- | --- | --- |
-| shopping | 15 | 242,376 | 3.502 | 171.4 | 15,690 |
+| shopping | 15 | 242,376 | 3.502 | 171.4 | 15,689 |
 | travel | 8 | 185,438 | 3.584 | 181.5 | 5,446 |
-| entertainment | 27 | 153,757 | 3.13 | 148.8 | 22,940 |
-| finance | 9 | 115,741 | 2.673 | 186.2 | 5,161 |
-| games | 52 | 88,876 | 3.282 | 172.5 | 15,900 |
+| entertainment | 27 | 153,757 | 3.13 | 148.8 | 22,938 |
+| finance | 9 | 115,741 | 2.673 | 186.2 | 5,160 |
+| games | 52 | 88,876 | 3.282 | 172.5 | 15,899 |
 | food_delivery | 2 | 68,259 | 2.486 | 207 | 4,583 |
-| social_networking | 11 | 55,505 | 2.997 | 132.8 | 9,374 |
+| social_networking | 11 | 55,505 | 2.997 | 132.8 | 9,373 |
 | social | 2 | 53,182 | 2.372 | 172.7 | 5,950 |
 | productivity | 10 | 47,522 | 3.348 | 158.5 | 4,863 |
-| education | 5 | 40,061 | 4.071 | 172.1 | 7,356 |
+| education | 5 | 40,061 | 4.071 | 172.1 | 7,354 |
 | health | 1 | 33,960 | 2.866 | 217.7 | 383 |
-| ai_tools | 1 | 33,204 | 3.731 | 127.2 | 7,443 |
+| ai_tools | 1 | 33,204 | 3.731 | 127.2 | 7,442 |
 | photo_and_video | 7 | 30,444 | 2.937 | 172.2 | 6,890 |
 | utilities | 7 | 28,110 | 3.345 | 115.1 | 2,094 |
-| lifestyle | 8 | 20,232 | 2.333 | 227.2 | 3,130 |
+| lifestyle | 8 | 20,232 | 2.333 | 227.2 | 3,129 |
 | business | 7 | 13,520 | 2.636 | 175.4 | 978 |
 | health_and_fitness | 5 | 9,375 | 3.823 | 190.7 | 1,694 |
 | sports | 7 | 8,348 | 2.65 | 149.6 | 1,572 |
 | music | 4 | 8,200 | 3.781 | 137.4 | 1,996 |
-| news | 3 | 6,595 | 2.852 | 168.8 | 2,774 |
+| news | 3 | 6,595 | 2.852 | 168.8 | 2,773 |
 | navigation | 2 | 5,800 | 3.321 | 190.6 | 639 |
 | food_and_drink | 2 | 3,300 | 1.804 | 205.6 | 1,066 |
 | graphics_and_design | 1 | 2,119 | 3.353 | 224.2 | 15 |

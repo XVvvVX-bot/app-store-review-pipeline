@@ -980,7 +980,7 @@ def render_eda_html(summary: dict[str, Any]) -> str:
         </div>
         <div class="panel">
           <h3>Fetch Attempts</h3>
-          <div id="attempts" class="chart short"></div>
+          <div id="attempts" class="chart roomy"></div>
         </div>
         <div class="panel">
           <h3>Terminal Reasons</h3>
@@ -1223,6 +1223,43 @@ def render_eda_html(summary: dict[str, Any]) -> str:
       byId(id).innerHTML = out;
     }
 
+    function attemptHealthChart(id, rows) {
+      const data = rows
+        .map(row => ({
+          attempt: Number(row.attempt_count || 0),
+          count: value(row, "page_count")
+        }))
+        .sort((a, b) => a.attempt - b.attempt);
+      const total = data.reduce((acc, row) => acc + row.count, 0) || 1;
+      const first = data.find(row => row.attempt === 1) || { attempt: 1, count: 0 };
+      const retries = data.filter(row => row.attempt > 1);
+      const retryTotal = retries.reduce((acc, row) => acc + row.count, 0);
+      const width = 900;
+      const height = 290;
+      const margin = { top: 28, right: 150, bottom: 28, left: 104 };
+      const plotW = width - margin.left - margin.right;
+      const firstRate = first.count / total;
+      const rowH = Math.min(34, Math.max(26, 154 / Math.max(retries.length, 1)));
+      const y0 = 128;
+      const retryMax = Math.max(...retries.map(row => row.count), 1);
+      let out = svgEl(width, height);
+      out += text(margin.left, margin.top, `First attempt: ${fmtInt(first.count)} pages (${fmtPct(firstRate)})`, "bar-label");
+      out += `<rect x="${margin.left}" y="${margin.top + 18}" width="${plotW}" height="30" rx="5" fill="${palette.grid}"/>`;
+      out += `<rect x="${margin.left}" y="${margin.top + 18}" width="${Math.max(2, plotW * firstRate)}" height="30" rx="5" fill="${palette.green}"/>`;
+      out += text(width - margin.right + 12, margin.top + 39, fmtPct(firstRate), "bar-label");
+      out += text(margin.left, 94, `Retried pages: ${fmtInt(retryTotal)} (${fmtPct(retryTotal / total)})`, "bar-label");
+      retries.forEach((row, i) => {
+        const y = y0 + i * rowH;
+        const w = (row.count / retryMax) * plotW;
+        out += `<line x1="${margin.left}" y1="${y + rowH - 7}" x2="${width - margin.right}" y2="${y + rowH - 7}" stroke="${palette.grid}"/>`;
+        out += text(margin.left - 10, y + 21, `Attempt ${row.attempt}`, "label-text", "end");
+        out += `<rect x="${margin.left}" y="${y}" width="${Math.max(2, w)}" height="${Math.max(16, rowH - 10)}" rx="4" fill="${palette.teal}"/>`;
+        out += text(width - margin.right + 12, y + 18, `${fmtInt(row.count)} (${fmtPct(row.count / total)})`, "bar-label");
+      });
+      out += "</svg>";
+      byId(id).innerHTML = out;
+    }
+
     function stackedRatingBars(id, rows, options) {
       const data = rows.slice(0, options.limit || rows.length);
       const width = 900;
@@ -1397,11 +1434,7 @@ def render_eda_html(summary: dict[str, Any]) -> str:
         tickFormat: fmtPct
       });
       statusCodeChart("statusCodes", summary.pipeline_behavior.status_codes);
-      verticalBarChart("attempts", summary.pipeline_behavior.attempt_counts, {
-        labelKey: "attempt_count",
-        valueKey: "page_count",
-        color: palette.green
-      });
+      attemptHealthChart("attempts", summary.pipeline_behavior.attempt_counts);
       horizontalBarChart("terminalReasons", summary.pipeline_behavior.terminal_reasons, {
         labelKey: "terminal_reason",
         valueKey: "page_count",
