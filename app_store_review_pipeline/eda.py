@@ -975,8 +975,8 @@ def render_eda_html(summary: dict[str, Any]) -> str:
       <h2>Pipeline Health</h2>
       <div class="grid three">
         <div class="panel">
-          <h3>Page Status Codes</h3>
-          <div id="statusCodes" class="chart short"></div>
+          <h3>Page Status Health</h3>
+          <div id="statusCodes" class="chart roomy"></div>
         </div>
         <div class="panel">
           <h3>Fetch Attempts</h3>
@@ -1180,6 +1180,49 @@ def render_eda_html(summary: dict[str, Any]) -> str:
       byId(id).innerHTML = out;
     }
 
+    function statusCodeChart(id, rows) {
+      const data = rows.map(row => ({
+        status: String(row.status_code ?? "null"),
+        count: value(row, "page_count")
+      }));
+      const total = data.reduce((acc, row) => acc + row.count, 0) || 1;
+      const success = data.find(row => row.status === "200") || { status: "200", count: 0 };
+      const nonSuccess = data
+        .filter(row => row.status !== "200")
+        .sort((a, b) => b.count - a.count);
+      const nonSuccessTotal = nonSuccess.reduce((acc, row) => acc + row.count, 0);
+      const width = 900;
+      const height = 290;
+      const margin = { top: 28, right: 150, bottom: 28, left: 96 };
+      const plotW = width - margin.left - margin.right;
+      const successRate = success.count / total;
+      const rowH = 42;
+      const y0 = 126;
+      const nonMax = Math.max(...nonSuccess.map(row => row.count), 1);
+      const labelFor = status => status === "null" ? "No status" : `HTTP ${status}`;
+      const colorFor = status => ({
+        "429": palette.amber,
+        "404": palette.red,
+        "null": palette.slate
+      }[status] || palette.purple);
+      let out = svgEl(width, height);
+      out += text(margin.left, margin.top, `200 OK: ${fmtInt(success.count)} pages (${fmtPct(successRate)})`, "bar-label");
+      out += `<rect x="${margin.left}" y="${margin.top + 18}" width="${plotW}" height="30" rx="5" fill="${palette.grid}"/>`;
+      out += `<rect x="${margin.left}" y="${margin.top + 18}" width="${Math.max(2, plotW * successRate)}" height="30" rx="5" fill="${palette.green}"/>`;
+      out += text(width - margin.right + 12, margin.top + 39, fmtPct(successRate), "bar-label");
+      out += text(margin.left, 94, `Non-200 pages: ${fmtInt(nonSuccessTotal)} (${fmtPct(nonSuccessTotal / total)})`, "bar-label");
+      nonSuccess.forEach((row, i) => {
+        const y = y0 + i * rowH;
+        const w = (row.count / nonMax) * plotW;
+        out += `<line x1="${margin.left}" y1="${y + rowH - 8}" x2="${width - margin.right}" y2="${y + rowH - 8}" stroke="${palette.grid}"/>`;
+        out += text(margin.left - 10, y + 22, labelFor(row.status), "label-text", "end");
+        out += `<rect x="${margin.left}" y="${y}" width="${Math.max(2, w)}" height="24" rx="4" fill="${colorFor(row.status)}"/>`;
+        out += text(width - margin.right + 12, y + 18, `${fmtInt(row.count)} (${fmtPct(row.count / total)})`, "bar-label");
+      });
+      out += "</svg>";
+      byId(id).innerHTML = out;
+    }
+
     function stackedRatingBars(id, rows, options) {
       const data = rows.slice(0, options.limit || rows.length);
       const width = 900;
@@ -1353,14 +1396,7 @@ def render_eda_html(summary: dict[str, Any]) -> str:
         tickValues: [0.25, 0.5],
         tickFormat: fmtPct
       });
-      horizontalBarChart("statusCodes", summary.pipeline_behavior.status_codes, {
-        labelKey: "status_code",
-        valueKey: "page_count",
-        limit: 8,
-        left: 90,
-        rowHeight: 28,
-        color: palette.slate
-      });
+      statusCodeChart("statusCodes", summary.pipeline_behavior.status_codes);
       verticalBarChart("attempts", summary.pipeline_behavior.attempt_counts, {
         labelKey: "attempt_count",
         valueKey: "page_count",

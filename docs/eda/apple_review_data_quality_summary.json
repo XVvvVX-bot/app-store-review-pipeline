@@ -85,7 +85,7 @@
   },
   "metadata": {
     "database_url": "postgresql:///app_store_reviews",
-    "generated_at": "2026-06-22T21:18:41+00:00",
+    "generated_at": "2026-06-22T21:22:14+00:00",
     "source": "apple_app_store_web_catalog_reviews"
   },
   "missingness": {
@@ -1893,7 +1893,7 @@
         "max_updated_epoch_seconds": 1780851561,
         "newest_review_age_days": 15.2,
         "review_count": 1780,
-        "reviews_last_30_days": 15,
+        "reviews_last_30_days": 14,
         "reviews_last_7_days": 0
       },
       {
@@ -1991,7 +1991,7 @@
         "app_name": "Fly Delta",
         "category": "travel",
         "max_updated_epoch_seconds": 1781225684,
-        "newest_review_age_days": 10.8,
+        "newest_review_age_days": 10.9,
         "review_count": 1500,
         "reviews_last_30_days": 43,
         "reviews_last_7_days": 0
@@ -2103,7 +2103,7 @@
         "max_updated_epoch_seconds": 1781484672,
         "newest_review_age_days": 7.9,
         "review_count": 1900,
-        "reviews_last_30_days": 125,
+        "reviews_last_30_days": 124,
         "reviews_last_7_days": 0
       },
       {
@@ -2223,7 +2223,7 @@
         "max_updated_epoch_seconds": 1781646586,
         "newest_review_age_days": 6,
         "review_count": 1900,
-        "reviews_last_30_days": 129,
+        "reviews_last_30_days": 128,
         "reviews_last_7_days": 8
       },
       {
@@ -2369,7 +2369,7 @@
         "max_updated_epoch_seconds": 1781877450,
         "min_updated_epoch_seconds": 1612624173,
         "review_count": 72303,
-        "reviews_last_30_days": 1207
+        "reviews_last_30_days": 1206
       },
       {
         "app_id": "338137227",
@@ -2378,7 +2378,7 @@
         "max_updated_epoch_seconds": 1781878575,
         "min_updated_epoch_seconds": 1671666073,
         "review_count": 68776,
-        "reviews_last_30_days": 2854
+        "reviews_last_30_days": 2853
       },
       {
         "app_id": "297430070",
@@ -2441,7 +2441,7 @@
         "max_updated_epoch_seconds": 1781878238,
         "min_updated_epoch_seconds": 1730567010,
         "review_count": 34466,
-        "reviews_last_30_days": 1705
+        "reviews_last_30_days": 1704
       },
       {
         "app_id": "1058959277",
@@ -2468,7 +2468,7 @@
         "max_updated_epoch_seconds": 1781878340,
         "min_updated_epoch_seconds": 1740457863,
         "review_count": 33911,
-        "reviews_last_30_days": 3505
+        "reviews_last_30_days": 3504
       },
       {
         "app_id": "283646709",
@@ -2504,7 +2504,7 @@
         "max_updated_epoch_seconds": 1781878748,
         "min_updated_epoch_seconds": 1768787399,
         "review_count": 33317,
-        "reviews_last_30_days": 6504
+        "reviews_last_30_days": 6502
       },
       {
         "app_id": "6448311069",
@@ -2513,7 +2513,7 @@
         "max_updated_epoch_seconds": 1781878746,
         "min_updated_epoch_seconds": 1770609195,
         "review_count": 33204,
-        "reviews_last_30_days": 7444
+        "reviews_last_30_days": 7443
       },
       {
         "app_id": "835599320",
@@ -2567,7 +2567,7 @@
         "max_updated_epoch_seconds": 1781749699,
         "min_updated_epoch_seconds": 1738170885,
         "review_count": 14614,
-        "reviews_last_30_days": 908
+        "reviews_last_30_days": 907
       },
       {
         "app_id": "6446901002",
@@ -2621,7 +2621,7 @@
         "max_updated_epoch_seconds": 1781779856,
         "min_updated_epoch_seconds": 1773074035,
         "review_count": 5917,
-        "reviews_last_30_days": 1404
+        "reviews_last_30_days": 1403
       },
       {
         "app_id": "500003565",
@@ -2729,7 +2729,7 @@
         "max_updated_epoch_seconds": 1781757447,
         "min_updated_epoch_seconds": 1718062772,
         "review_count": 4579,
-        "reviews_last_30_days": 194
+        "reviews_last_30_days": 193
       },
       {
         "app_id": "686449807",
@@ -2747,7 +2747,7 @@
         "max_updated_epoch_seconds": 1781747521,
         "min_updated_epoch_seconds": 1779539706,
         "review_count": 4485,
-        "reviews_last_30_days": 4422
+        "reviews_last_30_days": 4421
       },
       {
         "app_id": "6751921248",
@@ -2820,7 +2820,7 @@
         "avg_rating": 3.502,
         "category": "shopping",
         "review_count": 242376,
-        "reviews_last_30_days": 15692
+        "reviews_last_30_days": 15690
       },
       {
         "app_count": 8,
@@ -2836,7 +2836,7 @@
         "avg_rating": 3.13,
         "category": "entertainment",
         "review_count": 153757,
-        "reviews_last_30_days": 22942
+        "reviews_last_30_days": 22940
       },
       {
         "app_count": 9,
@@ -2844,7 +2844,7 @@
         "avg_rating": 2.673,
         "category": "finance",
         "review_count": 115741,
-        "reviews_last_30_days": 5162
+        "reviews_last_30_days": 5161
       },
       {
         "app_count": 52,
@@ -2852,7 +2852,7 @@
         "avg_rating": 3.282,
         "category": "games",
         "review_count": 88876,
-        "reviews_last_30_days": 15903
+        "reviews_last_30_days": 15900
       },
       {
         "app_count": 2,
@@ -2860,7 +2860,7 @@
         "avg_rating": 2.486,
         "category": "food_delivery",
         "review_count": 68259,
-        "reviews_last_30_days": 4584
+        "reviews_last_30_days": 4583
       },
       {
         "app_count": 11,
@@ -2868,7 +2868,7 @@
         "avg_rating": 2.997,
         "category": "social_networking",
         "review_count": 55505,
-        "reviews_last_30_days": 9375
+        "reviews_last_30_days": 9374
       },
       {
         "app_count": 2,
@@ -2884,7 +2884,7 @@
         "avg_rating": 3.348,
         "category": "productivity",
         "review_count": 47522,
-        "reviews_last_30_days": 4864
+        "reviews_last_30_days": 4863
       },
       {
         "app_count": 5,
@@ -2892,7 +2892,7 @@
         "avg_rating": 4.071,
         "category": "education",
         "review_count": 40061,
-        "reviews_last_30_days": 7359
+        "reviews_last_30_days": 7356
       },
       {
         "app_count": 1,
@@ -2908,7 +2908,7 @@
         "avg_rating": 3.731,
         "category": "ai_tools",
         "review_count": 33204,
-        "reviews_last_30_days": 7444
+        "reviews_last_30_days": 7443
       },
       {
         "app_count": 7,
@@ -2924,7 +2924,7 @@
         "avg_rating": 3.345,
         "category": "utilities",
         "review_count": 28110,
-        "reviews_last_30_days": 2096
+        "reviews_last_30_days": 2094
       },
       {
         "app_count": 8,
