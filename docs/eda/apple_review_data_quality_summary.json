@@ -5,10 +5,10 @@
       "category_count": 26,
       "country_count": 1,
       "first_collected_at": "2026-06-18T19:26:37.978751+00:00",
-      "last_collected_at": "2026-06-22T20:26:46.254980+00:00",
+      "last_collected_at": "2026-06-22T20:44:14.144680+00:00",
       "max_updated_epoch_seconds": 1781920486,
       "min_updated_epoch_seconds": 1289776286,
-      "review_count": 1256909
+      "review_count": 1259204
     },
     "rows_by_source": [
       {
@@ -16,7 +16,7 @@
         "country_count": 1,
         "max_updated_epoch_seconds": 1781920486,
         "min_updated_epoch_seconds": 1289776286,
-        "review_count": 1256909,
+        "review_count": 1259204,
         "source": "apple_app_store_web_catalog_reviews"
       },
       {
@@ -85,7 +85,7 @@
   },
   "metadata": {
     "database_url": "postgresql:///app_store_reviews",
-    "generated_at": "2026-06-22T20:40:58+00:00",
+    "generated_at": "2026-06-22T20:53:30+00:00",
     "source": "apple_app_store_web_catalog_reviews"
   },
   "missingness": {
@@ -101,20 +101,20 @@
     "missing_updated_at_rate": 0.0,
     "missing_updated_epoch_seconds": 0,
     "missing_updated_epoch_seconds_rate": 0.0,
-    "missing_version": 1256909,
+    "missing_version": 1259204,
     "missing_version_rate": 1.0,
-    "missing_vote_count": 1256909,
+    "missing_vote_count": 1259204,
     "missing_vote_count_rate": 1.0,
-    "missing_vote_sum": 1256909,
+    "missing_vote_sum": 1259204,
     "missing_vote_sum_rate": 1.0,
-    "review_count": 1256909
+    "review_count": 1259204
   },
   "pipeline_behavior": {
     "attempt_counts": [
       {
         "attempt_count": 1,
-        "page_count": 61890,
-        "review_rows": 1234198
+        "page_count": 62006,
+        "review_rows": 1236518
       },
       {
         "attempt_count": 2,
@@ -248,6 +248,19 @@
         "run_count": 15
       },
       {
+        "app_id": "1508186374",
+        "app_name": "Peacock TV: Stream TV & Movies",
+        "avg_run_page_window_minutes": 19.89,
+        "category": "entertainment",
+        "final_non_200_pages": 1,
+        "http_429_pages": 1,
+        "max_run_page_window_minutes": 29.96,
+        "page_count": 1735,
+        "page_review_rows": 34680,
+        "retried_pages": 26,
+        "run_count": 13
+      },
+      {
         "app_id": "1058959277",
         "app_name": "Uber Eats",
         "avg_run_page_window_minutes": 17.39,
@@ -350,19 +363,6 @@
         "page_review_rows": 33880,
         "retried_pages": 26,
         "run_count": 14
-      },
-      {
-        "app_id": "1508186374",
-        "app_name": "Peacock TV: Stream TV & Movies",
-        "avg_run_page_window_minutes": 19.93,
-        "category": "entertainment",
-        "final_non_200_pages": 1,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.96,
-        "page_count": 1619,
-        "page_review_rows": 32360,
-        "retried_pages": 26,
-        "run_count": 12
       },
       {
         "app_id": "835599320",
@@ -807,18 +807,18 @@
       "capped_scopes": 38,
       "fetch_errors": 392,
       "first_loaded_at": "2026-06-18T19:00:24.473852+00:00",
-      "last_loaded_at": "2026-06-22T20:27:16.721328+00:00",
-      "page_count": 64061,
-      "raw_review_rows": 1272817,
-      "reviews_inserted": 1256909,
+      "last_loaded_at": "2026-06-22T20:44:24.366383+00:00",
+      "page_count": 64177,
+      "raw_review_rows": 1275137,
+      "reviews_inserted": 1259204,
       "reviews_updated": 1,
-      "run_count": 822,
-      "target_count_sum": 124850
+      "run_count": 823,
+      "target_count_sum": 124875
     },
     "status_codes": [
       {
-        "page_count": 63669,
-        "review_rows": 1272817,
+        "page_count": 63785,
+        "review_rows": 1275137,
         "status_code": "200"
       },
       {
@@ -839,8 +839,8 @@
     ],
     "terminal_reasons": [
       {
-        "page_count": 63663,
-        "review_rows": 1271357,
+        "page_count": 63779,
+        "review_rows": 1273677,
         "terminal_reason": "none"
       },
       {
@@ -941,6 +941,15 @@
         "review_count": 35290
       },
       {
+        "app_id": "1508186374",
+        "app_name": "Peacock TV: Stream TV & Movies",
+        "avg_rating": 2.444,
+        "category": "entertainment",
+        "rating_1": 16844,
+        "rating_5": 8420,
+        "review_count": 34471
+      },
+      {
         "app_id": "363590051",
         "app_name": "Netflix",
         "avg_rating": 3.569,
@@ -1020,15 +1029,6 @@
         "rating_1": 8952,
         "rating_5": 20946,
         "review_count": 33204
-      },
-      {
-        "app_id": "1508186374",
-        "app_name": "Peacock TV: Stream TV & Movies",
-        "avg_rating": 2.453,
-        "category": "entertainment",
-        "rating_1": 15709,
-        "rating_5": 7971,
-        "review_count": 32176
       },
       {
         "app_id": "835599320",
@@ -1350,14 +1350,14 @@
         "review_count": 185438
       },
       {
-        "avg_rating": 3.142,
+        "avg_rating": 3.13,
         "category": "entertainment",
-        "rating_1": 53621,
-        "rating_2": 11477,
-        "rating_3": 11150,
-        "rating_4": 10231,
-        "rating_5": 64983,
-        "review_count": 151462
+        "rating_1": 54756,
+        "rating_2": 11798,
+        "rating_3": 11401,
+        "rating_4": 10370,
+        "rating_5": 65432,
+        "review_count": 153757
       },
       {
         "avg_rating": 2.673,
@@ -1593,23 +1593,23 @@
     "overall": [
       {
         "rating": 1,
-        "review_count": 443835
+        "review_count": 444970
       },
       {
         "rating": 2,
-        "review_count": 82939
+        "review_count": 83260
       },
       {
         "rating": 3,
-        "review_count": 80850
+        "review_count": 81101
       },
       {
         "rating": 4,
-        "review_count": 76336
+        "review_count": 76475
       },
       {
         "rating": 5,
-        "review_count": 572949
+        "review_count": 573398
       }
     ]
   },
@@ -1617,12 +1617,12 @@
     "duplicate_examples": [
       {
         "app_count": 170,
-        "row_count": 3196,
+        "row_count": 3197,
         "sample": "good"
       },
       {
         "app_count": 160,
-        "row_count": 2162,
+        "row_count": 2163,
         "sample": "love it"
       },
       {
@@ -1632,7 +1632,7 @@
       },
       {
         "app_count": 139,
-        "row_count": 1357,
+        "row_count": 1359,
         "sample": "awesome"
       },
       {
@@ -1642,22 +1642,22 @@
       },
       {
         "app_count": 123,
-        "row_count": 1252,
+        "row_count": 1253,
         "sample": "excellent"
       },
       {
         "app_count": 121,
-        "row_count": 1213,
+        "row_count": 1215,
         "sample": "great app"
       },
       {
         "app_count": 137,
-        "row_count": 1026,
+        "row_count": 1027,
         "sample": "amazing"
       },
       {
         "app_count": 138,
-        "row_count": 984,
+        "row_count": 987,
         "sample": "i love it"
       },
       {
@@ -1692,15 +1692,15 @@
       }
     ],
     "duplicate_summary": {
-      "distinct_review_keys": 1256909,
+      "distinct_review_keys": 1259204,
       "distinct_review_keys_rate": 1.0,
-      "largest_normalized_duplicate_group": 3196,
+      "largest_normalized_duplicate_group": 3197,
       "largest_normalized_duplicate_group_rate": 0.0025,
-      "normalized_duplicate_group_count": 13289,
+      "normalized_duplicate_group_count": 13300,
       "normalized_duplicate_group_count_rate": 0.0106,
-      "normalized_duplicate_row_count": 107302,
-      "normalized_duplicate_row_count_rate": 0.0854,
-      "review_count": 1256909
+      "normalized_duplicate_row_count": 107374,
+      "normalized_duplicate_row_count_rate": 0.0853,
+      "review_count": 1259204
     },
     "length_summary": {
       "avg_chars": 171.4,
@@ -1709,27 +1709,27 @@
       "p10_chars": 16.0,
       "p25_chars": 43.0,
       "p50_chars": 105.0,
-      "p75_chars": 219.0,
+      "p75_chars": 220.0,
       "p90_chars": 394.0,
       "p95_chars": 551.0,
-      "review_count": 1256909
+      "review_count": 1259204
     },
     "low_signal": {
       "blank_content": 0,
       "blank_content_rate": 0.0,
       "blank_title": 0,
       "blank_title_rate": 0.0,
-      "content_1_to_20_chars": 163050,
-      "content_1_to_20_chars_rate": 0.1297,
-      "content_21_to_50_chars": 199474,
-      "content_21_to_50_chars_rate": 0.1587,
+      "content_1_to_20_chars": 163161,
+      "content_1_to_20_chars_rate": 0.1296,
+      "content_21_to_50_chars": 199719,
+      "content_21_to_50_chars_rate": 0.1586,
       "html_like_content": 42,
       "html_like_content_rate": 0.0,
       "multiline_content": 0,
       "multiline_content_rate": 0.0,
-      "non_ascii_content": 567126,
-      "non_ascii_content_rate": 0.4512,
-      "review_count": 1256909,
+      "non_ascii_content": 568473,
+      "non_ascii_content_rate": 0.4515,
+      "review_count": 1259204,
       "url_like_content": 49,
       "url_like_content_rate": 0.0
     }
@@ -1781,7 +1781,7 @@
         "app_name": "Raya",
         "category": "lifestyle",
         "max_updated_epoch_seconds": 1778727036,
-        "newest_review_age_days": 39.7,
+        "newest_review_age_days": 39.8,
         "review_count": 794,
         "reviews_last_30_days": 0,
         "reviews_last_7_days": 0
@@ -1801,7 +1801,7 @@
         "app_name": "Backyard Baseball '01",
         "category": "games",
         "max_updated_epoch_seconds": 1779305897,
-        "newest_review_age_days": 33,
+        "newest_review_age_days": 33.1,
         "review_count": 223,
         "reviews_last_30_days": 0,
         "reviews_last_7_days": 0
@@ -1951,7 +1951,7 @@
         "app_name": "Red's First Flight",
         "category": "games",
         "max_updated_epoch_seconds": 1781137618,
-        "newest_review_age_days": 11.8,
+        "newest_review_age_days": 11.9,
         "review_count": 1780,
         "reviews_last_30_days": 53,
         "reviews_last_7_days": 0
@@ -1981,7 +1981,7 @@
         "app_name": "BIGO LIVE-Live Stream, Go Live",
         "category": "social_networking",
         "max_updated_epoch_seconds": 1781215274,
-        "newest_review_age_days": 10.9,
+        "newest_review_age_days": 11,
         "review_count": 1899,
         "reviews_last_30_days": 50,
         "reviews_last_7_days": 0
@@ -2007,6 +2007,16 @@
         "reviews_last_7_days": 0
       },
       {
+        "app_id": "1096918571",
+        "app_name": "Google Meet",
+        "category": "social_networking",
+        "max_updated_epoch_seconds": 1781284333,
+        "newest_review_age_days": 10.2,
+        "review_count": 1280,
+        "reviews_last_30_days": 38,
+        "reviews_last_7_days": 0
+      },
+      {
         "app_id": "327630330",
         "app_name": "Dropbox: Cloud Storage Backup",
         "category": "productivity",
@@ -2014,16 +2024,6 @@
         "newest_review_age_days": 10.1,
         "review_count": 1620,
         "reviews_last_30_days": 56,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "1096918571",
-        "app_name": "Google Meet",
-        "category": "social_networking",
-        "max_updated_epoch_seconds": 1781284333,
-        "newest_review_age_days": 10.1,
-        "review_count": 1280,
-        "reviews_last_30_days": 38,
         "reviews_last_7_days": 0
       },
       {
@@ -2081,7 +2081,7 @@
         "app_name": "Cashman Casino Slots Games",
         "category": "games",
         "max_updated_epoch_seconds": 1781422680,
-        "newest_review_age_days": 8.5,
+        "newest_review_age_days": 8.6,
         "review_count": 1160,
         "reviews_last_30_days": 68,
         "reviews_last_7_days": 0
@@ -2127,6 +2127,16 @@
         "reviews_last_7_days": 0
       },
       {
+        "app_id": "535509415",
+        "app_name": "Costco",
+        "category": "shopping",
+        "max_updated_epoch_seconds": 1781534735,
+        "newest_review_age_days": 7.3,
+        "review_count": 1520,
+        "reviews_last_30_days": 135,
+        "reviews_last_7_days": 0
+      },
+      {
         "app_id": "546505307",
         "app_name": "Zoom Workplace",
         "category": "business",
@@ -2147,16 +2157,6 @@
         "reviews_last_7_days": 0
       },
       {
-        "app_id": "535509415",
-        "app_name": "Costco",
-        "category": "shopping",
-        "max_updated_epoch_seconds": 1781534735,
-        "newest_review_age_days": 7.2,
-        "review_count": 1520,
-        "reviews_last_30_days": 135,
-        "reviews_last_7_days": 0
-      },
-      {
         "app_id": "6503272652",
         "app_name": "Last Z: Survival Shooter",
         "category": "games",
@@ -2171,7 +2171,7 @@
         "app_name": "Homescapes: Match 3 Games",
         "category": "games",
         "max_updated_epoch_seconds": 1781595521,
-        "newest_review_age_days": 6.5,
+        "newest_review_age_days": 6.6,
         "review_count": 2260,
         "reviews_last_30_days": 122,
         "reviews_last_7_days": 3
@@ -2369,7 +2369,7 @@
         "max_updated_epoch_seconds": 1781877450,
         "min_updated_epoch_seconds": 1612624173,
         "review_count": 72303,
-        "reviews_last_30_days": 1208
+        "reviews_last_30_days": 1207
       },
       {
         "app_id": "338137227",
@@ -2378,7 +2378,7 @@
         "max_updated_epoch_seconds": 1781878575,
         "min_updated_epoch_seconds": 1671666073,
         "review_count": 68776,
-        "reviews_last_30_days": 2855
+        "reviews_last_30_days": 2854
       },
       {
         "app_id": "297430070",
@@ -2387,7 +2387,7 @@
         "max_updated_epoch_seconds": 1781870926,
         "min_updated_epoch_seconds": 1293713404,
         "review_count": 59905,
-        "reviews_last_30_days": 359
+        "reviews_last_30_days": 358
       },
       {
         "app_id": "368677368",
@@ -2396,7 +2396,7 @@
         "max_updated_epoch_seconds": 1781878676,
         "min_updated_epoch_seconds": 1737125589,
         "review_count": 50433,
-        "reviews_last_30_days": 2576
+        "reviews_last_30_days": 2575
       },
       {
         "app_id": "529379082",
@@ -2405,7 +2405,7 @@
         "max_updated_epoch_seconds": 1781878776,
         "min_updated_epoch_seconds": 1688881175,
         "review_count": 37592,
-        "reviews_last_30_days": 1208
+        "reviews_last_30_days": 1207
       },
       {
         "app_id": "427916203",
@@ -2423,7 +2423,16 @@
         "max_updated_epoch_seconds": 1781878132,
         "min_updated_epoch_seconds": 1675024056,
         "review_count": 35290,
-        "reviews_last_30_days": 1000
+        "reviews_last_30_days": 999
+      },
+      {
+        "app_id": "1508186374",
+        "app_name": "Peacock TV: Stream TV & Movies",
+        "category": "entertainment",
+        "max_updated_epoch_seconds": 1781749709,
+        "min_updated_epoch_seconds": 1609512446,
+        "review_count": 34471,
+        "reviews_last_30_days": 560
       },
       {
         "app_id": "363590051",
@@ -2459,7 +2468,7 @@
         "max_updated_epoch_seconds": 1781878340,
         "min_updated_epoch_seconds": 1740457863,
         "review_count": 33911,
-        "reviews_last_30_days": 3514
+        "reviews_last_30_days": 3511
       },
       {
         "app_id": "283646709",
@@ -2468,7 +2477,7 @@
         "max_updated_epoch_seconds": 1781872209,
         "min_updated_epoch_seconds": 1623611285,
         "review_count": 33744,
-        "reviews_last_30_days": 195
+        "reviews_last_30_days": 194
       },
       {
         "app_id": "711923939",
@@ -2477,7 +2486,7 @@
         "max_updated_epoch_seconds": 1781877953,
         "min_updated_epoch_seconds": 1686940861,
         "review_count": 33685,
-        "reviews_last_30_days": 894
+        "reviews_last_30_days": 892
       },
       {
         "app_id": "367003839",
@@ -2495,7 +2504,7 @@
         "max_updated_epoch_seconds": 1781878748,
         "min_updated_epoch_seconds": 1768787399,
         "review_count": 33317,
-        "reviews_last_30_days": 6507
+        "reviews_last_30_days": 6506
       },
       {
         "app_id": "6448311069",
@@ -2504,16 +2513,7 @@
         "max_updated_epoch_seconds": 1781878746,
         "min_updated_epoch_seconds": 1770609195,
         "review_count": 33204,
-        "reviews_last_30_days": 7459
-      },
-      {
-        "app_id": "1508186374",
-        "app_name": "Peacock TV: Stream TV & Movies",
-        "category": "entertainment",
-        "max_updated_epoch_seconds": 1781749709,
-        "min_updated_epoch_seconds": 1616204571,
-        "review_count": 32176,
-        "reviews_last_30_days": 561
+        "reviews_last_30_days": 7454
       },
       {
         "app_id": "835599320",
@@ -2522,7 +2522,7 @@
         "max_updated_epoch_seconds": 1781876909,
         "min_updated_epoch_seconds": 1753325426,
         "review_count": 31513,
-        "reviews_last_30_days": 2651
+        "reviews_last_30_days": 2649
       },
       {
         "app_id": "324684580",
@@ -2531,7 +2531,7 @@
         "max_updated_epoch_seconds": 1781878675,
         "min_updated_epoch_seconds": 1774462334,
         "review_count": 26893,
-        "reviews_last_30_days": 11658
+        "reviews_last_30_days": 11652
       },
       {
         "app_id": "401626263",
@@ -2549,7 +2549,7 @@
         "max_updated_epoch_seconds": 1781877454,
         "min_updated_epoch_seconds": 1765630634,
         "review_count": 21669,
-        "reviews_last_30_days": 3307
+        "reviews_last_30_days": 3305
       },
       {
         "app_id": "6477489729",
@@ -2558,7 +2558,7 @@
         "max_updated_epoch_seconds": 1781750481,
         "min_updated_epoch_seconds": 1735137529,
         "review_count": 14947,
-        "reviews_last_30_days": 1426
+        "reviews_last_30_days": 1425
       },
       {
         "app_id": "284815942",
@@ -2567,7 +2567,7 @@
         "max_updated_epoch_seconds": 1781749699,
         "min_updated_epoch_seconds": 1738170885,
         "review_count": 14614,
-        "reviews_last_30_days": 909
+        "reviews_last_30_days": 908
       },
       {
         "app_id": "6446901002",
@@ -2603,7 +2603,7 @@
         "max_updated_epoch_seconds": 1781745832,
         "min_updated_epoch_seconds": 1576353421,
         "review_count": 9825,
-        "reviews_last_30_days": 758
+        "reviews_last_30_days": 757
       },
       {
         "app_id": "407558537",
@@ -2657,7 +2657,7 @@
         "max_updated_epoch_seconds": 1781723324,
         "min_updated_epoch_seconds": 1771371336,
         "review_count": 5326,
-        "reviews_last_30_days": 1787
+        "reviews_last_30_days": 1786
       },
       {
         "app_id": "897446215",
@@ -2684,7 +2684,7 @@
         "max_updated_epoch_seconds": 1781758375,
         "min_updated_epoch_seconds": 1754733384,
         "review_count": 5116,
-        "reviews_last_30_days": 487
+        "reviews_last_30_days": 486
       },
       {
         "app_id": "985746746",
@@ -2702,7 +2702,7 @@
         "max_updated_epoch_seconds": 1781776474,
         "min_updated_epoch_seconds": 1771355711,
         "review_count": 4898,
-        "reviews_last_30_days": 1141
+        "reviews_last_30_days": 1140
       },
       {
         "app_id": "1089294040",
@@ -2756,7 +2756,7 @@
         "max_updated_epoch_seconds": 1781722395,
         "min_updated_epoch_seconds": 1776973359,
         "review_count": 4385,
-        "reviews_last_30_days": 2038
+        "reviews_last_30_days": 2037
       },
       {
         "app_id": "482066631",
@@ -2810,7 +2810,7 @@
         "max_updated_epoch_seconds": 1781761318,
         "min_updated_epoch_seconds": 1765574831,
         "review_count": 3900,
-        "reviews_last_30_days": 640
+        "reviews_last_30_days": 639
       }
     ],
     "by_category": [
@@ -2820,7 +2820,7 @@
         "avg_rating": 3.502,
         "category": "shopping",
         "review_count": 242376,
-        "reviews_last_30_days": 15711
+        "reviews_last_30_days": 15701
       },
       {
         "app_count": 8,
@@ -2828,15 +2828,15 @@
         "avg_rating": 3.584,
         "category": "travel",
         "review_count": 185438,
-        "reviews_last_30_days": 5452
+        "reviews_last_30_days": 5450
       },
       {
         "app_count": 27,
-        "avg_content_chars": 147.8,
-        "avg_rating": 3.142,
+        "avg_content_chars": 148.8,
+        "avg_rating": 3.13,
         "category": "entertainment",
-        "review_count": 151462,
-        "reviews_last_30_days": 22969
+        "review_count": 153757,
+        "reviews_last_30_days": 22959
       },
       {
         "app_count": 9,
@@ -2844,7 +2844,7 @@
         "avg_rating": 2.673,
         "category": "finance",
         "review_count": 115741,
-        "reviews_last_30_days": 5172
+        "reviews_last_30_days": 5167
       },
       {
         "app_count": 52,
@@ -2852,7 +2852,7 @@
         "avg_rating": 3.282,
         "category": "games",
         "review_count": 88876,
-        "reviews_last_30_days": 15927
+        "reviews_last_30_days": 15920
       },
       {
         "app_count": 2,
@@ -2860,7 +2860,7 @@
         "avg_rating": 2.486,
         "category": "food_delivery",
         "review_count": 68259,
-        "reviews_last_30_days": 4596
+        "reviews_last_30_days": 4593
       },
       {
         "app_count": 11,
@@ -2868,7 +2868,7 @@
         "avg_rating": 2.997,
         "category": "social_networking",
         "review_count": 55505,
-        "reviews_last_30_days": 9382
+        "reviews_last_30_days": 9381
       },
       {
         "app_count": 2,
@@ -2876,7 +2876,7 @@
         "avg_rating": 2.372,
         "category": "social",
         "review_count": 53182,
-        "reviews_last_30_days": 5958
+        "reviews_last_30_days": 5954
       },
       {
         "app_count": 10,
@@ -2884,7 +2884,7 @@
         "avg_rating": 3.348,
         "category": "productivity",
         "review_count": 47522,
-        "reviews_last_30_days": 4869
+        "reviews_last_30_days": 4868
       },
       {
         "app_count": 5,
@@ -2892,7 +2892,7 @@
         "avg_rating": 4.071,
         "category": "education",
         "review_count": 40061,
-        "reviews_last_30_days": 7362
+        "reviews_last_30_days": 7361
       },
       {
         "app_count": 1,
@@ -2908,7 +2908,7 @@
         "avg_rating": 3.731,
         "category": "ai_tools",
         "review_count": 33204,
-        "reviews_last_30_days": 7459
+        "reviews_last_30_days": 7454
       },
       {
         "app_count": 7,
@@ -2916,7 +2916,7 @@
         "avg_rating": 2.937,
         "category": "photo_and_video",
         "review_count": 30444,
-        "reviews_last_30_days": 6892
+        "reviews_last_30_days": 6891
       },
       {
         "app_count": 7,
@@ -2924,7 +2924,7 @@
         "avg_rating": 3.345,
         "category": "utilities",
         "review_count": 28110,
-        "reviews_last_30_days": 2099
+        "reviews_last_30_days": 2097
       },
       {
         "app_count": 8,
@@ -2932,7 +2932,7 @@
         "avg_rating": 2.333,
         "category": "lifestyle",
         "review_count": 20232,
-        "reviews_last_30_days": 3132
+        "reviews_last_30_days": 3131
       },
       {
         "app_count": 7,
@@ -2980,7 +2980,7 @@
         "avg_rating": 3.321,
         "category": "navigation",
         "review_count": 5800,
-        "reviews_last_30_days": 640
+        "reviews_last_30_days": 639
       },
       {
         "app_count": 2,
@@ -2988,7 +2988,7 @@
         "avg_rating": 1.804,
         "category": "food_and_drink",
         "review_count": 3300,
-        "reviews_last_30_days": 1068
+        "reviews_last_30_days": 1067
       },
       {
         "app_count": 1,
@@ -3026,10 +3026,10 @@
     "concentration": {
       "app_count": 200,
       "hhi": 0.023,
-      "review_count": 1256909,
-      "top_10_share": 0.3679,
-      "top_1_share": 0.0575,
-      "top_5_share": 0.2299
+      "review_count": 1259204,
+      "top_10_share": 0.3676,
+      "top_1_share": 0.0574,
+      "top_5_share": 0.2295
     }
   }
 }

@@ -103,7 +103,8 @@ Generate the reproducible EDA/data-quality report:
 .venv/bin/python app_store_pipeline.py eda-report \
   --database-url postgresql:///app_store_reviews \
   --markdown-output docs/eda/apple_review_data_quality.md \
-  --json-output docs/eda/apple_review_data_quality_summary.json
+  --json-output docs/eda/apple_review_data_quality_summary.json \
+  --html-output docs/eda/apple_review_data_quality_dashboard.html
 ```
 
 ## GitHub Actions
@@ -120,6 +121,7 @@ Research-era workflows have been moved to `docs/archive/workflows/` so they rema
 
 - Data-quality report: `docs/eda/apple_review_data_quality.md`
 - Data-quality summary JSON: `docs/eda/apple_review_data_quality_summary.json`
+- Data-quality HTML dashboard: `docs/eda/apple_review_data_quality_dashboard.html`
 - Architecture notes: `docs/architecture.md`
 - Source decision notes: `docs/source_decision_notes.md`
 - Research archive: `docs/archive/`

@@ -79,5 +79,6 @@ The reproducible EDA report is generated from Postgres:
 ```
 
 The report writes `docs/eda/apple_review_data_quality.md` and `docs/eda/apple_review_data_quality_summary.json`.
+It also writes the self-contained visual dashboard at `docs/eda/apple_review_data_quality_dashboard.html`.
 
 Historical source probes, provider comparisons, legacy RSS notes, and rendered-HTML experiments are preserved under `docs/archive/` but are not part of the active production path.

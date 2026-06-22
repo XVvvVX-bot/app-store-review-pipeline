@@ -14,7 +14,7 @@ from app_store_review_pipeline.config import (
     WEB_CATALOG_SORT_BY,
     WEB_CATALOG_SOURCE,
 )
-from app_store_review_pipeline.eda import DEFAULT_EDA_JSON, DEFAULT_EDA_MARKDOWN, generate_eda_report
+from app_store_review_pipeline.eda import DEFAULT_EDA_HTML, DEFAULT_EDA_JSON, DEFAULT_EDA_MARKDOWN, generate_eda_report
 from app_store_review_pipeline.files import write_json, write_jsonl
 from app_store_review_pipeline.postgres_database import (
     existing_review_ids_by_scope,
@@ -125,6 +125,7 @@ def build_parser() -> argparse.ArgumentParser:
     eda.add_argument("--source", default=WEB_CATALOG_SOURCE)
     eda.add_argument("--markdown-output", type=Path, default=DEFAULT_EDA_MARKDOWN)
     eda.add_argument("--json-output", type=Path, default=DEFAULT_EDA_JSON)
+    eda.add_argument("--html-output", type=Path, default=DEFAULT_EDA_HTML)
     eda.set_defaults(func=command_eda_report)
 
     daily_web_catalog = subparsers.add_parser(
@@ -401,6 +402,7 @@ def command_eda_report(args: argparse.Namespace) -> int:
         source=args.source,
         markdown_path=args.markdown_output,
         json_path=args.json_output,
+        html_path=args.html_output,
     )
     print(json.dumps(report, indent=2, sort_keys=True))
     return 0

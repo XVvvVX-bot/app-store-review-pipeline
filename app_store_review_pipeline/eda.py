@@ -14,6 +14,7 @@ from app_store_review_pipeline.postgres_database import connect_postgres, mask_d
 
 DEFAULT_EDA_MARKDOWN = Path("docs/eda/apple_review_data_quality.md")
 DEFAULT_EDA_JSON = Path("docs/eda/apple_review_data_quality_summary.json")
+DEFAULT_EDA_HTML = Path("docs/eda/apple_review_data_quality_dashboard.html")
 
 
 def generate_eda_report(
@@ -22,18 +23,23 @@ def generate_eda_report(
     source: str = WEB_CATALOG_SOURCE,
     markdown_path: Path = DEFAULT_EDA_MARKDOWN,
     json_path: Path = DEFAULT_EDA_JSON,
+    html_path: Path = DEFAULT_EDA_HTML,
 ) -> dict[str, Any]:
     summary = build_eda_summary(database_url, source=source)
     markdown = render_eda_markdown(summary)
+    html = render_eda_html(summary)
     markdown_path.parent.mkdir(parents=True, exist_ok=True)
     json_path.parent.mkdir(parents=True, exist_ok=True)
+    html_path.parent.mkdir(parents=True, exist_ok=True)
     markdown_path.write_text(markdown, encoding="utf-8")
     json_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    html_path.write_text(html, encoding="utf-8")
     return {
         "source": source,
         "database_url": mask_database_url(database_url),
         "markdown_path": str(markdown_path),
         "json_path": str(json_path),
+        "html_path": str(html_path),
         "generated_at": summary["metadata"]["generated_at"],
         "review_count": summary["inventory"]["primary_source"]["review_count"],
         "app_count": summary["inventory"]["primary_source"]["app_count"],
@@ -750,6 +756,631 @@ def markdown_table(rows: list[dict[str, Any]], columns: list[str]) -> str:
     for row in rows:
         body.append("| " + " | ".join(format_cell(row.get(column)) for column in columns) + " |")
     return "\n".join([header, separator, *body])
+
+
+def render_eda_html(summary: dict[str, Any]) -> str:
+    data_json = json.dumps(summary, sort_keys=True).replace("</", "<\\/")
+    template = r"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Apple App Store Review Data Quality Dashboard</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #18212f;
+      --muted: #5e6978;
+      --border: #d9dee7;
+      --grid: #e9edf3;
+      --blue: #2f6fed;
+      --teal: #168b7a;
+      --amber: #b97805;
+      --red: #cf3f3f;
+      --purple: #7556c2;
+      --green: #2f8f46;
+      --slate: #536173;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    header {
+      padding: 24px 28px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+    }
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 720;
+      letter-spacing: 0;
+    }
+    .subtitle {
+      margin-top: 6px;
+      color: var(--muted);
+      max-width: 980px;
+    }
+    main {
+      padding: 20px 28px 32px;
+      max-width: 1480px;
+      margin: 0 auto;
+    }
+    section { margin-top: 22px; }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    .grid {
+      display: grid;
+      gap: 14px;
+    }
+    .kpis { grid-template-columns: repeat(5, minmax(160px, 1fr)); }
+    .two { grid-template-columns: repeat(2, minmax(320px, 1fr)); }
+    .three { grid-template-columns: repeat(3, minmax(260px, 1fr)); }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      min-width: 0;
+    }
+    .metric .label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    .metric .value {
+      margin-top: 6px;
+      font-size: 26px;
+      font-weight: 760;
+    }
+    .metric .note {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .chart { width: 100%; min-height: 260px; }
+    .chart.tall { min-height: 380px; }
+    .chart.short { min-height: 190px; }
+    svg { width: 100%; height: 100%; display: block; }
+    .axis text, .label-text { fill: var(--muted); font-size: 11px; }
+    .axis line, .axis path { stroke: var(--grid); }
+    .bar-label { fill: var(--text); font-size: 11px; }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--grid);
+      padding: 7px 6px;
+      text-align: right;
+      vertical-align: top;
+    }
+    th:first-child, td:first-child { text-align: left; }
+    th {
+      color: var(--muted);
+      font-weight: 700;
+      background: #fafbfc;
+      position: sticky;
+      top: 0;
+    }
+    .table-wrap { max-height: 360px; overflow: auto; border: 1px solid var(--grid); border-radius: 8px; }
+    .note {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 8px;
+    }
+    .pill {
+      display: inline-block;
+      border: 1px solid var(--border);
+      background: #fafbfc;
+      border-radius: 999px;
+      padding: 2px 8px;
+      color: var(--muted);
+      font-size: 12px;
+      margin-right: 6px;
+    }
+    @media (max-width: 1100px) {
+      .kpis, .two, .three { grid-template-columns: 1fr; }
+      main, header { padding-left: 16px; padding-right: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <script id="eda-data" type="application/json">__SUMMARY_JSON__</script>
+  <header>
+    <h1>Apple App Store Review Data Quality Dashboard</h1>
+    <div class="subtitle" id="subtitle"></div>
+  </header>
+  <main>
+    <section>
+      <div class="grid kpis" id="kpis"></div>
+    </section>
+
+    <section>
+      <h2>Dataset Shape And Concentration</h2>
+      <div class="grid two">
+        <div class="panel">
+          <h3>Review Volume By Category</h3>
+          <div id="categoryVolume" class="chart tall"></div>
+          <div class="note">Bars show cumulative deduplicated review rows by target category.</div>
+        </div>
+        <div class="panel">
+          <h3>Top Apps By Review Volume</h3>
+          <div id="topApps" class="chart tall"></div>
+          <div class="note">Includes the top 20 apps by cumulative review count.</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Rating Signal</h2>
+      <div class="grid two">
+        <div class="panel">
+          <h3>Overall Rating Distribution</h3>
+          <div id="ratingOverall" class="chart short"></div>
+          <div class="legend" id="ratingLegend"></div>
+        </div>
+        <div class="panel">
+          <h3>Rating Mix By Category</h3>
+          <div id="ratingCategory" class="chart tall"></div>
+          <div class="legend" id="ratingCategoryLegend"></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Freshness And Time Coverage</h2>
+      <div class="grid two">
+        <div class="panel">
+          <h3>Monthly Review Density</h3>
+          <div id="monthlyDensity" class="chart"></div>
+          <div class="note">Last 24 months in the collected dataset, ordered by review timestamp.</div>
+        </div>
+        <div class="panel">
+          <h3>Apps With Stale Newest Reviews</h3>
+          <div id="staleApps" class="chart"></div>
+          <div class="note">Higher values mean the newest collected review for that app is older.</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Text Quality</h2>
+      <div class="grid three">
+        <div class="panel">
+          <h3>Review Length Quantiles</h3>
+          <div id="lengthBox" class="chart short"></div>
+          <div class="note">Distribution is measured in characters per review.</div>
+        </div>
+        <div class="panel">
+          <h3>Low-Signal And Formatting Flags</h3>
+          <div id="lowSignal" class="chart short"></div>
+        </div>
+        <div class="panel">
+          <h3>Missingness By Field</h3>
+          <div id="missingness" class="chart short"></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Pipeline Health</h2>
+      <div class="grid three">
+        <div class="panel">
+          <h3>Page Status Codes</h3>
+          <div id="statusCodes" class="chart short"></div>
+        </div>
+        <div class="panel">
+          <h3>Fetch Attempts</h3>
+          <div id="attempts" class="chart short"></div>
+        </div>
+        <div class="panel">
+          <h3>Terminal Reasons</h3>
+          <div id="terminalReasons" class="chart short"></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Analyst Tables</h2>
+      <div class="grid two">
+        <div class="panel">
+          <h3>Top Apps</h3>
+          <div class="table-wrap" id="topAppsTable"></div>
+        </div>
+        <div class="panel">
+          <h3>Duplicate Text Examples</h3>
+          <div class="table-wrap" id="duplicatesTable"></div>
+        </div>
+      </div>
+      <div class="grid two" style="margin-top:14px">
+        <div class="panel">
+          <h3>Pipeline Load By App</h3>
+          <div class="table-wrap" id="pipelineAppTable"></div>
+        </div>
+        <div class="panel">
+          <h3>Known Limitations</h3>
+          <p class="note">The web catalog source is public Apple-hosted structured catalog data, not a contractual App Store Connect API. Historical completeness is proven per app-country scope only when a backfill reaches no_next_href. Page cap, time budget, overlap, final non-200, or fetch error stops are lower-bound evidence.</p>
+          <p><span class="pill">No login</span><span class="pill">No proxies</span><span class="pill">No CAPTCHA bypass</span><span class="pill">Postgres source of truth</span></p>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script>
+    const summary = JSON.parse(document.getElementById("eda-data").textContent);
+    const palette = {
+      blue: "#2f6fed",
+      teal: "#168b7a",
+      amber: "#b97805",
+      red: "#cf3f3f",
+      purple: "#7556c2",
+      green: "#2f8f46",
+      slate: "#536173",
+      grid: "#e9edf3",
+      text: "#18212f",
+      muted: "#5e6978"
+    };
+    const ratingColors = {
+      rating_1: "#cf3f3f",
+      rating_2: "#d97a2b",
+      rating_3: "#b97805",
+      rating_4: "#168b7a",
+      rating_5: "#2f6fed"
+    };
+
+    function fmtInt(value) {
+      return Number(value || 0).toLocaleString("en-US");
+    }
+    function fmtDecimal(value, digits = 1) {
+      const number = Number(value || 0);
+      return number.toLocaleString("en-US", { maximumFractionDigits: digits });
+    }
+    function fmtPct(value) {
+      return `${(Number(value || 0) * 100).toFixed(1)}%`;
+    }
+    function byId(id) {
+      return document.getElementById(id);
+    }
+    function value(row, key) {
+      return Number(row && row[key] ? row[key] : 0);
+    }
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, ch => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#39;"
+      }[ch]));
+    }
+    function svgEl(width, height) {
+      return `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">`;
+    }
+    function text(x, y, content, cls = "label-text", anchor = "start") {
+      return `<text x="${x}" y="${y}" class="${cls}" text-anchor="${anchor}">${escapeHtml(content)}</text>`;
+    }
+    function truncate(label, max = 24) {
+      const s = String(label || "");
+      return s.length > max ? `${s.slice(0, max - 1)}.` : s;
+    }
+
+    function renderKpis() {
+      const primary = summary.inventory.primary_source;
+      const concentration = summary.volume.concentration;
+      const page = summary.pipeline_behavior.empty_and_error_pages;
+      const low = summary.text_quality.low_signal;
+      const items = [
+        ["Reviews", fmtInt(primary.review_count), `${fmtInt(primary.app_count)} apps, ${fmtInt(primary.category_count)} categories`],
+        ["Top 10 Share", fmtPct(concentration.top_10_share), `HHI ${fmtDecimal(concentration.hhi, 3)}`],
+        ["Last 30 Days", fmtInt(summary.volume.by_category.reduce((a, r) => a + value(r, "reviews_last_30_days"), 0)), "recent review rows"],
+        ["HTTP 429 Pages", fmtInt(page.http_429_pages), `${fmtInt(page.retried_pages)} retried pages`],
+        ["Short Reviews", fmtPct(value(low, "content_1_to_20_chars") / Math.max(value(low, "review_count"), 1)), "1 to 20 characters"]
+      ];
+      byId("kpis").innerHTML = items.map(([label, main, note]) => `
+        <div class="panel metric">
+          <div class="label">${escapeHtml(label)}</div>
+          <div class="value">${escapeHtml(main)}</div>
+          <div class="note">${escapeHtml(note)}</div>
+        </div>
+      `).join("");
+      byId("subtitle").textContent = `Generated ${summary.metadata.generated_at} from ${summary.metadata.database_url}. Primary source: ${summary.metadata.source}.`;
+    }
+
+    function horizontalBarChart(id, rows, options) {
+      const data = rows.slice(0, options.limit || rows.length);
+      const width = 900;
+      const rowH = options.rowHeight || 24;
+      const margin = { top: 18, right: 110, bottom: 24, left: options.left || 180 };
+      const height = margin.top + margin.bottom + data.length * rowH;
+      const max = Math.max(...data.map(r => value(r, options.valueKey)), 1);
+      const scale = x => (x / max) * (width - margin.left - margin.right);
+      let out = svgEl(width, height);
+      out += `<line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" stroke="${palette.grid}"/>`;
+      data.forEach((row, i) => {
+        const y = margin.top + i * rowH;
+        const w = Math.max(1, scale(value(row, options.valueKey)));
+        out += `<rect x="${margin.left}" y="${y}" width="${w}" height="${Math.max(10, rowH - 8)}" rx="3" fill="${options.color || palette.blue}"/>`;
+        out += text(margin.left - 8, y + rowH - 12, truncate(row[options.labelKey], options.labelMax || 28), "label-text", "end");
+        out += text(margin.left + w + 7, y + rowH - 12, options.format ? options.format(value(row, options.valueKey), row) : fmtInt(value(row, options.valueKey)), "bar-label");
+      });
+      out += "</svg>";
+      byId(id).innerHTML = out;
+    }
+
+    function verticalBarChart(id, rows, options) {
+      const data = rows.slice();
+      const width = 900;
+      const height = 260;
+      const margin = { top: 18, right: 18, bottom: 48, left: 64 };
+      const plotW = width - margin.left - margin.right;
+      const plotH = height - margin.top - margin.bottom;
+      const max = Math.max(...data.map(r => value(r, options.valueKey)), 1);
+      const barW = plotW / Math.max(data.length, 1) * 0.72;
+      let out = svgEl(width, height);
+      for (let i = 0; i <= 4; i += 1) {
+        const y = margin.top + plotH * i / 4;
+        out += `<line x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" stroke="${palette.grid}"/>`;
+      }
+      data.forEach((row, i) => {
+        const x = margin.left + (plotW / data.length) * i + (plotW / data.length - barW) / 2;
+        const h = (value(row, options.valueKey) / max) * plotH;
+        const y = margin.top + plotH - h;
+        out += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="3" fill="${options.color || palette.blue}"/>`;
+        out += text(x + barW / 2, height - 24, truncate(row[options.labelKey], 8), "label-text", "middle");
+      });
+      out += text(8, margin.top + 8, fmtInt(max), "label-text");
+      out += "</svg>";
+      byId(id).innerHTML = out;
+    }
+
+    function lineChart(id, rows, options) {
+      const data = rows.slice().reverse();
+      const width = 900;
+      const height = 280;
+      const margin = { top: 18, right: 24, bottom: 42, left: 70 };
+      const plotW = width - margin.left - margin.right;
+      const plotH = height - margin.top - margin.bottom;
+      const max = Math.max(...data.map(r => value(r, options.valueKey)), 1);
+      const x = i => margin.left + (plotW * i / Math.max(data.length - 1, 1));
+      const y = v => margin.top + plotH - (v / max) * plotH;
+      let out = svgEl(width, height);
+      for (let i = 0; i <= 4; i += 1) {
+        const gy = margin.top + plotH * i / 4;
+        out += `<line x1="${margin.left}" y1="${gy}" x2="${width - margin.right}" y2="${gy}" stroke="${palette.grid}"/>`;
+      }
+      const points = data.map((r, i) => `${x(i)},${y(value(r, options.valueKey))}`).join(" ");
+      const area = `${margin.left},${margin.top + plotH} ${points} ${width - margin.right},${margin.top + plotH}`;
+      out += `<polygon points="${area}" fill="${options.area || "#dce8ff"}" opacity="0.65"/>`;
+      out += `<polyline points="${points}" fill="none" stroke="${options.color || palette.blue}" stroke-width="3"/>`;
+      data.forEach((row, i) => {
+        if (i % Math.ceil(data.length / 8) === 0 || i === data.length - 1) {
+          out += text(x(i), height - 20, row[options.labelKey], "label-text", "middle");
+        }
+      });
+      out += text(8, margin.top + 8, fmtInt(max), "label-text");
+      out += "</svg>";
+      byId(id).innerHTML = out;
+    }
+
+    function stackedRatingBars(id, rows, options) {
+      const data = rows.slice(0, options.limit || rows.length);
+      const width = 900;
+      const rowH = 27;
+      const margin = { top: 18, right: 70, bottom: 24, left: options.left || 170 };
+      const height = margin.top + margin.bottom + data.length * rowH;
+      const keys = ["rating_1", "rating_2", "rating_3", "rating_4", "rating_5"];
+      const plotW = width - margin.left - margin.right;
+      let out = svgEl(width, height);
+      data.forEach((row, i) => {
+        const y = margin.top + i * rowH;
+        const total = keys.reduce((a, key) => a + value(row, key), 0) || value(row, "review_count") || 1;
+        let x = margin.left;
+        keys.forEach(key => {
+          const w = plotW * value(row, key) / total;
+          out += `<rect x="${x}" y="${y}" width="${w}" height="${rowH - 8}" fill="${ratingColors[key]}"/>`;
+          x += w;
+        });
+        out += text(margin.left - 8, y + rowH - 12, truncate(row[options.labelKey], 24), "label-text", "end");
+        out += text(width - margin.right + 8, y + rowH - 12, fmtDecimal(row.avg_rating, 2), "bar-label");
+      });
+      out += "</svg>";
+      byId(id).innerHTML = out;
+    }
+
+    function singleStackedRating(id, rows) {
+      const total = rows.reduce((a, r) => a + value(r, "review_count"), 0) || 1;
+      const width = 900;
+      const height = 190;
+      const margin = { top: 48, right: 28, bottom: 44, left: 28 };
+      const plotW = width - margin.left - margin.right;
+      let x = margin.left;
+      let out = svgEl(width, height);
+      rows.forEach(row => {
+        const key = `rating_${row.rating}`;
+        const w = plotW * value(row, "review_count") / total;
+        out += `<rect x="${x}" y="${margin.top}" width="${w}" height="56" fill="${ratingColors[key]}"/>`;
+        if (w > 58) {
+          out += text(x + w / 2, margin.top + 34, `${row.rating} star`, "bar-label", "middle");
+        }
+        out += text(x + w / 2, margin.top + 78, fmtPct(value(row, "review_count") / total), "label-text", "middle");
+        x += w;
+      });
+      out += "</svg>";
+      byId(id).innerHTML = out;
+      byId("ratingLegend").innerHTML = [1,2,3,4,5].map(n => `<span><i class="swatch" style="background:${ratingColors[`rating_${n}`]}"></i>${n} star</span>`).join("");
+      byId("ratingCategoryLegend").innerHTML = byId("ratingLegend").innerHTML;
+    }
+
+    function lengthBoxPlot(id, length) {
+      const width = 900;
+      const height = 190;
+      const margin = { top: 48, right: 50, bottom: 48, left: 50 };
+      const plotW = width - margin.left - margin.right;
+      const max = Math.max(value(length, "p95_chars"), value(length, "max_chars") * 0.25, 1);
+      const x = v => margin.left + Math.min(v, max) / max * plotW;
+      const y = 88;
+      let out = svgEl(width, height);
+      out += `<line x1="${x(length.p10_chars)}" y1="${y}" x2="${x(length.p95_chars)}" y2="${y}" stroke="${palette.slate}" stroke-width="3"/>`;
+      out += `<rect x="${x(length.p25_chars)}" y="${y - 26}" width="${Math.max(2, x(length.p75_chars) - x(length.p25_chars))}" height="52" rx="4" fill="#dce8ff" stroke="${palette.blue}"/>`;
+      out += `<line x1="${x(length.p50_chars)}" y1="${y - 30}" x2="${x(length.p50_chars)}" y2="${y + 30}" stroke="${palette.blue}" stroke-width="3"/>`;
+      [["p10", length.p10_chars], ["p25", length.p25_chars], ["p50", length.p50_chars], ["p75", length.p75_chars], ["p95", length.p95_chars]].forEach(([label, v]) => {
+        out += `<circle cx="${x(v)}" cy="${y}" r="4" fill="${palette.text}"/>`;
+        out += text(x(v), y + 50, `${label} ${fmtInt(v)}`, "label-text", "middle");
+      });
+      out += text(margin.left, 26, `Average ${fmtDecimal(length.avg_chars, 1)} chars`, "bar-label");
+      out += "</svg>";
+      byId(id).innerHTML = out;
+    }
+
+    function qualityRateBars(id, row, fields, options) {
+      const total = value(row, "review_count") || 1;
+      const rows = fields.map(([key, label]) => ({ label, rate: value(row, key) / total, count: value(row, key) }));
+      horizontalBarChart(id, rows, {
+        labelKey: "label",
+        valueKey: "rate",
+        limit: rows.length,
+        left: options.left || 170,
+        rowHeight: 26,
+        labelMax: 30,
+        color: options.color,
+        format: (rate, r) => `${fmtPct(rate)} (${fmtInt(r.count)})`
+      });
+    }
+
+    function renderTable(id, rows, columns) {
+      const head = columns.map(([key, label]) => `<th>${escapeHtml(label)}</th>`).join("");
+      const body = rows.map(row => `<tr>${columns.map(([key, label, format]) => `<td>${escapeHtml(format ? format(row[key], row) : row[key])}</td>`).join("")}</tr>`).join("");
+      byId(id).innerHTML = `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+    }
+
+    function renderAll() {
+      renderKpis();
+      horizontalBarChart("categoryVolume", summary.volume.by_category, {
+        labelKey: "category",
+        valueKey: "review_count",
+        limit: 26,
+        left: 165,
+        rowHeight: 24,
+        color: palette.teal
+      });
+      horizontalBarChart("topApps", summary.volume.by_app_top_50, {
+        labelKey: "app_name",
+        valueKey: "review_count",
+        limit: 20,
+        left: 190,
+        rowHeight: 26,
+        color: palette.blue
+      });
+      singleStackedRating("ratingOverall", summary.ratings.overall);
+      stackedRatingBars("ratingCategory", summary.ratings.by_category, { labelKey: "category", limit: 20, left: 160 });
+      lineChart("monthlyDensity", summary.time_coverage.monthly_recent_24, {
+        labelKey: "month",
+        valueKey: "review_count",
+        color: palette.purple,
+        area: "#ece7fb"
+      });
+      horizontalBarChart("staleApps", summary.time_coverage.freshness_by_app_stalest_50, {
+        labelKey: "app_name",
+        valueKey: "newest_review_age_days",
+        limit: 10,
+        left: 190,
+        rowHeight: 25,
+        color: palette.amber,
+        format: v => `${fmtDecimal(v, 1)} days`
+      });
+      lengthBoxPlot("lengthBox", summary.text_quality.length_summary);
+      qualityRateBars("lowSignal", summary.text_quality.low_signal, [
+        ["content_1_to_20_chars", "1 to 20 chars"],
+        ["content_21_to_50_chars", "21 to 50 chars"],
+        ["non_ascii_content", "Non-ASCII"],
+        ["url_like_content", "URL-like"],
+        ["html_like_content", "HTML-like"],
+        ["blank_content", "Blank content"]
+      ], { color: palette.amber, left: 140 });
+      qualityRateBars("missingness", summary.missingness, [
+        ["missing_version", "Version"],
+        ["missing_vote_sum", "Vote sum"],
+        ["missing_vote_count", "Vote count"],
+        ["missing_author_name", "Author"],
+        ["missing_title", "Title"],
+        ["missing_content", "Content"],
+        ["missing_updated_at", "Updated at"],
+        ["missing_rating", "Rating"]
+      ], { color: palette.red, left: 140 });
+      horizontalBarChart("statusCodes", summary.pipeline_behavior.status_codes, {
+        labelKey: "status_code",
+        valueKey: "page_count",
+        limit: 8,
+        left: 90,
+        rowHeight: 28,
+        color: palette.slate
+      });
+      verticalBarChart("attempts", summary.pipeline_behavior.attempt_counts, {
+        labelKey: "attempt_count",
+        valueKey: "page_count",
+        color: palette.green
+      });
+      horizontalBarChart("terminalReasons", summary.pipeline_behavior.terminal_reasons, {
+        labelKey: "terminal_reason",
+        valueKey: "page_count",
+        limit: 7,
+        left: 170,
+        rowHeight: 28,
+        color: palette.purple
+      });
+      renderTable("topAppsTable", summary.volume.by_app_top_50.slice(0, 30), [
+        ["app_name", "App"],
+        ["category", "Category"],
+        ["review_count", "Reviews", fmtInt],
+        ["reviews_last_30_days", "Last 30d", fmtInt]
+      ]);
+      renderTable("duplicatesTable", summary.text_quality.duplicate_examples, [
+        ["sample", "Normalized text"],
+        ["row_count", "Rows", fmtInt],
+        ["app_count", "Apps", fmtInt]
+      ]);
+      renderTable("pipelineAppTable", summary.pipeline_behavior.by_app_top_50_pages.slice(0, 30), [
+        ["app_name", "App"],
+        ["page_count", "Pages", fmtInt],
+        ["page_review_rows", "Rows", fmtInt],
+        ["http_429_pages", "429", fmtInt],
+        ["retried_pages", "Retries", fmtInt],
+        ["max_run_page_window_minutes", "Max min", v => fmtDecimal(v, 1)]
+      ]);
+    }
+    renderAll();
+  </script>
+</body>
+</html>
+"""
+    return template.replace("__SUMMARY_JSON__", data_json)
 
 
 def format_cell(value: Any) -> str:

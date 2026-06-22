@@ -33,7 +33,7 @@ from app_store_review_pipeline.cli import (
     summarize_fetch_cli,
 )
 from app_store_review_pipeline.config import WEB_CATALOG_SOURCE
-from app_store_review_pipeline.eda import add_rates, calculate_concentration, render_eda_markdown
+from app_store_review_pipeline.eda import add_rates, calculate_concentration, render_eda_html, render_eda_markdown
 from app_store_review_pipeline.fetcher import fetch_targets, terminal_reason_for_page
 from app_store_review_pipeline.models import AppTarget, ReviewPage
 from app_store_review_pipeline import postgres_database
@@ -490,8 +490,7 @@ def test_eda_helpers_render_core_sections():
     }
     assert add_rates({"review_count": 100, "missing_title": 25})["missing_title_rate"] == 0.25
 
-    markdown = render_eda_markdown(
-        {
+    summary = {
             "metadata": {
                 "generated_at": "2026-06-22T00:00:00+00:00",
                 "database_url": "postgresql:///app_store_reviews",
@@ -547,11 +546,14 @@ def test_eda_helpers_render_core_sections():
                 "by_app_top_50_pages": [{"app_name": "Fixture", "category": "shopping", "page_count": 5}],
             },
         }
-    )
+    markdown = render_eda_markdown(summary)
+    html = render_eda_html(summary)
 
     assert "# Apple App Store Review Data Quality Report" in markdown
     assert "## Pipeline Behavior" in markdown
     assert "Fixture" in markdown
+    assert "Apple App Store Review Data Quality Dashboard" in html
+    assert "categoryVolume" in html
 
 
 def test_web_catalog_pressure_starts_at_base_without_state(monkeypatch):
