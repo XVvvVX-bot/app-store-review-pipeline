@@ -770,7 +770,7 @@ def render_eda_html(summary: dict[str, Any]) -> str:
       background: var(--bg);
       color: var(--text);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 14px;
+      font-size: 15px;
       line-height: 1.45;
     }
     header {
@@ -803,7 +803,7 @@ def render_eda_html(summary: dict[str, Any]) -> str:
     }
     h3 {
       margin: 0 0 8px;
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 700;
       letter-spacing: 0;
     }
@@ -811,14 +811,14 @@ def render_eda_html(summary: dict[str, Any]) -> str:
       display: grid;
       gap: 14px;
     }
-    .kpis { grid-template-columns: repeat(5, minmax(160px, 1fr)); }
-    .two { grid-template-columns: repeat(2, minmax(320px, 1fr)); }
-    .three { grid-template-columns: repeat(3, minmax(260px, 1fr)); }
+    .kpis { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+    .two { grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); }
+    .three { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
     .panel {
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 14px;
+      padding: 16px;
       min-width: 0;
     }
     .metric .label {
@@ -836,14 +836,11 @@ def render_eda_html(summary: dict[str, Any]) -> str:
       color: var(--muted);
       font-size: 12px;
     }
-    .chart { width: 100%; min-height: 260px; }
-    .chart.tall { min-height: 380px; }
-    .chart.short { min-height: 190px; }
-    .chart.roomy { min-height: 290px; height: 290px; }
-    svg { width: 100%; height: 100%; display: block; }
-    .axis text, .label-text { fill: var(--muted); font-size: 11px; }
+    .chart { width: 100%; min-height: 0; overflow: visible; }
+    .chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+    .axis text, .label-text { fill: var(--muted); font-size: 12px; }
     .axis line, .axis path { stroke: var(--grid); }
-    .bar-label { fill: var(--text); font-size: 11px; }
+    .bar-label { fill: var(--text); font-size: 12px; font-weight: 650; }
     .legend {
       display: flex;
       flex-wrap: wrap;
@@ -1072,8 +1069,12 @@ def render_eda_html(summary: dict[str, Any]) -> str:
         "'": "&#39;"
       }[ch]));
     }
+    function chartWidth(id, minWidth = 520) {
+      const node = byId(id);
+      return Math.max(minWidth, Math.floor(node ? node.clientWidth : minWidth));
+    }
     function svgEl(width, height) {
-      return `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">`;
+      return `<svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" preserveAspectRatio="xMinYMin meet">`;
     }
     function text(x, y, content, cls = "label-text", anchor = "start") {
       return `<text x="${x}" y="${y}" class="${cls}" text-anchor="${anchor}">${escapeHtml(content)}</text>`;
@@ -1107,7 +1108,7 @@ def render_eda_html(summary: dict[str, Any]) -> str:
 
     function horizontalBarChart(id, rows, options) {
       const data = rows.slice(0, options.limit || rows.length);
-      const width = 900;
+      const width = chartWidth(id, 560);
       const rowH = options.rowHeight || 24;
       const margin = { top: 18, right: options.right || 110, bottom: options.bottom || 24, left: options.left || 180 };
       const height = margin.top + margin.bottom + data.length * rowH;
@@ -1138,7 +1139,7 @@ def render_eda_html(summary: dict[str, Any]) -> str:
 
     function verticalBarChart(id, rows, options) {
       const data = rows.slice();
-      const width = 900;
+      const width = chartWidth(id, 560);
       const height = 260;
       const margin = { top: 18, right: 18, bottom: 48, left: 64 };
       const plotW = width - margin.left - margin.right;
@@ -1164,7 +1165,7 @@ def render_eda_html(summary: dict[str, Any]) -> str:
 
     function lineChart(id, rows, options) {
       const data = rows.slice().reverse();
-      const width = 900;
+      const width = chartWidth(id, 560);
       const height = 280;
       const margin = { top: 18, right: 24, bottom: 42, left: 70 };
       const plotW = width - margin.left - margin.right;
@@ -1202,9 +1203,9 @@ def render_eda_html(summary: dict[str, Any]) -> str:
         .filter(row => row.status !== "200")
         .sort((a, b) => b.count - a.count);
       const nonSuccessTotal = nonSuccess.reduce((acc, row) => acc + row.count, 0);
-      const width = 900;
+      const width = chartWidth(id, 520);
       const height = 290;
-      const margin = { top: 28, right: 150, bottom: 28, left: 96 };
+      const margin = { top: 30, right: 106, bottom: 28, left: 102 };
       const plotW = width - margin.left - margin.right;
       const successRate = success.count / total;
       const rowH = 42;
@@ -1245,9 +1246,9 @@ def render_eda_html(summary: dict[str, Any]) -> str:
       const first = data.find(row => row.attempt === 1) || { attempt: 1, count: 0 };
       const retries = data.filter(row => row.attempt > 1);
       const retryTotal = retries.reduce((acc, row) => acc + row.count, 0);
-      const width = 900;
+      const width = chartWidth(id, 520);
       const height = 290;
-      const margin = { top: 28, right: 150, bottom: 28, left: 104 };
+      const margin = { top: 30, right: 106, bottom: 28, left: 112 };
       const plotW = width - margin.left - margin.right;
       const firstRate = first.count / total;
       const rowH = Math.min(34, Math.max(26, 154 / Math.max(retries.length, 1)));
@@ -1282,9 +1283,9 @@ def render_eda_html(summary: dict[str, Any]) -> str:
         .filter(row => row.reason !== "none")
         .sort((a, b) => b.count - a.count);
       const stopTotal = stops.reduce((acc, row) => acc + row.count, 0);
-      const width = 900;
+      const width = chartWidth(id, 520);
       const height = 290;
-      const margin = { top: 28, right: 150, bottom: 24, left: 210 };
+      const margin = { top: 30, right: 106, bottom: 24, left: 178 };
       const plotW = width - margin.left - margin.right;
       const normalRate = normal.count / total;
       const rowH = Math.min(32, Math.max(23, 154 / Math.max(stops.length, 1)));
@@ -1320,7 +1321,7 @@ def render_eda_html(summary: dict[str, Any]) -> str:
 
     function stackedRatingBars(id, rows, options) {
       const data = rows.slice(0, options.limit || rows.length);
-      const width = 900;
+      const width = chartWidth(id, 560);
       const rowH = 27;
       const margin = { top: 18, right: 70, bottom: 24, left: options.left || 170 };
       const height = margin.top + margin.bottom + data.length * rowH;
@@ -1345,7 +1346,7 @@ def render_eda_html(summary: dict[str, Any]) -> str:
 
     function singleStackedRating(id, rows) {
       const total = rows.reduce((a, r) => a + value(r, "review_count"), 0) || 1;
-      const width = 900;
+      const width = chartWidth(id, 560);
       const height = 190;
       const margin = { top: 48, right: 28, bottom: 44, left: 28 };
       const plotW = width - margin.left - margin.right;
@@ -1368,7 +1369,7 @@ def render_eda_html(summary: dict[str, Any]) -> str:
     }
 
     function lengthBoxPlot(id, length) {
-      const width = 900;
+      const width = chartWidth(id, 560);
       const height = 230;
       const margin = { top: 54, right: 54, bottom: 88, left: 54 };
       const plotW = width - margin.left - margin.right;
@@ -1515,6 +1516,11 @@ def render_eda_html(summary: dict[str, Any]) -> str:
       ]);
     }
     renderAll();
+    let resizeTimer;
+    window.addEventListener("resize", () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(renderAll, 120);
+    });
   </script>
 </body>
 </html>
