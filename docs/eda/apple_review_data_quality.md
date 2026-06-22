@@ -1,6 +1,6 @@
 # Apple App Store Review Data Quality Report
 
-Generated at: `2026-06-22T21:33:09+00:00`
+Generated at: `2026-06-22T21:40:07+00:00`
 Database: `postgresql:///app_store_reviews`
 Primary source: `apple_app_store_web_catalog_reviews`
 
@@ -24,26 +24,26 @@ Operationally, the stored page history includes **221** HTTP 429 pages, **2,171*
 | app_name | category | review_count | reviews_last_30_days | min_updated_epoch_seconds | max_updated_epoch_seconds |
 | --- | --- | --- | --- | --- | --- |
 | Amazon Shopping | shopping | 72,303 | 1,206 | 1,612,624,173 | 1,781,877,450 |
-| Walmart | shopping | 68,776 | 2,850 | 1,671,666,073 | 1,781,878,575 |
+| Walmart | shopping | 68,776 | 2,849 | 1,671,666,073 | 1,781,878,575 |
 | Target | shopping | 59,905 | 358 | 1,293,713,404 | 1,781,870,926 |
 | Uber | travel | 50,433 | 2,572 | 1,737,125,589 | 1,781,878,676 |
 | Lyft | travel | 37,592 | 1,207 | 1,688,881,175 | 1,781,878,776 |
-| Expedia | travel | 35,301 | 446 | 1,462,368,917 | 1,781,876,451 |
+| Expedia | travel | 35,301 | 445 | 1,462,368,917 | 1,781,876,451 |
 | Venmo | finance | 35,290 | 996 | 1,675,024,056 | 1,781,878,132 |
 | Peacock TV: Stream TV & Movies | entertainment | 34,471 | 560 | 1,609,512,446 | 1,781,749,709 |
-| Netflix | entertainment | 34,466 | 1,704 | 1,730,567,010 | 1,781,878,238 |
-| Uber Eats | food_delivery | 34,348 | 1,078 | 1,711,386,035 | 1,781,878,560 |
+| Netflix | entertainment | 34,466 | 1,703 | 1,730,567,010 | 1,781,878,238 |
+| Uber Eats | food_delivery | 34,348 | 1,076 | 1,711,386,035 | 1,781,878,560 |
 | MyFitnessPal | health | 33,960 | 383 | 1,664,671,650 | 1,781,878,771 |
 | DoorDash | food_delivery | 33,911 | 3,504 | 1,740,457,863 | 1,781,878,340 |
 | PayPal | finance | 33,744 | 194 | 1,623,611,285 | 1,781,872,209 |
 | Cash App | finance | 33,685 | 892 | 1,686,940,861 | 1,781,877,953 |
 | Booking.com | travel | 33,634 | 399 | 1,570,304,118 | 1,781,874,015 |
-| Duolingo | education | 33,317 | 6,501 | 1,768,787,399 | 1,781,878,748 |
-| ChatGPT | ai_tools | 33,204 | 7,440 | 1,770,609,195 | 1,781,878,746 |
+| Duolingo | education | 33,317 | 6,500 | 1,768,787,399 | 1,781,878,748 |
+| ChatGPT | ai_tools | 33,204 | 7,438 | 1,770,609,195 | 1,781,878,746 |
 | TikTok | social | 31,513 | 2,647 | 1,753,325,426 | 1,781,876,909 |
-| Spotify | entertainment | 26,893 | 11,638 | 1,774,462,334 | 1,781,878,675 |
+| Spotify | entertainment | 26,893 | 11,633 | 1,774,462,334 | 1,781,878,675 |
 | Airbnb | travel | 24,318 | 106 | 1,289,776,286 | 1,781,858,414 |
-| Instagram | social | 21,669 | 3,303 | 1,765,630,634 | 1,781,877,454 |
+| Instagram | social | 21,669 | 3,302 | 1,765,630,634 | 1,781,877,454 |
 | Google Gemini | productivity | 14,947 | 1,425 | 1,735,137,529 | 1,781,750,481 |
 | Google | utilities | 14,614 | 907 | 1,738,170,885 | 1,781,749,699 |
 | Threads | social_networking | 14,532 | 559 | 1,723,196,806 | 1,781,746,512 |
@@ -53,21 +53,21 @@ Operationally, the stored page history includes **221** HTTP 429 pages, **2,171*
 
 | category | app_count | review_count | avg_rating | avg_content_chars | reviews_last_30_days |
 | --- | --- | --- | --- | --- | --- |
-| shopping | 15 | 242,376 | 3.502 | 171.4 | 15,686 |
-| travel | 8 | 185,438 | 3.584 | 181.5 | 5,444 |
-| entertainment | 27 | 153,757 | 3.13 | 148.8 | 22,933 |
-| finance | 9 | 115,741 | 2.673 | 186.2 | 5,159 |
-| games | 52 | 88,876 | 3.282 | 172.5 | 15,897 |
-| food_delivery | 2 | 68,259 | 2.486 | 207 | 4,582 |
+| shopping | 15 | 242,376 | 3.502 | 171.4 | 15,681 |
+| travel | 8 | 185,438 | 3.584 | 181.5 | 5,442 |
+| entertainment | 27 | 153,757 | 3.13 | 148.8 | 22,926 |
+| finance | 9 | 115,741 | 2.673 | 186.2 | 5,158 |
+| games | 52 | 88,876 | 3.282 | 172.5 | 15,892 |
+| food_delivery | 2 | 68,259 | 2.486 | 207 | 4,580 |
 | social_networking | 11 | 55,505 | 2.997 | 132.8 | 9,372 |
-| social | 2 | 53,182 | 2.372 | 172.7 | 5,950 |
-| productivity | 10 | 47,522 | 3.348 | 158.5 | 4,861 |
-| education | 5 | 40,061 | 4.071 | 172.1 | 7,354 |
+| social | 2 | 53,182 | 2.372 | 172.7 | 5,949 |
+| productivity | 10 | 47,522 | 3.348 | 158.5 | 4,860 |
+| education | 5 | 40,061 | 4.071 | 172.1 | 7,352 |
 | health | 1 | 33,960 | 2.866 | 217.7 | 383 |
-| ai_tools | 1 | 33,204 | 3.731 | 127.2 | 7,440 |
-| photo_and_video | 7 | 30,444 | 2.937 | 172.2 | 6,889 |
+| ai_tools | 1 | 33,204 | 3.731 | 127.2 | 7,438 |
+| photo_and_video | 7 | 30,444 | 2.937 | 172.2 | 6,887 |
 | utilities | 7 | 28,110 | 3.345 | 115.1 | 2,094 |
-| lifestyle | 8 | 20,232 | 2.333 | 227.2 | 3,128 |
+| lifestyle | 8 | 20,232 | 2.333 | 227.2 | 3,125 |
 | business | 7 | 13,520 | 2.636 | 175.4 | 977 |
 | health_and_fitness | 5 | 9,375 | 3.823 | 190.7 | 1,694 |
 | sports | 7 | 8,348 | 2.65 | 149.6 | 1,571 |
@@ -210,7 +210,7 @@ Top normalized duplicate examples:
 | Candy Crush Soda Saga | games | 1,900 | 19.8 | 0 | 12 |
 | Balatro | games | 1,900 | 17.6 | 0 | 26 |
 | Clapper: Video, Live, Chat | social_networking | 1,879 | 16.3 | 0 | 16 |
-| GroupMe | social_networking | 1,400 | 15.9 | 0 | 32 |
+| GroupMe | social_networking | 1,400 | 16 | 0 | 32 |
 | Stardew Valley | games | 1,780 | 15.2 | 0 | 14 |
 | MONOPOLY: The Board Game | games | 2,020 | 15.1 | 0 | 29 |
 | Cleaner Guru: Clean Up Storage | utilities | 2,000 | 15.1 | 0 | 36 |
@@ -303,6 +303,6 @@ Top normalized duplicate examples:
 - The pipeline reads Apple-hosted public web catalog review payloads exposed to the App Store web experience. This is not the App Store Connect Customer Reviews API, does not use owner credentials, and does not carry an Apple SLA for third-party bulk ingestion.
 - Completeness is empirical per app, country, and source scope. A scope is only treated as historically exhausted when pagination reaches `no_next_href`; page cap, time budget, overlap, final non-200, and fetch-error stops mean the current row count is a lower bound.
 - Daily/incremental interpretation depends on stable review keys and Postgres upserts. Repeated runs can add new rows or update existing rows, but source-side ordering, removed reviews, and Apple response changes should be monitored through page and terminal-reason metrics.
-- Public web catalog payloads do not currently provide every owner-API field. Version, vote sum, vote count, and similar App Store Connect-style review metadata should be treated as unavailable unless Apple exposes them in the public response.
+- Public web catalog payloads do not currently provide every owner-API field. Version, vote sum, vote count, and similar App Store Connect-style review metadata are intentionally excluded from the production review schema until they are available in the public response.
 - Normalized duplicate detection uses lowercased whitespace-normalized content hashes; it is useful for triage, not semantic near-duplicate modeling.
 - Runtime by app is a page-window proxy based on stored page timestamps, not full GitHub job wall-clock time.

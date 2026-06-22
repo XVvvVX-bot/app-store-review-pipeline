@@ -8,7 +8,7 @@ The production source is Apple's public App Store web catalog review JSON path, 
 apple_app_store_web_catalog_reviews
 ```
 
-The source returns structured public review rows, including observed review ID, author name, rating, title, full review text, version when present, vote fields when present, updated timestamp, app identity, and country storefront.
+The source returns structured public review rows, including observed review ID, author name, rating, title, full review text, updated timestamp, app identity, and country storefront.
 
 This project does not use App Store Connect credentials because the target use case is public third-party app-review monitoring rather than owned-app review management.
 

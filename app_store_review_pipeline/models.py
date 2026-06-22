@@ -35,11 +35,8 @@ class AppReview:
     updated_at: str | None
     updated_epoch_seconds: int | None
     rating: int | None
-    version: str | None
     title: str | None
     content: str | None
-    vote_sum: int | None
-    vote_count: int | None
     page_number: int
     source_page_key: str
     collected_at: str

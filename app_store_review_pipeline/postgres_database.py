@@ -95,11 +95,8 @@ CREATE TABLE IF NOT EXISTS app_store_reviews (
     updated_at TEXT,
     updated_epoch_seconds BIGINT,
     rating INTEGER,
-    version TEXT,
     title TEXT,
     content TEXT,
-    vote_sum BIGINT,
-    vote_count BIGINT,
     first_seen_run_id TEXT NOT NULL REFERENCES app_store_runs(run_id),
     last_seen_run_id TEXT NOT NULL REFERENCES app_store_runs(run_id),
     source_page_key TEXT REFERENCES app_store_review_pages(page_key),
@@ -203,6 +200,9 @@ POSTGRES_SCHEMA_MIGRATIONS = (
     "ALTER TABLE app_store_pressure_state ADD COLUMN IF NOT EXISTS last_safe_parallel INTEGER NOT NULL DEFAULT 1",
     "ALTER TABLE app_store_pressure_state ADD COLUMN IF NOT EXISTS last_used_scope_time_budget_seconds INTEGER NOT NULL DEFAULT 1800",
     "ALTER TABLE app_store_pressure_state ADD COLUMN IF NOT EXISTS last_safe_scope_time_budget_seconds INTEGER NOT NULL DEFAULT 1800",
+    "ALTER TABLE app_store_reviews DROP COLUMN IF EXISTS version",
+    "ALTER TABLE app_store_reviews DROP COLUMN IF EXISTS vote_sum",
+    "ALTER TABLE app_store_reviews DROP COLUMN IF EXISTS vote_count",
 )
 
 POSTGRES_SCHEMA_ADVISORY_LOCK_ID = 63206438020260619
@@ -1437,7 +1437,7 @@ def upsert_reviews(connection: psycopg.Connection, rows: Iterable[dict], run_id:
             continue
         existing = connection.execute(
             """
-            SELECT updated_epoch_seconds, rating, version, title, content, vote_sum, vote_count
+            SELECT updated_epoch_seconds, rating, title, content
             FROM app_store_reviews
             WHERE review_key = %s
             """,
@@ -1469,7 +1469,7 @@ def upsert_reviews(connection: psycopg.Connection, rows: Iterable[dict], run_id:
 
 
 def review_changed(existing: dict, row: dict) -> bool:
-    fields = ("updated_epoch_seconds", "rating", "version", "title", "content", "vote_sum", "vote_count")
+    fields = ("updated_epoch_seconds", "rating", "title", "content")
     return any(existing.get(field) != row.get(field) for field in fields)
 
 
@@ -1478,13 +1478,13 @@ def insert_review(connection: psycopg.Connection, row: dict, run_id: str) -> Non
         """
         INSERT INTO app_store_reviews (
             review_key, platform, source, app_id, app_name, country, review_id,
-            author_name, updated_at, updated_epoch_seconds, rating, version,
-            title, content, vote_sum, vote_count, first_seen_run_id,
-            last_seen_run_id, source_page_key, collected_at
+            author_name, updated_at, updated_epoch_seconds, rating, title,
+            content, first_seen_run_id, last_seen_run_id, source_page_key,
+            collected_at
         )
         VALUES (
             %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-            %s, %s, %s, %s
+            %s
         )
         """,
         review_values(row, run_id),
@@ -1500,11 +1500,8 @@ def update_review(connection: psycopg.Connection, row: dict, run_id: str) -> Non
             updated_at = %s,
             updated_epoch_seconds = %s,
             rating = %s,
-            version = %s,
             title = %s,
             content = %s,
-            vote_sum = %s,
-            vote_count = %s,
             last_seen_run_id = %s,
             source_page_key = %s,
             collected_at = %s,
@@ -1517,11 +1514,8 @@ def update_review(connection: psycopg.Connection, row: dict, run_id: str) -> Non
             row.get("updated_at"),
             row.get("updated_epoch_seconds"),
             row.get("rating"),
-            row.get("version"),
             row.get("title"),
             row.get("content"),
-            row.get("vote_sum"),
-            row.get("vote_count"),
             run_id,
             row.get("source_page_key"),
             row.get("collected_at"),
@@ -1543,11 +1537,8 @@ def review_values(row: dict, run_id: str) -> tuple:
         row.get("updated_at"),
         row.get("updated_epoch_seconds"),
         row.get("rating"),
-        row.get("version"),
         row.get("title"),
         row.get("content"),
-        row.get("vote_sum"),
-        row.get("vote_count"),
         run_id,
         run_id,
         row.get("source_page_key"),

@@ -13,7 +13,7 @@ The web catalog source currently provides:
 - public third-party app access
 - structured JSON review rows
 - full written review text
-- rating, title, author name, timestamp, and app version when present
+- rating, title, author name, timestamp, and app identity
 - country storefront
 - stable observed review IDs
 - pagination through returned `next` hrefs
@@ -31,7 +31,7 @@ This is also not HTML scraping as the production path. Rendered HTML and source-
 - The source is public structured catalog data, not a contractual API.
 - Historical completeness is only proven per app-country scope when a backfill reaches `no_next_href`.
 - Large deep backfills can trigger HTTP 429 pressure; cooldown and circuit-breaker checks are required.
-- Review vote fields and version fields are only as complete as Apple returns them.
+- Version and review-vote fields are not currently available from the public web catalog payload and are intentionally excluded from the production review schema.
 - Local Postgres is the current development store; managed Postgres remains a later production decision.
 
 ## Current Evidence Package

@@ -1061,7 +1061,6 @@ def test_parse_web_catalog_review_rows_returns_full_review_rows():
     assert review.title == "Web title 1"
     assert review.content == "Web catalog review text 1"
     assert review.updated_epoch_seconds is not None
-    assert review.version is None
 
 
 def test_fetch_web_catalog_targets_follows_next_pages_and_preserves_source(tmp_path):
@@ -1710,9 +1709,7 @@ def test_apple_rss_url_and_entry_parsing(tmp_path):
     assert review.review_id == "12345"
     assert review.review_key.endswith(":us:6448311069:12345")
     assert review.rating == 4
-    assert review.version == "1.2.3"
     assert review.content == "Useful review text"
-    assert review.vote_count == 5
     assert review.updated_epoch_seconds is not None
 
 
