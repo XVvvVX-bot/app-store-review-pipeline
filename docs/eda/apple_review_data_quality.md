@@ -1,6 +1,6 @@
 # Apple App Store Review Data Quality Report
 
-Generated at: `2026-06-22T20:53:30+00:00`
+Generated at: `2026-06-22T21:04:07+00:00`
 Database: `postgresql:///app_store_reviews`
 Primary source: `apple_app_store_web_catalog_reviews`
 
@@ -29,19 +29,19 @@ Operationally, the stored page history includes **221** HTTP 429 pages, **2,171*
 | Uber | travel | 50,433 | 2,575 | 1,737,125,589 | 1,781,878,676 |
 | Lyft | travel | 37,592 | 1,207 | 1,688,881,175 | 1,781,878,776 |
 | Expedia | travel | 35,301 | 446 | 1,462,368,917 | 1,781,876,451 |
-| Venmo | finance | 35,290 | 999 | 1,675,024,056 | 1,781,878,132 |
+| Venmo | finance | 35,290 | 998 | 1,675,024,056 | 1,781,878,132 |
 | Peacock TV: Stream TV & Movies | entertainment | 34,471 | 560 | 1,609,512,446 | 1,781,749,709 |
 | Netflix | entertainment | 34,466 | 1,707 | 1,730,567,010 | 1,781,878,238 |
 | Uber Eats | food_delivery | 34,348 | 1,082 | 1,711,386,035 | 1,781,878,560 |
-| MyFitnessPal | health | 33,960 | 384 | 1,664,671,650 | 1,781,878,771 |
-| DoorDash | food_delivery | 33,911 | 3,511 | 1,740,457,863 | 1,781,878,340 |
+| MyFitnessPal | health | 33,960 | 383 | 1,664,671,650 | 1,781,878,771 |
+| DoorDash | food_delivery | 33,911 | 3,507 | 1,740,457,863 | 1,781,878,340 |
 | PayPal | finance | 33,744 | 194 | 1,623,611,285 | 1,781,872,209 |
 | Cash App | finance | 33,685 | 892 | 1,686,940,861 | 1,781,877,953 |
-| Booking.com | travel | 33,634 | 401 | 1,570,304,118 | 1,781,874,015 |
+| Booking.com | travel | 33,634 | 400 | 1,570,304,118 | 1,781,874,015 |
 | Duolingo | education | 33,317 | 6,506 | 1,768,787,399 | 1,781,878,748 |
-| ChatGPT | ai_tools | 33,204 | 7,454 | 1,770,609,195 | 1,781,878,746 |
+| ChatGPT | ai_tools | 33,204 | 7,450 | 1,770,609,195 | 1,781,878,746 |
 | TikTok | social | 31,513 | 2,649 | 1,753,325,426 | 1,781,876,909 |
-| Spotify | entertainment | 26,893 | 11,652 | 1,774,462,334 | 1,781,878,675 |
+| Spotify | entertainment | 26,893 | 11,649 | 1,774,462,334 | 1,781,878,675 |
 | Airbnb | travel | 24,318 | 106 | 1,289,776,286 | 1,781,858,414 |
 | Instagram | social | 21,669 | 3,305 | 1,765,630,634 | 1,781,877,454 |
 | Google Gemini | productivity | 14,947 | 1,425 | 1,735,137,529 | 1,781,750,481 |
@@ -53,28 +53,28 @@ Operationally, the stored page history includes **221** HTTP 429 pages, **2,171*
 
 | category | app_count | review_count | avg_rating | avg_content_chars | reviews_last_30_days |
 | --- | --- | --- | --- | --- | --- |
-| shopping | 15 | 242,376 | 3.502 | 171.4 | 15,701 |
-| travel | 8 | 185,438 | 3.584 | 181.5 | 5,450 |
-| entertainment | 27 | 153,757 | 3.13 | 148.8 | 22,959 |
-| finance | 9 | 115,741 | 2.673 | 186.2 | 5,167 |
-| games | 52 | 88,876 | 3.282 | 172.5 | 15,920 |
-| food_delivery | 2 | 68,259 | 2.486 | 207 | 4,593 |
-| social_networking | 11 | 55,505 | 2.997 | 132.8 | 9,381 |
+| shopping | 15 | 242,376 | 3.502 | 171.4 | 15,697 |
+| travel | 8 | 185,438 | 3.584 | 181.5 | 5,449 |
+| entertainment | 27 | 153,757 | 3.13 | 148.8 | 22,955 |
+| finance | 9 | 115,741 | 2.673 | 186.2 | 5,164 |
+| games | 52 | 88,876 | 3.282 | 172.5 | 15,908 |
+| food_delivery | 2 | 68,259 | 2.486 | 207 | 4,589 |
+| social_networking | 11 | 55,505 | 2.997 | 132.8 | 9,380 |
 | social | 2 | 53,182 | 2.372 | 172.7 | 5,954 |
-| productivity | 10 | 47,522 | 3.348 | 158.5 | 4,868 |
+| productivity | 10 | 47,522 | 3.348 | 158.5 | 4,865 |
 | education | 5 | 40,061 | 4.071 | 172.1 | 7,361 |
-| health | 1 | 33,960 | 2.866 | 217.7 | 384 |
-| ai_tools | 1 | 33,204 | 3.731 | 127.2 | 7,454 |
+| health | 1 | 33,960 | 2.866 | 217.7 | 383 |
+| ai_tools | 1 | 33,204 | 3.731 | 127.2 | 7,450 |
 | photo_and_video | 7 | 30,444 | 2.937 | 172.2 | 6,891 |
 | utilities | 7 | 28,110 | 3.345 | 115.1 | 2,097 |
 | lifestyle | 8 | 20,232 | 2.333 | 227.2 | 3,131 |
 | business | 7 | 13,520 | 2.636 | 175.4 | 979 |
 | health_and_fitness | 5 | 9,375 | 3.823 | 190.7 | 1,694 |
 | sports | 7 | 8,348 | 2.65 | 149.6 | 1,574 |
-| music | 4 | 8,200 | 3.781 | 137.4 | 1,999 |
-| news | 3 | 6,595 | 2.852 | 168.8 | 2,776 |
+| music | 4 | 8,200 | 3.781 | 137.4 | 1,998 |
+| news | 3 | 6,595 | 2.852 | 168.8 | 2,775 |
 | navigation | 2 | 5,800 | 3.321 | 190.6 | 639 |
-| food_and_drink | 2 | 3,300 | 1.804 | 205.6 | 1,067 |
+| food_and_drink | 2 | 3,300 | 1.804 | 205.6 | 1,066 |
 | graphics_and_design | 1 | 2,119 | 3.353 | 224.2 | 15 |
 | books | 1 | 2,020 | 3.927 | 215.9 | 534 |
 | weather | 2 | 1,860 | 3.789 | 268.5 | 10 |
@@ -198,7 +198,7 @@ Top normalized duplicate examples:
 | --- | --- | --- | --- | --- | --- |
 | Papa's Freezeria To Go! | games | 1,384 | 219.7 | 0 | 0 |
 | SkyView® | education | 2,260 | 119.9 | 0 | 0 |
-| RadarScope | weather | 1,660 | 67.8 | 0 | 0 |
+| RadarScope | weather | 1,660 | 67.9 | 0 | 0 |
 | AnkiMobile Flashcards | education | 1,184 | 62.2 | 0 | 0 |
 | Raya | lifestyle | 794 | 39.8 | 0 | 0 |
 | HotSchedules | business | 1,400 | 38.6 | 0 | 0 |
@@ -212,12 +212,12 @@ Top normalized duplicate examples:
 | Clapper: Video, Live, Chat | social_networking | 1,879 | 16.3 | 0 | 16 |
 | GroupMe | social_networking | 1,400 | 15.9 | 0 | 32 |
 | Stardew Valley | games | 1,780 | 15.2 | 0 | 15 |
+| MONOPOLY: The Board Game | games | 2,020 | 15.1 | 0 | 29 |
 | Cleaner Guru: Clean Up Storage | utilities | 2,000 | 15.1 | 0 | 36 |
-| MONOPOLY: The Board Game | games | 2,020 | 15 | 0 | 29 |
 | Plague Inc. | games | 1,660 | 14.2 | 0 | 35 |
 | Google Authenticator | utilities | 1,780 | 13.4 | 0 | 35 |
 | Last War:Survival | games | 1,780 | 12.3 | 0 | 53 |
-| Red's First Flight | games | 1,780 | 11.9 | 0 | 53 |
+| Red's First Flight | games | 1,780 | 11.9 | 0 | 52 |
 | ViX: TV, Sports and News | entertainment | 2,140 | 11.1 | 0 | 37 |
 | Evony | games | 1,780 | 11.1 | 0 | 19 |
 | BIGO LIVE-Live Stream, Go Live | social_networking | 1,899 | 11 | 0 | 50 |

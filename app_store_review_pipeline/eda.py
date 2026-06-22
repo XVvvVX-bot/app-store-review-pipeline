@@ -1240,21 +1240,43 @@ def render_eda_html(summary: dict[str, Any]) -> str:
 
     function lengthBoxPlot(id, length) {
       const width = 900;
-      const height = 190;
-      const margin = { top: 48, right: 50, bottom: 48, left: 50 };
+      const height = 230;
+      const margin = { top: 54, right: 54, bottom: 88, left: 54 };
       const plotW = width - margin.left - margin.right;
-      const max = Math.max(value(length, "p95_chars"), value(length, "max_chars") * 0.25, 1);
-      const x = v => margin.left + Math.min(v, max) / max * plotW;
-      const y = 88;
+      const p95 = value(length, "p95_chars");
+      const scaleMax = Math.max(p95 * 1.15, value(length, "avg_chars") * 1.8, 1);
+      const x = v => margin.left + Math.min(Number(v || 0), scaleMax) / scaleMax * plotW;
+      const y = 92;
+      const stats = [
+        ["p10", value(length, "p10_chars")],
+        ["p25", value(length, "p25_chars")],
+        ["p50", value(length, "p50_chars")],
+        ["p75", value(length, "p75_chars")],
+        ["p95", p95]
+      ];
       let out = svgEl(width, height);
-      out += `<line x1="${x(length.p10_chars)}" y1="${y}" x2="${x(length.p95_chars)}" y2="${y}" stroke="${palette.slate}" stroke-width="3"/>`;
-      out += `<rect x="${x(length.p25_chars)}" y="${y - 26}" width="${Math.max(2, x(length.p75_chars) - x(length.p25_chars))}" height="52" rx="4" fill="#dce8ff" stroke="${palette.blue}"/>`;
-      out += `<line x1="${x(length.p50_chars)}" y1="${y - 30}" x2="${x(length.p50_chars)}" y2="${y + 30}" stroke="${palette.blue}" stroke-width="3"/>`;
-      [["p10", length.p10_chars], ["p25", length.p25_chars], ["p50", length.p50_chars], ["p75", length.p75_chars], ["p95", length.p95_chars]].forEach(([label, v]) => {
-        out += `<circle cx="${x(v)}" cy="${y}" r="4" fill="${palette.text}"/>`;
-        out += text(x(v), y + 50, `${label} ${fmtInt(v)}`, "label-text", "middle");
+      out += `<line x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" stroke="${palette.grid}" stroke-width="2"/>`;
+      out += `<line x1="${x(length.p10_chars)}" y1="${y}" x2="${x(length.p95_chars)}" y2="${y}" stroke="${palette.slate}" stroke-width="4" stroke-linecap="round"/>`;
+      out += `<rect x="${x(length.p25_chars)}" y="${y - 30}" width="${Math.max(4, x(length.p75_chars) - x(length.p25_chars))}" height="60" rx="6" fill="#dce8ff" stroke="${palette.blue}" stroke-width="2"/>`;
+      out += `<line x1="${x(length.p50_chars)}" y1="${y - 34}" x2="${x(length.p50_chars)}" y2="${y + 34}" stroke="${palette.blue}" stroke-width="4" stroke-linecap="round"/>`;
+      stats.forEach(([label, v]) => {
+        out += `<circle cx="${x(v)}" cy="${y}" r="5" fill="${palette.text}"/>`;
       });
-      out += text(margin.left, 26, `Average ${fmtDecimal(length.avg_chars, 1)} chars`, "bar-label");
+      const avgX = x(length.avg_chars);
+      const avgLabelX = Math.min(Math.max(avgX, margin.left + 86), width - margin.right - 86);
+      out += `<line x1="${avgX}" y1="${margin.top - 14}" x2="${avgX}" y2="${y + 42}" stroke="${palette.teal}" stroke-dasharray="5 5"/>`;
+      out += `<circle cx="${avgX}" cy="${y}" r="6" fill="${palette.teal}" stroke="#ffffff" stroke-width="2"/>`;
+      out += text(avgLabelX, 28, `Average ${fmtDecimal(length.avg_chars, 1)} chars`, "bar-label", "middle");
+      out += `<line x1="${margin.left}" y1="${height - 70}" x2="${width - margin.right}" y2="${height - 70}" stroke="${palette.grid}"/>`;
+      const cellW = plotW / stats.length;
+      stats.forEach(([label, v], i) => {
+        const cellX = margin.left + cellW * i + cellW / 2;
+        if (i > 0) {
+          out += `<line x1="${margin.left + cellW * i}" y1="${height - 66}" x2="${margin.left + cellW * i}" y2="${height - 18}" stroke="${palette.grid}"/>`;
+        }
+        out += text(cellX, height - 45, label, "label-text", "middle");
+        out += text(cellX, height - 22, `${fmtInt(v)} chars`, "bar-label", "middle");
+      });
       out += "</svg>";
       byId(id).innerHTML = out;
     }
