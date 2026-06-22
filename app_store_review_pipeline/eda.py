@@ -539,7 +539,6 @@ def render_eda_markdown(summary: dict[str, Any]) -> str:
     metadata = summary["metadata"]
     primary = summary["inventory"]["primary_source"]
     concentration = summary["volume"]["concentration"]
-    missingness = summary["missingness"]
     low_signal = summary["text_quality"]["low_signal"]
     duplicate_summary = summary["text_quality"]["duplicate_summary"]
     pipeline = summary["pipeline_behavior"]
@@ -661,21 +660,6 @@ def render_eda_markdown(summary: dict[str, Any]) -> str:
             summary["time_coverage"]["freshness_by_app_stalest_50"][:25],
             ["app_name", "category", "review_count", "newest_review_age_days", "reviews_last_7_days", "reviews_last_30_days"],
         ),
-        "",
-        "## Missingness",
-        "",
-        markdown_table([missingness], [
-            "review_count",
-            "missing_version",
-            "missing_vote_sum",
-            "missing_vote_count",
-            "missing_author_name",
-            "missing_title",
-            "missing_content",
-            "missing_updated_at",
-            "missing_updated_epoch_seconds",
-            "missing_rating",
-        ]),
         "",
         "## Pipeline Behavior",
         "",
@@ -974,7 +958,7 @@ def render_eda_html(summary: dict[str, Any]) -> str:
 
     <section>
       <h2>Text Quality</h2>
-      <div class="grid three">
+      <div class="grid two">
         <div class="panel">
           <h3>Review Length Quantiles</h3>
           <div id="lengthBox" class="chart roomy"></div>
@@ -983,10 +967,6 @@ def render_eda_html(summary: dict[str, Any]) -> str:
         <div class="panel">
           <h3>Low-Signal And Formatting Flags</h3>
           <div id="lowSignal" class="chart roomy"></div>
-        </div>
-        <div class="panel">
-          <h3>Missingness By Field</h3>
-          <div id="missingness" class="chart roomy"></div>
         </div>
       </div>
     </section>
@@ -1373,16 +1353,6 @@ def render_eda_html(summary: dict[str, Any]) -> str:
         tickValues: [0.25, 0.5],
         tickFormat: fmtPct
       });
-      qualityRateBars("missingness", summary.missingness, [
-        ["missing_version", "Version"],
-        ["missing_vote_sum", "Vote sum"],
-        ["missing_vote_count", "Vote count"],
-        ["missing_author_name", "Author"],
-        ["missing_title", "Title"],
-        ["missing_content", "Content"],
-        ["missing_updated_at", "Updated at"],
-        ["missing_rating", "Rating"]
-      ], { color: palette.red, left: 140 });
       horizontalBarChart("statusCodes", summary.pipeline_behavior.status_codes, {
         labelKey: "status_code",
         valueKey: "page_count",

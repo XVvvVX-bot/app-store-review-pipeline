@@ -1,6 +1,6 @@
 # Apple App Store Review Data Quality Report
 
-Generated at: `2026-06-22T21:14:56+00:00`
+Generated at: `2026-06-22T21:18:41+00:00`
 Database: `postgresql:///app_store_reviews`
 Primary source: `apple_app_store_web_catalog_reviews`
 
@@ -31,7 +31,7 @@ Operationally, the stored page history includes **221** HTTP 429 pages, **2,171*
 | Expedia | travel | 35,301 | 446 | 1,462,368,917 | 1,781,876,451 |
 | Venmo | finance | 35,290 | 996 | 1,675,024,056 | 1,781,878,132 |
 | Peacock TV: Stream TV & Movies | entertainment | 34,471 | 560 | 1,609,512,446 | 1,781,749,709 |
-| Netflix | entertainment | 34,466 | 1,706 | 1,730,567,010 | 1,781,878,238 |
+| Netflix | entertainment | 34,466 | 1,705 | 1,730,567,010 | 1,781,878,238 |
 | Uber Eats | food_delivery | 34,348 | 1,079 | 1,711,386,035 | 1,781,878,560 |
 | MyFitnessPal | health | 33,960 | 383 | 1,664,671,650 | 1,781,878,771 |
 | DoorDash | food_delivery | 33,911 | 3,505 | 1,740,457,863 | 1,781,878,340 |
@@ -39,11 +39,11 @@ Operationally, the stored page history includes **221** HTTP 429 pages, **2,171*
 | Cash App | finance | 33,685 | 892 | 1,686,940,861 | 1,781,877,953 |
 | Booking.com | travel | 33,634 | 399 | 1,570,304,118 | 1,781,874,015 |
 | Duolingo | education | 33,317 | 6,504 | 1,768,787,399 | 1,781,878,748 |
-| ChatGPT | ai_tools | 33,204 | 7,445 | 1,770,609,195 | 1,781,878,746 |
-| TikTok | social | 31,513 | 2,648 | 1,753,325,426 | 1,781,876,909 |
+| ChatGPT | ai_tools | 33,204 | 7,444 | 1,770,609,195 | 1,781,878,746 |
+| TikTok | social | 31,513 | 2,647 | 1,753,325,426 | 1,781,876,909 |
 | Spotify | entertainment | 26,893 | 11,642 | 1,774,462,334 | 1,781,878,675 |
 | Airbnb | travel | 24,318 | 106 | 1,289,776,286 | 1,781,858,414 |
-| Instagram | social | 21,669 | 3,304 | 1,765,630,634 | 1,781,877,454 |
+| Instagram | social | 21,669 | 3,303 | 1,765,630,634 | 1,781,877,454 |
 | Google Gemini | productivity | 14,947 | 1,425 | 1,735,137,529 | 1,781,750,481 |
 | Google | utilities | 14,614 | 908 | 1,738,170,885 | 1,781,749,699 |
 | Threads | social_networking | 14,532 | 559 | 1,723,196,806 | 1,781,746,512 |
@@ -55,23 +55,23 @@ Operationally, the stored page history includes **221** HTTP 429 pages, **2,171*
 | --- | --- | --- | --- | --- | --- |
 | shopping | 15 | 242,376 | 3.502 | 171.4 | 15,692 |
 | travel | 8 | 185,438 | 3.584 | 181.5 | 5,446 |
-| entertainment | 27 | 153,757 | 3.13 | 148.8 | 22,943 |
+| entertainment | 27 | 153,757 | 3.13 | 148.8 | 22,942 |
 | finance | 9 | 115,741 | 2.673 | 186.2 | 5,162 |
 | games | 52 | 88,876 | 3.282 | 172.5 | 15,903 |
 | food_delivery | 2 | 68,259 | 2.486 | 207 | 4,584 |
-| social_networking | 11 | 55,505 | 2.997 | 132.8 | 9,376 |
-| social | 2 | 53,182 | 2.372 | 172.7 | 5,952 |
-| productivity | 10 | 47,522 | 3.348 | 158.5 | 4,865 |
+| social_networking | 11 | 55,505 | 2.997 | 132.8 | 9,375 |
+| social | 2 | 53,182 | 2.372 | 172.7 | 5,950 |
+| productivity | 10 | 47,522 | 3.348 | 158.5 | 4,864 |
 | education | 5 | 40,061 | 4.071 | 172.1 | 7,359 |
 | health | 1 | 33,960 | 2.866 | 217.7 | 383 |
-| ai_tools | 1 | 33,204 | 3.731 | 127.2 | 7,445 |
-| photo_and_video | 7 | 30,444 | 2.937 | 172.2 | 6,891 |
+| ai_tools | 1 | 33,204 | 3.731 | 127.2 | 7,444 |
+| photo_and_video | 7 | 30,444 | 2.937 | 172.2 | 6,890 |
 | utilities | 7 | 28,110 | 3.345 | 115.1 | 2,096 |
-| lifestyle | 8 | 20,232 | 2.333 | 227.2 | 3,131 |
+| lifestyle | 8 | 20,232 | 2.333 | 227.2 | 3,130 |
 | business | 7 | 13,520 | 2.636 | 175.4 | 978 |
 | health_and_fitness | 5 | 9,375 | 3.823 | 190.7 | 1,694 |
 | sports | 7 | 8,348 | 2.65 | 149.6 | 1,572 |
-| music | 4 | 8,200 | 3.781 | 137.4 | 1,997 |
+| music | 4 | 8,200 | 3.781 | 137.4 | 1,996 |
 | news | 3 | 6,595 | 2.852 | 168.8 | 2,774 |
 | navigation | 2 | 5,800 | 3.321 | 190.6 | 639 |
 | food_and_drink | 2 | 3,300 | 1.804 | 205.6 | 1,066 |
@@ -204,7 +204,7 @@ Top normalized duplicate examples:
 | HotSchedules | business | 1,400 | 38.6 | 0 | 0 |
 | Backyard Baseball '01 | games | 223 | 33.1 | 0 | 0 |
 | onX Hunt: GPS Hunting Maps | navigation | 1,900 | 32.9 | 0 | 0 |
-| Shadowrocket | utilities | 1,420 | 29.7 | 0 | 1 |
+| Shadowrocket | utilities | 1,420 | 29.8 | 0 | 1 |
 | STARZ | entertainment | 1,900 | 25.1 | 0 | 5 |
 | Heads Up! | games | 1,180 | 23 | 0 | 8 |
 | Candy Crush Soda Saga | games | 1,900 | 19.8 | 0 | 12 |
@@ -221,12 +221,6 @@ Top normalized duplicate examples:
 | ViX: TV, Sports and News | entertainment | 2,140 | 11.1 | 0 | 37 |
 | Evony | games | 1,780 | 11.1 | 0 | 19 |
 | BIGO LIVE-Live Stream, Go Live | social_networking | 1,899 | 11 | 0 | 50 |
-
-## Missingness
-
-| review_count | missing_version | missing_vote_sum | missing_vote_count | missing_author_name | missing_title | missing_content | missing_updated_at | missing_updated_epoch_seconds | missing_rating |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1,259,204 | 1,259,204 | 1,259,204 | 1,259,204 | 0 | 0 | 0 | 0 | 0 | 0 |
 
 ## Pipeline Behavior
 
