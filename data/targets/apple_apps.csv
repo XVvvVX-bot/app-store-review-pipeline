@@ -1,14 +1,14 @@
 app_name,category,apple_app_id,apple_slug,countries,active,notes
 Amazon Shopping,shopping,297606951,amazon-shopping,us,true,Mainstream retail benchmark
 Walmart,shopping,338137227,walmart-shopping-grocery,us,true,Mainstream retail and grocery benchmark
-Target,shopping,297430070,target,us,true,Mainstream retail benchmark
+Target,shopping,297430070,target,us,false,Temporarily rotated out after repeated sparse frontier checks
 Uber,travel,368677368,uber-request-a-ride,us,true,Rideshare and local services benchmark
 Lyft,travel,529379082,lyft,us,true,Rideshare benchmark
 DoorDash,food_delivery,719972451,doordash-food-delivery,us,true,Food delivery benchmark
 Uber Eats,food_delivery,1058959277,uber-eats-food-delivery,us,true,Food delivery benchmark
-Airbnb,travel,401626263,airbnb,us,true,Travel marketplace benchmark
+Airbnb,travel,401626263,airbnb,us,false,Temporarily rotated out after repeated sparse frontier checks
 Booking.com,travel,367003839,booking-com-hotels-travel,us,true,Travel booking benchmark
-Expedia,travel,427916203,expedia-hotels-flights-car,us,true,Travel booking benchmark
+Expedia,travel,427916203,expedia-hotels-flights-car,us,false,Temporarily rotated out after repeated sparse frontier checks
 PayPal,finance,283646709,paypal-send-shop-manage,us,true,Payments benchmark
 Venmo,finance,351727428,venmo,us,true,Peer payments benchmark
 Cash App,finance,711923939,cash-app,us,true,Consumer finance benchmark
@@ -19,31 +19,31 @@ Instagram,social,389801252,instagram,us,true,Social media benchmark
 ChatGPT,ai_tools,6448311069,chatgpt,us,true,AI assistant benchmark
 Duolingo,education,570060128,duolingo-language-lessons,us,true,Education benchmark
 MyFitnessPal,health,341232718,myfitnesspal-calorie-counter,us,true,Health and fitness benchmark
-Peacock TV: Stream TV & Movies,entertainment,1508186374,peacock-tv-stream-tv-movies,us,true,Apple US topfreeapplications chart seed
-Love Island USA,entertainment,1465944282,love-island-usa,us,true,Apple US topfreeapplications chart seed
-Kalshi: Trade the Cup,finance,1632713844,kalshi-trade-the-cup,us,true,Apple US topfreeapplications chart seed
-"FOX One: Live News, Sports, TV",entertainment,6746049430,fox-one-live-news-sports-tv,us,true,Apple US topfreeapplications chart seed
-Claude by Anthropic,productivity,6473753684,claude-by-anthropic,us,true,Apple US topfreeapplications chart seed
-Threads,social_networking,6446901002,threads,us,false,Apple US topfreeapplications chart seed
-Google Gemini,productivity,6477489729,google-gemini,us,false,Apple US topfreeapplications chart seed
+Peacock TV: Stream TV & Movies,entertainment,1508186374,peacock-tv-stream-tv-movies,us,false,Temporarily rotated out after repeated sparse frontier checks
+Love Island USA,entertainment,1465944282,love-island-usa,us,false,Temporarily rotated out after repeated sparse frontier checks
+Kalshi: Trade the Cup,finance,1632713844,kalshi-trade-the-cup,us,false,Temporarily rotated out after repeated sparse frontier checks
+"FOX One: Live News, Sports, TV",entertainment,6746049430,fox-one-live-news-sports-tv,us,false,Temporarily rotated out after repeated sparse frontier checks
+Claude by Anthropic,productivity,6473753684,claude-by-anthropic,us,false,Temporarily rotated out after repeated sparse frontier checks
+Threads,social_networking,6446901002,threads,us,true,Rotated in after frontier-heavy apps were paused
+Google Gemini,productivity,6477489729,google-gemini,us,true,Rotated in after frontier-heavy apps were paused
 Netflix Game Controller,entertainment,6447582581,netflix-game-controller,us,false,Apple US topfreeapplications chart seed
 Trump Accounts: Official App,finance,6767364919,trump-accounts-official-app,us,false,Apple US topfreeapplications chart seed
 FWC2026 Mobile Tickets,sports,6532603739,fwc2026-mobile-tickets,us,false,Apple US topfreeapplications chart seed
 Telemundo: Series y TV en vivo,entertainment,680595680,telemundo-series-y-tv-en-vivo,us,false,Apple US topfreeapplications chart seed
-Google,utilities,284815942,google,us,false,Apple US topfreeapplications chart seed
-"Whatnot: Shop, Sell, Connect",shopping,1488269261,whatnot-shop-sell-connect,us,false,Apple US topfreeapplications chart seed
-CapCut: Photo & Video Editor,photo_and_video,1500855883,capcut-photo-video-editor,us,false,Apple US topfreeapplications chart seed
-WhatsApp Messenger,social_networking,310633997,whatsapp-messenger,us,false,Apple US topfreeapplications chart seed
+Google,utilities,284815942,google,us,true,Rotated in after frontier-heavy apps were paused
+"Whatnot: Shop, Sell, Connect",shopping,1488269261,whatnot-shop-sell-connect,us,true,Rotated in after frontier-heavy apps were paused
+CapCut: Photo & Video Editor,photo_and_video,1500855883,capcut-photo-video-editor,us,true,Rotated in after frontier-heavy apps were paused
+WhatsApp Messenger,social_networking,310633997,whatsapp-messenger,us,true,Rotated in after frontier-heavy apps were paused
 Polymarket,finance,6648798962,polymarket,us,false,Apple US topfreeapplications chart seed
 FIFA World Cup 2026™,sports,6476561442,fifa-world-cup-2026,us,false,Apple US topfreeapplications chart seed
 Planet Fitness,health_and_fitness,399857015,planet-fitness,us,false,Apple US topfreeapplications chart seed
 Temu: Shop Like a Billionaire,shopping,1641486558,temu-shop-like-a-billionaire,us,false,Apple US topfreeapplications chart seed
 Vinted: Pre-loved marketplace,shopping,632064380,vinted-pre-loved-marketplace,us,false,Apple US topfreeapplications chart seed
 Depop - Buy & Sell Clothes,shopping,518684914,depop-buy-sell-clothes,us,false,Apple US topfreeapplications chart seed
-Google Maps,navigation,585027354,google-maps,us,false,Apple US topfreeapplications chart seed
+Google Maps,navigation,585027354,google-maps,us,true,Rotated in after frontier-heavy apps were paused
 Fubo: Watch Live TV & Sports,entertainment,905401434,fubo-watch-live-tv-sports,us,false,Apple US topfreeapplications chart seed
 Shop: All your favorite brands,shopping,1223471316,shop-all-your-favorite-brands,us,false,Apple US topfreeapplications chart seed
-Gmail - Email by Google,productivity,422689480,gmail-email-by-google,us,false,Apple US topfreeapplications chart seed
+Gmail - Email by Google,productivity,422689480,gmail-email-by-google,us,true,Rotated in after frontier-heavy apps were paused
 SHEIN - Shopping Online,shopping,878577184,shein-shopping-online,us,false,Apple US topfreeapplications chart seed
 Tubi: Movies & Live TV,entertainment,886445756,tubi-movies-live-tv,us,false,Apple US topfreeapplications chart seed
 Indeed Job Search,business,309735670,indeed-job-search,us,false,Apple US topfreeapplications chart seed
