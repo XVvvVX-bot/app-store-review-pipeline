@@ -324,7 +324,7 @@ def web_catalog_429_cooldown_status(
     database_url: str,
     *,
     source: str = WEB_CATALOG_SOURCE,
-    cooldown_minutes: int = 720,
+    cooldown_minutes: int = 180,
 ) -> dict:
     initialize_postgres(database_url)
     cooldown_minutes = max(0, int(cooldown_minutes))

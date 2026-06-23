@@ -81,7 +81,7 @@ on:
       web_429_cooldown_minutes:
         description: "Fail fast when the most recent web catalog HTTP 429 is still within this cooldown window"
         required: false
-        default: "720"
+        default: "180"
         type: string
       web_429_circuit_breaker_min_pages:
         description: "Minimum current-run web catalog pages before the global HTTP 429 circuit breaker can trip"
@@ -178,7 +178,7 @@ jobs:
       INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ inputs.web_429_backoff_multiplier || '1.5' }}
       INPUT_WEB_TIME_BUDGET_SECONDS: ${{ inputs.web_time_budget_seconds || '1200' }}
       INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS: ${{ inputs.web_scope_time_budget_seconds || '1200' }}
-      INPUT_WEB_429_COOLDOWN_MINUTES: ${{ inputs.web_429_cooldown_minutes || '720' }}
+      INPUT_WEB_429_COOLDOWN_MINUTES: ${{ inputs.web_429_cooldown_minutes || '180' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES: ${{ inputs.web_429_circuit_breaker_min_pages || '4' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE: ${{ inputs.web_429_circuit_breaker_max_rate || '0.5' }}
       BACKFILL_RUN_STARTED_AT: ${{ needs.prepare-matrix.outputs.run_started_at }}
@@ -348,6 +348,6 @@ jobs:
             -f auto_continue="${{ inputs.auto_continue }}" \
             -f chain_depth="$next_depth" \
             -f max_chain_depth="${{ inputs.max_chain_depth || '100' }}" \
-            -f web_429_cooldown_minutes="${{ inputs.web_429_cooldown_minutes || '720' }}" \
+            -f web_429_cooldown_minutes="${{ inputs.web_429_cooldown_minutes || '180' }}" \
             -f web_429_circuit_breaker_min_pages="${{ inputs.web_429_circuit_breaker_min_pages || '4' }}" \
             -f web_429_circuit_breaker_max_rate="${{ inputs.web_429_circuit_breaker_max_rate || '0.5' }}"

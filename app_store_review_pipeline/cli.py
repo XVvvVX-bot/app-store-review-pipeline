@@ -70,7 +70,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     web_429_cooldown.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
     web_429_cooldown.add_argument("--source", default=WEB_CATALOG_SOURCE)
-    web_429_cooldown.add_argument("--cooldown-minutes", type=int, default=720)
+    web_429_cooldown.add_argument("--cooldown-minutes", type=int, default=180)
     web_429_cooldown.set_defaults(func=command_check_web_429_cooldown)
 
     web_pressure = subparsers.add_parser(
