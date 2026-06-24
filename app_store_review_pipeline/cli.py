@@ -23,6 +23,7 @@ from app_store_review_pipeline.postgres_database import (
     mask_database_url,
     record_web_catalog_pressure_result,
     review_counts_by_scope,
+    sync_targets_postgres,
     validate_postgres,
     web_catalog_429_circuit_breaker_status,
     web_catalog_429_cooldown_status,
@@ -40,6 +41,11 @@ def build_parser() -> argparse.ArgumentParser:
     targets = subparsers.add_parser("targets", help="Summarize target apps and app-country scopes.")
     targets.add_argument("--targets", type=Path, default=DEFAULT_TARGETS)
     targets.set_defaults(func=command_targets)
+
+    sync_targets = subparsers.add_parser("sync-targets", help="Sync the repository target list into Postgres.")
+    sync_targets.add_argument("--targets", type=Path, default=DEFAULT_TARGETS)
+    sync_targets.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
+    sync_targets.set_defaults(func=command_sync_targets)
 
     fetch_web_catalog = subparsers.add_parser(
         "fetch-web-catalog",
@@ -217,6 +223,12 @@ def command_targets(args: argparse.Namespace) -> int:
             sort_keys=True,
         )
     )
+    return 0
+
+
+def command_sync_targets(args: argparse.Namespace) -> int:
+    report = sync_targets_postgres(args.database_url, args.targets, make_run_id())
+    print(json.dumps(report, indent=2, sort_keys=True))
     return 0
 
 
@@ -421,6 +433,7 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
     reports_dir = args.reports_root / run_id
     raw_dir.mkdir(parents=True, exist_ok=True)
     reports_dir.mkdir(parents=True, exist_ok=True)
+    target_sync_summary = sync_targets_postgres(args.database_url, args.targets, run_id)
     targets = select_target_window(active_targets(load_targets(args.targets)), limit=args.limit, offset=args.target_offset)
     scopes = [(target.apple_app_id, country, args.sort_by) for target in targets for country in target.countries]
     use_overlap_stop = not getattr(args, "disable_overlap_stop", False)
@@ -476,6 +489,7 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         "sort_by": args.sort_by,
         "target_count": len(targets),
         "scope_count": len(scopes),
+        "target_sync_summary": target_sync_summary,
         "target_offset": max(0, args.target_offset),
         "max_pages_per_app_country": args.max_pages_per_app_country,
         "start_page": args.start_page,

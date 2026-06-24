@@ -1214,6 +1214,91 @@ def review_counts_by_scope(
     return results
 
 
+def sync_targets_postgres(database_url: str, targets_path: Path, run_id: str) -> dict:
+    targets = load_targets(targets_path)
+    target_ids = {str(target.apple_app_id) for target in targets}
+    active_target_count = sum(1 for target in targets if target.active)
+
+    initialize_postgres(database_url)
+    with connect_postgres(database_url) as connection:
+        upsert_targets(connection, targets, run_id)
+        if target_ids:
+            deleted = connection.execute(
+                """
+                DELETE FROM app_store_targets t
+                WHERE NOT (t.app_id = ANY(%s))
+                  AND NOT EXISTS (
+                      SELECT 1 FROM app_store_reviews r WHERE r.app_id = t.app_id
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM app_store_review_pages p WHERE p.app_id = t.app_id
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM app_store_review_changes c WHERE c.app_id = t.app_id
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM app_store_sync_state s WHERE s.app_id = t.app_id
+                  )
+                """,
+                (list(target_ids),),
+            ).rowcount
+            deactivated = connection.execute(
+                """
+                UPDATE app_store_targets
+                SET active = 0,
+                    last_seen_run_id = %s
+                WHERE NOT (app_id = ANY(%s))
+                """,
+                (run_id, list(target_ids)),
+            ).rowcount
+        else:
+            deleted = connection.execute(
+                """
+                DELETE FROM app_store_targets t
+                WHERE NOT EXISTS (
+                      SELECT 1 FROM app_store_reviews r WHERE r.app_id = t.app_id
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM app_store_review_pages p WHERE p.app_id = t.app_id
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM app_store_review_changes c WHERE c.app_id = t.app_id
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM app_store_sync_state s WHERE s.app_id = t.app_id
+                  )
+                """
+            ).rowcount
+            deactivated = connection.execute(
+                """
+                UPDATE app_store_targets
+                SET active = 0,
+                    last_seen_run_id = %s
+                """,
+                (run_id,),
+            ).rowcount
+        db_counts = connection.execute(
+            """
+            SELECT
+                COUNT(*)::int AS target_count,
+                COALESCE(SUM(active), 0)::int AS active_target_count
+            FROM app_store_targets
+            """
+        ).fetchone()
+        connection.commit()
+
+    return {
+        "run_id": run_id,
+        "targets_path": str(targets_path),
+        "file_target_count": len(targets),
+        "file_active_target_count": active_target_count,
+        "postgres_target_count": int(db_counts["target_count"] or 0),
+        "postgres_active_target_count": int(db_counts["active_target_count"] or 0),
+        "deleted_missing_unreferenced_targets": int(deleted or 0),
+        "deactivated_missing_referenced_targets": int(deactivated or 0),
+    }
+
+
 def load_pipeline_run_postgres(database_url: str, raw_dir: Path, targets_path: Path) -> dict:
     run_id = raw_dir.name
     page_rows = read_jsonl(raw_dir / "review_pages.jsonl")
