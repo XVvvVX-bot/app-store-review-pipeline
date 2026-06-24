@@ -13,25 +13,6 @@ The current physical schema is created in `app_store_review_pipeline/postgres_da
 - Store enough review, timestamp, rating, and text fields for EDA and modeling.
 - Exclude fields that the public web catalog source does not provide reliably.
 
-## Entity Relationship Summary
-
-```mermaid
-erDiagram
-    app_store_targets ||--o{ app_store_review_pages : "has fetched pages"
-    app_store_targets ||--o{ app_store_reviews : "has reviews"
-    app_store_targets ||--o{ app_store_sync_state : "has app-country scopes"
-    app_store_targets ||--o{ app_store_review_changes : "has review changes"
-
-    app_store_runs ||--o{ app_store_review_pages : "fetches"
-    app_store_runs ||--o{ app_store_reviews : "first/last sees"
-    app_store_runs ||--o{ app_store_review_changes : "records"
-
-    app_store_review_pages ||--o{ app_store_reviews : "source page"
-    app_store_review_pages ||--o{ app_store_review_changes : "change source page"
-
-    app_store_reviews ||--o{ app_store_review_changes : "change history"
-```
-
 ## Tables
 
 ### `app_store_targets`
@@ -311,3 +292,22 @@ Likely future additions, if needed:
 - managed Postgres deployment settings if the project moves beyond local development.
 
 These are intentionally deferred until the dataset and modeling use cases justify them.
+
+## Appendix: Entity Relationship Diagram
+
+```mermaid
+erDiagram
+    app_store_targets ||--o{ app_store_review_pages : "has fetched pages"
+    app_store_targets ||--o{ app_store_reviews : "has reviews"
+    app_store_targets ||--o{ app_store_sync_state : "has app-country scopes"
+    app_store_targets ||--o{ app_store_review_changes : "has review changes"
+
+    app_store_runs ||--o{ app_store_review_pages : "fetches"
+    app_store_runs ||--o{ app_store_reviews : "first/last sees"
+    app_store_runs ||--o{ app_store_review_changes : "records"
+
+    app_store_review_pages ||--o{ app_store_reviews : "source page"
+    app_store_review_pages ||--o{ app_store_review_changes : "change source page"
+
+    app_store_reviews ||--o{ app_store_review_changes : "change history"
+```
