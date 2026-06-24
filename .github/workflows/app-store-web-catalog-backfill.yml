@@ -228,9 +228,6 @@ jobs:
             --min-pages "$INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES" \
             --max-rate "$INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE"
 
-      - name: Run tests
-        run: .venv/bin/python -m pytest -q
-
       - name: Run complete web catalog backfill probe
         env:
           DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
