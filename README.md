@@ -37,6 +37,8 @@ Postgres is the source of truth. Raw JSON and GitHub artifacts are useful for au
 
 Review identity is `platform + source + country + app_id + review_id`, so repeated runs upsert existing reviews instead of duplicating them. If Apple returns changed review metadata, the row is updated and the change is recorded.
 
+See `docs/storage_schema.md` for the storage-layer design, table relationships, primary keys, deduplication logic, lineage fields, and intentionally excluded source fields.
+
 ## Install
 
 ```bash
@@ -124,6 +126,7 @@ Research-era workflows have been moved to `docs/archive/workflows/` so they rema
 - Data-quality summary JSON: `docs/eda/apple_review_data_quality_summary.json`
 - Data-quality HTML dashboard: `docs/eda/apple_review_data_quality_dashboard.html`
 - Architecture notes: `docs/architecture.md`
+- Storage schema design: `docs/storage_schema.md`
 - Source decision notes: `docs/source_decision_notes.md`
 - Research archive: `docs/archive/`
 

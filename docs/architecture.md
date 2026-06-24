@@ -48,6 +48,8 @@ platform + source + country + app_id + review_id
 
 Repeated runs therefore update existing reviews rather than duplicating them.
 
+The detailed storage-layer design is documented in `docs/storage_schema.md`, including table relationships, primary keys, review deduplication, run/page lineage, data-quality fields, EDA/modeling fields, and excluded source fields.
+
 ## Completeness Semantics
 
 Daily incremental completeness and historical backfill completeness are intentionally separate:
