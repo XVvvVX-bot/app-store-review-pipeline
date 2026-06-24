@@ -1501,6 +1501,7 @@ def test_daily_web_catalog_passes_start_page_to_fetcher(tmp_path, monkeypatch):
         }
 
     monkeypatch.setattr("app_store_review_pipeline.cli.fetch_web_catalog_targets", fake_fetch_web_catalog_targets)
+    monkeypatch.setattr("app_store_review_pipeline.cli.sync_targets_postgres", lambda *args, **kwargs: {})
     monkeypatch.setattr("app_store_review_pipeline.cli.load_pipeline_run_postgres", lambda *args, **kwargs: {})
     monkeypatch.setattr("app_store_review_pipeline.cli.validate_postgres", lambda *args, **kwargs: {})
 
@@ -1554,6 +1555,7 @@ def test_daily_web_catalog_can_pass_rss_parity_targets_to_fetcher(tmp_path, monk
         }
 
     monkeypatch.setattr("app_store_review_pipeline.cli.fetch_web_catalog_targets", fake_fetch_web_catalog_targets)
+    monkeypatch.setattr("app_store_review_pipeline.cli.sync_targets_postgres", lambda *args, **kwargs: {})
     monkeypatch.setattr(
         "app_store_review_pipeline.cli.existing_review_ids_by_scope",
         lambda *args, **kwargs: {("123456789", "us", "recent"): {"web-review-1"}},
