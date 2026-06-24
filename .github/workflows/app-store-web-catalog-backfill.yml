@@ -61,7 +61,7 @@ on:
       max_parallel:
         description: "Maximum app backfill jobs to run in parallel. True parallelism requires multiple self-hosted runner instances."
         required: false
-        default: "5"
+        default: "4"
         type: string
       auto_continue:
         description: "Dispatch the next full selected-target round after a clean round"
@@ -119,7 +119,7 @@ jobs:
         env:
           INPUT_LIMIT: ${{ inputs.limit || '200' }}
           INPUT_TARGET_OFFSET: ${{ inputs.target_offset || '0' }}
-          INPUT_MAX_PARALLEL: ${{ inputs.max_parallel || '5' }}
+          INPUT_MAX_PARALLEL: ${{ inputs.max_parallel || '4' }}
         run: |
           set -euo pipefail
           echo "run_started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
@@ -344,7 +344,7 @@ jobs:
             -f web_429_backoff_multiplier="${{ inputs.web_429_backoff_multiplier || '1.5' }}" \
             -f web_time_budget_seconds="${{ inputs.web_time_budget_seconds || '1200' }}" \
             -f web_scope_time_budget_seconds="${{ inputs.web_scope_time_budget_seconds || '1200' }}" \
-            -f max_parallel="${{ inputs.max_parallel || '5' }}" \
+            -f max_parallel="${{ inputs.max_parallel || '4' }}" \
             -f auto_continue="${{ inputs.auto_continue }}" \
             -f chain_depth="$next_depth" \
             -f max_chain_depth="${{ inputs.max_chain_depth || '100' }}" \
