@@ -1,7 +1,7 @@
 name: App Store Review Pipeline
 
 on:
-  # Scheduled ingestion is paused while full web catalog backfill is running.
+  # Dispatch-only while full-scope daily incremental behavior is being tested.
   workflow_dispatch:
     inputs:
       limit:

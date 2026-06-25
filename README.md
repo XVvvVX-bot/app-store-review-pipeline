@@ -10,8 +10,8 @@ The production path uses Apple's public App Store web catalog review JSON, norma
 - Store: local Postgres database `app_store_reviews`
 - Current target file: `data/targets/apple_apps.csv`
 - Current target shape: `app_name`, `category`, `apple_app_id`, `apple_slug`, `countries`, `active`, `notes`
-- Scheduled ingestion is paused while data quality and safe backfill strategy are being evaluated.
-- Manual backfill is available, but further scaling should wait until the EDA findings are reviewed.
+- Current target mode: all 200 tracked apps are active for full-scope daily incremental testing.
+- Historical backfill is paused while the daily incremental path is evaluated across the complete target set.
 
 ## Architecture
 
@@ -62,16 +62,22 @@ Summarize target coverage:
 .venv/bin/python app_store_pipeline.py targets
 ```
 
-Fetch and load a conservative web-catalog window:
+Fetch and load a full-scope daily incremental window:
 
 ```bash
 .venv/bin/python app_store_pipeline.py daily-web-catalog \
   --database-url postgresql:///app_store_reviews \
-  --limit 1 \
+  --limit 0 \
   --target-offset 0 \
   --max-pages-per-app-country 5 \
+  --start-page 1 \
   --review-limit 20 \
-  --request-delay-seconds 10
+  --request-delay-seconds 10 \
+  --request-delay-jitter-seconds 5 \
+  --web-429-retries 2 \
+  --web-429-retry-seconds 300 \
+  --web-429-retry-jitter-seconds 60 \
+  --web-time-budget-seconds 7200
 ```
 
 Run a controlled backfill continuation for selected active targets:
@@ -114,8 +120,8 @@ Generate the reproducible EDA/data-quality report:
 Active workflows:
 
 - `CI`: test suite.
-- `App Store Review Pipeline`: dispatch-only daily profile; schedule remains paused.
-- `App Store Web Catalog Backfill`: manual matrix backfill using self-hosted Mac runners and local Postgres.
+- `App Store Review Pipeline`: dispatch-only daily incremental profile for full-scope testing.
+- `App Store Web Catalog Backfill`: manual matrix backfill using self-hosted Mac runners and local Postgres. Keep this paused unless explicitly testing historical depth.
 
 Research-era workflows have been moved to `docs/archive/workflows/` so they remain auditable but no longer appear as active runnable Actions.
 

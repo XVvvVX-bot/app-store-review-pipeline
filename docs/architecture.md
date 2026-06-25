@@ -61,9 +61,18 @@ Weaker stop reasons include `page_cap`, `caught_up_to_existing_reviews`, `time_b
 
 ## Operations
 
-GitHub Actions uses self-hosted Mac runners because local Postgres is the development store. The active workflows are CI, dispatch-only daily ingestion, and manual web-catalog backfill. Scheduled ingestion is currently paused while data quality and safe long-run behavior are evaluated.
+GitHub Actions uses self-hosted Mac runners because local Postgres is the development store. The active workflows are CI, dispatch-only daily ingestion, and manual web-catalog backfill. The current operating focus is full-scope daily incremental testing across all active targets; historical backfill is paused unless we deliberately resume depth testing.
 
-The backfill workflow uses:
+The daily incremental workflow uses:
+
+- all active target scopes from `data/targets/apple_apps.csv`
+- `start_page=1` so each app begins from the newest review page
+- overlap stopping against known review IDs in Postgres
+- bounded page caps and run-level time budgets
+- HTTP 429 retry delay plus jitter
+- current-run circuit breaker checks
+
+The backfill workflow remains available for historical depth testing and uses:
 
 - local Postgres initialization before every job
 - global writer concurrency through GitHub Actions
