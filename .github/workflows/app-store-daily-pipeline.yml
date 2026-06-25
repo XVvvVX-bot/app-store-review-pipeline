@@ -53,20 +53,30 @@ on:
         required: false
         default: "10"
         type: string
+      request_delay_jitter_seconds:
+        description: "Positive random jitter added to each normal request delay"
+        required: false
+        default: "5"
+        type: string
       web_429_retries:
         description: "Retries after HTTP 429"
         required: false
         default: "2"
         type: string
       web_429_retry_seconds:
-        description: "Delay before retrying HTTP 429"
+        description: "Base delay before retrying HTTP 429"
         required: false
-        default: "60"
+        default: "300"
         type: string
       web_429_backoff_multiplier:
         description: "Multiplier applied to HTTP 429 retry delay on each additional retry"
         required: false
         default: "1.5"
+        type: string
+      web_429_retry_jitter_seconds:
+        description: "Positive random jitter added to each HTTP 429 retry delay"
+        required: false
+        default: "60"
         type: string
       web_time_budget_seconds:
         description: "Wall-clock budget for web catalog fetching; 0 means no budget"
@@ -89,9 +99,9 @@ on:
         default: "720"
         type: string
       web_429_cooldown_minutes:
-        description: "Skip/fail when the most recent web catalog HTTP 429 is still within this cooldown window"
+        description: "Optional pre-run fail-fast cooldown after recent HTTP 429; 0 disables pre-run cooldown"
         required: false
-        default: "180"
+        default: "0"
         type: string
       web_429_circuit_breaker_min_pages:
         description: "Minimum pages before a 429 circuit breaker can trip"
@@ -127,14 +137,16 @@ jobs:
       INPUT_START_PAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.start_page || '1' }}
       INPUT_REVIEW_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.review_limit || '20' }}
       INPUT_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '10' }}
+      INPUT_REQUEST_DELAY_JITTER_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_jitter_seconds || '5' }}
       INPUT_WEB_429_RETRIES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retries || '2' }}
-      INPUT_WEB_429_RETRY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_seconds || '60' }}
+      INPUT_WEB_429_RETRY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_seconds || '300' }}
       INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_backoff_multiplier || '1.5' }}
+      INPUT_WEB_429_RETRY_JITTER_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_jitter_seconds || '60' }}
       INPUT_WEB_TIME_BUDGET_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_time_budget_seconds || '1200' }}
       INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_scope_time_budget_seconds || '0' }}
       INPUT_DISABLE_OVERLAP_STOP: ${{ github.event_name == 'workflow_dispatch' && inputs.disable_overlap_stop || 'false' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_LOOKBACK_MINUTES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_circuit_breaker_lookback_minutes || '720' }}
-      INPUT_WEB_429_COOLDOWN_MINUTES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_cooldown_minutes || '180' }}
+      INPUT_WEB_429_COOLDOWN_MINUTES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_cooldown_minutes || '0' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_circuit_breaker_min_pages || '4' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_circuit_breaker_max_rate || '0.5' }}
 
@@ -250,9 +262,11 @@ jobs:
             --start-page "$INPUT_START_PAGE" \
             --review-limit "$INPUT_REVIEW_LIMIT" \
             --request-delay-seconds "$INPUT_REQUEST_DELAY_SECONDS" \
+            --request-delay-jitter-seconds "$INPUT_REQUEST_DELAY_JITTER_SECONDS" \
             --web-429-retries "$INPUT_WEB_429_RETRIES" \
             --web-429-retry-seconds "$INPUT_WEB_429_RETRY_SECONDS" \
             --web-429-backoff-multiplier "$INPUT_WEB_429_BACKOFF_MULTIPLIER" \
+            --web-429-retry-jitter-seconds "$INPUT_WEB_429_RETRY_JITTER_SECONDS" \
             --web-time-budget-seconds "$INPUT_WEB_TIME_BUDGET_SECONDS" \
             --web-scope-time-budget-seconds "$INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS" \
             $overlap_flag

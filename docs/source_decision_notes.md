@@ -30,7 +30,7 @@ This is also not HTML scraping as the production path. Rendered HTML and source-
 
 - The source is public structured catalog data, not a contractual API.
 - Historical completeness is only proven per app-country scope when a backfill reaches `no_next_href`.
-- Large deep backfills can trigger HTTP 429 pressure; cooldown and circuit-breaker checks are required.
+- Large deep backfills can trigger HTTP 429 pressure; the active backfill path now handles isolated 429 responses with a 5-minute per-request retry delay plus jitter, and relies on the current-run circuit breaker when the aggregate 429 rate becomes unhealthy.
 - Version and review-vote fields are not currently available from the public web catalog payload and are intentionally excluded from the production review schema.
 - Local Postgres is the current development store; managed Postgres remains a later production decision.
 

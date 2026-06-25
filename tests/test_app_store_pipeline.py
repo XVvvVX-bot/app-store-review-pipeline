@@ -1094,6 +1094,33 @@ def test_fetch_web_catalog_targets_follows_next_pages_and_preserves_source(tmp_p
     assert len(session.calls) == 2
 
 
+def test_fetch_web_catalog_targets_adds_positive_request_delay_jitter(tmp_path):
+    session = FakeWebSession(
+        [
+            FakeWebResponse(200, payload=web_catalog_payload(start=1, count=2, has_next=True)),
+            FakeWebResponse(200, payload=web_catalog_payload(start=3, count=2, has_next=False)),
+        ]
+    )
+    sleeps = []
+
+    report = fetch_web_catalog_targets(
+        [fixture_target()],
+        tmp_path,
+        "run",
+        max_pages_per_app_country=2,
+        review_limit=2,
+        request_delay_seconds=10,
+        request_delay_jitter_seconds=4,
+        web_429_retries=0,
+        session=session,
+        sleep_fn=sleeps.append,
+        random_fn=lambda: 0.5,
+    )
+
+    assert report["fetched_pages"] == 2
+    assert sleeps == [12.0]
+
+
 def test_fetch_web_catalog_targets_retries_malformed_json_soft_error(tmp_path):
     session = FakeWebSession(
         [
@@ -1988,6 +2015,33 @@ def test_web_429_retry_uses_backoff_and_retry_after():
     assert sleeps == [10, 7.0]
     assert parse_retry_after_seconds("3") == 3.0
     assert parse_retry_after_seconds("bad") is None
+
+
+def test_web_429_retry_adds_positive_jitter_to_retry_sleep():
+    sleeps = []
+    response, attempts = get_with_429_retries(
+        FakeWebSession(
+            [
+                FakeWebResponse(429),
+                FakeWebResponse(429, headers={"retry-after": "7"}),
+                FakeWebResponse(200),
+            ]
+        ),
+        "https://apps.apple.com/api/apps/v1/catalog/us/apps/123/reviews",
+        headers={},
+        timeout_seconds=1,
+        web_429_retries=2,
+        web_429_retry_seconds=10,
+        web_429_backoff_multiplier=2,
+        web_429_retry_jitter_seconds=4,
+        sleep_fn=sleeps.append,
+        random_fn=lambda: 0.25,
+    )
+
+    assert response.status_code == 200
+    assert [attempt["status_code"] for attempt in attempts] == [429, 429, 200]
+    assert [attempt.get("retry_delay_seconds") for attempt in attempts[:2]] == [11.0, 8.0]
+    assert sleeps == [11.0, 8.0]
 
 
 def test_web_429_retry_stops_when_time_budget_cannot_fit_next_sleep():

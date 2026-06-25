@@ -67,7 +67,7 @@ The backfill workflow uses:
 
 - local Postgres initialization before every job
 - global writer concurrency through GitHub Actions
-- HTTP 429 cooldown and current-run circuit breaker checks
+- optional HTTP 429 pre-run cooldown and current-run circuit breaker checks
 - per-app time budgets
 - retry tracking and page-level status recording
 

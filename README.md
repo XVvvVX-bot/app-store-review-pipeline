@@ -134,5 +134,5 @@ Research-era workflows have been moved to `docs/archive/workflows/` so they rema
 
 - The public web catalog path is public Apple-hosted structured catalog data, not a contractual App Store Connect API.
 - Completeness is proven per app-country scope only when the crawler reaches `no_next_href`.
-- Deep historical backfill can trigger Apple pressure signals; HTTP 429 cooldown and circuit-breaker checks must stay enabled for manual backfill.
+- Deep historical backfill can trigger Apple pressure signals; individual HTTP 429 responses are handled with a 5-minute per-request retry delay plus jitter, while the current-run circuit breaker remains the main global stop condition.
 - Local Postgres is the current development store. Managed Postgres can be evaluated later if the project moves toward production hosting.

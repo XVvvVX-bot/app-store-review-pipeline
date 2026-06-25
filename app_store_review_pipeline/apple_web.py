@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import html
 import json
+import random
 import re
 import time
 from datetime import datetime, timezone
@@ -712,8 +713,10 @@ def get_with_429_retries(
     web_429_retry_seconds: float,
     web_429_backoff_multiplier: float,
     sleep_fn: Callable[[float], None],
+    web_429_retry_jitter_seconds: float = 0.0,
     deadline_monotonic: float | None = None,
     monotonic_fn: Callable[[], float] = time.monotonic,
+    random_fn: Callable[[], float] = random.random,
 ) -> tuple[requests.Response, list[dict[str, Any]]]:
     attempts: list[dict[str, Any]] = []
     max_attempts = max(1, web_429_retries + 1)
@@ -735,7 +738,10 @@ def get_with_429_retries(
             attempt_number,
             web_429_retry_seconds,
             web_429_backoff_multiplier,
+            jitter_seconds=web_429_retry_jitter_seconds,
+            random_fn=random_fn,
         )
+        attempts[-1]["retry_delay_seconds"] = delay_seconds
         if not can_sleep_before_deadline(delay_seconds, deadline_monotonic, monotonic_fn):
             attempts[-1]["retry_skipped_reason"] = "time_budget_exceeded"
             break
@@ -787,12 +793,29 @@ def retry_delay_seconds(
     attempt_number: int,
     base_delay_seconds: float,
     backoff_multiplier: float,
+    *,
+    jitter_seconds: float = 0.0,
+    random_fn: Callable[[], float] = random.random,
 ) -> float:
     retry_after = parse_retry_after_seconds(response.headers.get("retry-after"))
     if retry_after is not None:
-        return retry_after
+        return jittered_delay_seconds(retry_after, jitter_seconds, random_fn=random_fn)
     multiplier = max(1.0, backoff_multiplier)
-    return base_delay_seconds * (multiplier ** max(0, attempt_number - 1))
+    delay = base_delay_seconds * (multiplier ** max(0, attempt_number - 1))
+    return jittered_delay_seconds(delay, jitter_seconds, random_fn=random_fn)
+
+
+def jittered_delay_seconds(
+    base_delay_seconds: float,
+    jitter_seconds: float = 0.0,
+    *,
+    random_fn: Callable[[], float] = random.random,
+) -> float:
+    base = max(0.0, float(base_delay_seconds))
+    jitter = max(0.0, float(jitter_seconds))
+    if not jitter:
+        return base
+    return base + (max(0.0, min(1.0, float(random_fn()))) * jitter)
 
 
 def parse_retry_after_seconds(value: str | None) -> float | None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import random
 import time
 from dataclasses import asdict, replace
 from pathlib import Path
@@ -17,6 +18,7 @@ from app_store_review_pipeline.apple_web import (
     deadline_exceeded,
     final_attempt_stopped_for_time_budget,
     get_with_429_retries,
+    jittered_delay_seconds,
     parse_web_catalog_review_page,
     parse_web_catalog_review_rows,
     sleep_with_deadline,
@@ -38,9 +40,11 @@ def fetch_web_catalog_targets(
     review_limit: int = 20,
     timeout_seconds: float = 20.0,
     request_delay_seconds: float = 5.0,
+    request_delay_jitter_seconds: float = 0.0,
     web_429_retries: int = 5,
     web_429_retry_seconds: float = 60.0,
     web_429_backoff_multiplier: float = 1.5,
+    web_429_retry_jitter_seconds: float = 0.0,
     web_soft_retries: int = 2,
     web_soft_retry_seconds: float = 5.0,
     max_consecutive_sparse_fetch_errors: int = 3,
@@ -51,6 +55,7 @@ def fetch_web_catalog_targets(
     use_overlap_stop: bool = True,
     sleep_fn: Callable[[float], None] = time.sleep,
     monotonic_fn: Callable[[], float] = time.monotonic,
+    random_fn: Callable[[], float] = random.random,
     session: requests.Session | None = None,
 ) -> dict[str, Any]:
     raw_dir.mkdir(parents=True, exist_ok=True)
@@ -74,8 +79,13 @@ def fetch_web_catalog_targets(
                 overall_time_budget_exceeded = True
                 break
             if target_index and request_delay_seconds:
-                if not sleep_with_deadline(
+                target_delay_seconds = jittered_delay_seconds(
                     request_delay_seconds,
+                    request_delay_jitter_seconds,
+                    random_fn=random_fn,
+                )
+                if not sleep_with_deadline(
+                    target_delay_seconds,
                     deadline_monotonic,
                     sleep_fn=sleep_fn,
                     monotonic_fn=monotonic_fn,
@@ -112,14 +122,19 @@ def fetch_web_catalog_targets(
                             overall_time_budget_exceeded = True
                         break
                     if page_number > start_page and request_delay_seconds:
-                        if not sleep_with_deadline(
+                        page_delay_seconds = jittered_delay_seconds(
                             request_delay_seconds,
+                            request_delay_jitter_seconds,
+                            random_fn=random_fn,
+                        )
+                        if not sleep_with_deadline(
+                            page_delay_seconds,
                             effective_deadline,
                             sleep_fn=sleep_fn,
                             monotonic_fn=monotonic_fn,
                         ):
                             stop_reason = deadline_sleep_stop_reason(
-                                request_delay_seconds,
+                                page_delay_seconds,
                                 deadline_monotonic,
                                 scope_deadline_monotonic,
                                 monotonic_fn,
@@ -174,11 +189,13 @@ def fetch_web_catalog_targets(
                         web_429_retries=web_429_retries,
                         web_429_retry_seconds=web_429_retry_seconds,
                         web_429_backoff_multiplier=web_429_backoff_multiplier,
+                        web_429_retry_jitter_seconds=web_429_retry_jitter_seconds,
                         web_soft_retries=web_soft_retries,
                         web_soft_retry_seconds=web_soft_retry_seconds,
                         deadline_monotonic=effective_deadline,
                         monotonic_fn=monotonic_fn,
                         sleep_fn=sleep_fn,
+                        random_fn=random_fn,
                     )
                     overlap_count = sum(1 for review in reviews if review.review_id in known_review_ids)
                     scope_review_total += len(reviews)
@@ -263,6 +280,11 @@ def fetch_web_catalog_targets(
         "start_page": start_page,
         "max_pages_per_app_country": max_pages_per_app_country,
         "page_cap_enabled": page_cap is not None,
+        "request_delay_seconds": request_delay_seconds,
+        "request_delay_jitter_seconds": request_delay_jitter_seconds,
+        "web_429_retries": web_429_retries,
+        "web_429_retry_seconds": web_429_retry_seconds,
+        "web_429_retry_jitter_seconds": web_429_retry_jitter_seconds,
         "time_budget_seconds": time_budget_seconds,
         "scope_time_budget_seconds": scope_time_budget_seconds,
         "max_consecutive_sparse_fetch_errors": max_consecutive_sparse_fetch_errors,
@@ -363,11 +385,13 @@ def fetch_web_catalog_page(
     web_429_retries: int,
     web_429_retry_seconds: float,
     web_429_backoff_multiplier: float,
+    web_429_retry_jitter_seconds: float,
     web_soft_retries: int,
     web_soft_retry_seconds: float,
     deadline_monotonic: float | None,
     monotonic_fn: Callable[[], float],
     sleep_fn: Callable[[float], None],
+    random_fn: Callable[[], float],
 ) -> tuple[ReviewPage, list[AppReview], str | None]:
     country = country.lower()
     page_key = make_page_key(run_id, target.apple_app_id, country, sort_by, page_number)
@@ -412,9 +436,11 @@ def fetch_web_catalog_page(
                 web_429_retries=web_429_retries,
                 web_429_retry_seconds=web_429_retry_seconds,
                 web_429_backoff_multiplier=web_429_backoff_multiplier,
+                web_429_retry_jitter_seconds=web_429_retry_jitter_seconds,
                 deadline_monotonic=deadline_monotonic,
                 monotonic_fn=monotonic_fn,
                 sleep_fn=sleep_fn,
+                random_fn=random_fn,
             )
             for attempt in current_attempts:
                 attempt["soft_attempt_number"] = soft_attempt_number

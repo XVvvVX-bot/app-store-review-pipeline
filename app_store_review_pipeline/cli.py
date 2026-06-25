@@ -172,9 +172,21 @@ def add_web_catalog_fetch_arguments(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
     parser.add_argument("--request-delay-seconds", type=float, default=5.0)
+    parser.add_argument(
+        "--request-delay-jitter-seconds",
+        type=float,
+        default=0.0,
+        help="Positive random jitter added to each normal web catalog request delay.",
+    )
     parser.add_argument("--web-429-retries", type=int, default=5)
-    parser.add_argument("--web-429-retry-seconds", type=float, default=60.0)
+    parser.add_argument("--web-429-retry-seconds", type=float, default=300.0)
     parser.add_argument("--web-429-backoff-multiplier", type=float, default=1.5)
+    parser.add_argument(
+        "--web-429-retry-jitter-seconds",
+        type=float,
+        default=0.0,
+        help="Positive random jitter added to each HTTP 429 retry sleep.",
+    )
     parser.add_argument(
         "--web-soft-retries",
         type=int,
@@ -246,9 +258,11 @@ def command_fetch_web_catalog(args: argparse.Namespace) -> int:
         review_limit=args.review_limit,
         timeout_seconds=args.timeout_seconds,
         request_delay_seconds=args.request_delay_seconds,
+        request_delay_jitter_seconds=getattr(args, "request_delay_jitter_seconds", 0.0),
         web_429_retries=args.web_429_retries,
         web_429_retry_seconds=args.web_429_retry_seconds,
         web_429_backoff_multiplier=args.web_429_backoff_multiplier,
+        web_429_retry_jitter_seconds=getattr(args, "web_429_retry_jitter_seconds", 0.0),
         web_soft_retries=args.web_soft_retries,
         web_soft_retry_seconds=args.web_soft_retry_seconds,
         time_budget_seconds=args.web_time_budget_seconds,
@@ -457,9 +471,11 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         review_limit=args.review_limit,
         timeout_seconds=args.timeout_seconds,
         request_delay_seconds=args.request_delay_seconds,
+        request_delay_jitter_seconds=getattr(args, "request_delay_jitter_seconds", 0.0),
         web_429_retries=args.web_429_retries,
         web_429_retry_seconds=args.web_429_retry_seconds,
         web_429_backoff_multiplier=args.web_429_backoff_multiplier,
+        web_429_retry_jitter_seconds=getattr(args, "web_429_retry_jitter_seconds", 0.0),
         web_soft_retries=args.web_soft_retries,
         web_soft_retry_seconds=args.web_soft_retry_seconds,
         time_budget_seconds=args.web_time_budget_seconds,
@@ -494,6 +510,11 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         "max_pages_per_app_country": args.max_pages_per_app_country,
         "start_page": args.start_page,
         "review_limit": args.review_limit,
+        "request_delay_seconds": args.request_delay_seconds,
+        "request_delay_jitter_seconds": getattr(args, "request_delay_jitter_seconds", 0.0),
+        "web_429_retries": args.web_429_retries,
+        "web_429_retry_seconds": args.web_429_retry_seconds,
+        "web_429_retry_jitter_seconds": getattr(args, "web_429_retry_jitter_seconds", 0.0),
         "web_time_budget_seconds": args.web_time_budget_seconds,
         "web_scope_time_budget_seconds": args.web_scope_time_budget_seconds,
         "overlap_stop_enabled": use_overlap_stop,
