@@ -65,10 +65,11 @@ GitHub Actions uses self-hosted Mac runners because local Postgres is the develo
 
 The daily incremental workflow uses:
 
-- all active target scopes from `data/targets/apple_apps.csv`
+- an app-level GitHub Actions matrix over active target scopes from `data/targets/apple_apps.csv`
+- multiple self-hosted runners via `max_parallel`
 - `start_page=1` so each app begins from the newest review page
-- overlap stopping against known review IDs in Postgres
-- bounded page caps and run-level time budgets
+- overlap stopping against known review IDs in Postgres, so each app continues until it reaches already-stored data
+- optional page caps and per-app time budgets
 - HTTP 429 retry delay plus jitter
 - current-run circuit breaker checks
 

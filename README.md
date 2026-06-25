@@ -69,7 +69,7 @@ Fetch and load a full-scope daily incremental window:
   --database-url postgresql:///app_store_reviews \
   --limit 0 \
   --target-offset 0 \
-  --max-pages-per-app-country 5 \
+  --max-pages-per-app-country 0 \
   --start-page 1 \
   --review-limit 20 \
   --request-delay-seconds 10 \
@@ -120,7 +120,7 @@ Generate the reproducible EDA/data-quality report:
 Active workflows:
 
 - `CI`: test suite.
-- `App Store Review Pipeline`: dispatch-only daily incremental profile for full-scope testing.
+- `App Store Review Pipeline`: dispatch-only app-level matrix daily incremental profile. Each app starts at page 1 and fetches until it hits known review overlap, no-next, a time budget, or a fetch stop.
 - `App Store Web Catalog Backfill`: manual matrix backfill using self-hosted Mac runners and local Postgres. Keep this paused unless explicitly testing historical depth.
 
 Research-era workflows have been moved to `docs/archive/workflows/` so they remain auditable but no longer appear as active runnable Actions.
