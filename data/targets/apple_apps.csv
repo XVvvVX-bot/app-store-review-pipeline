@@ -22,20 +22,20 @@ MyFitnessPal,health,341232718,myfitnesspal-calorie-counter,us,false,Health and f
 Peacock TV: Stream TV & Movies,entertainment,1508186374,peacock-tv-stream-tv-movies,us,false,Temporarily rotated out after repeated sparse frontier checks
 Love Island USA,entertainment,1465944282,love-island-usa,us,false,Temporarily rotated out after repeated sparse frontier checks
 Kalshi: Trade the Cup,finance,1632713844,kalshi-trade-the-cup,us,false,Temporarily rotated out after repeated sparse frontier checks
-"FOX One: Live News, Sports, TV",entertainment,6746049430,fox-one-live-news-sports-tv,us,false,Reached observed frontier in shallow-page test; rotated out
+"FOX One: Live News, Sports, TV",entertainment,6746049430,fox-one-live-news-sports-tv,us,true,Reached observed frontier in shallow-page test; rotated out
 Claude by Anthropic,productivity,6473753684,claude-by-anthropic,us,false,Temporarily rotated out after repeated sparse frontier checks
 Threads,social_networking,6446901002,threads,us,false,Rotated in after frontier-heavy apps were paused
 Google Gemini,productivity,6477489729,google-gemini,us,false,Rotated in after frontier-heavy apps were paused
 Netflix Game Controller,entertainment,6447582581,netflix-game-controller,us,true,Apple US topfreeapplications chart seed
-Trump Accounts: Official App,finance,6767364919,trump-accounts-official-app,us,false,Reached observed frontier in shallow-page test; rotated out
-FWC2026 Mobile Tickets,sports,6532603739,fwc2026-mobile-tickets,us,false,Reached observed frontier in shallow-page test; rotated out
+Trump Accounts: Official App,finance,6767364919,trump-accounts-official-app,us,true,Reached observed frontier in shallow-page test; rotated out
+FWC2026 Mobile Tickets,sports,6532603739,fwc2026-mobile-tickets,us,true,Reached observed frontier in shallow-page test; rotated out
 Telemundo: Series y TV en vivo,entertainment,680595680,telemundo-series-y-tv-en-vivo,us,false,Apple US topfreeapplications chart seed
 Google,utilities,284815942,google,us,false,Rotated in after frontier-heavy apps were paused
 "Whatnot: Shop, Sell, Connect",shopping,1488269261,whatnot-shop-sell-connect,us,false,Paused when reducing controlled backfill set from 25 to 20 apps
 CapCut: Photo & Video Editor,photo_and_video,1500855883,capcut-photo-video-editor,us,false,Paused when reducing controlled backfill set from 25 to 20 apps
 WhatsApp Messenger,social_networking,310633997,whatsapp-messenger,us,false,Paused when reducing controlled backfill set from 25 to 20 apps
-Polymarket,finance,6648798962,polymarket,us,false,Reached observed frontier in shallow-page test; rotated out
-FIFA World Cup 2026™,sports,6476561442,fifa-world-cup-2026,us,false,Reached observed frontier in shallow-page test; rotated out
+Polymarket,finance,6648798962,polymarket,us,true,Reached observed frontier in shallow-page test; rotated out
+FIFA World Cup 2026™,sports,6476561442,fifa-world-cup-2026,us,true,Reached observed frontier in shallow-page test; rotated out
 Planet Fitness,health_and_fitness,399857015,planet-fitness,us,false,Apple US topfreeapplications chart seed
 Temu: Shop Like a Billionaire,shopping,1641486558,temu-shop-like-a-billionaire,us,false,Apple US topfreeapplications chart seed
 Vinted: Pre-loved marketplace,shopping,632064380,vinted-pre-loved-marketplace,us,false,Apple US topfreeapplications chart seed
@@ -51,7 +51,7 @@ Meta AI,productivity,1558240027,meta-ai,us,false,Apple US topfreeapplications ch
 Microsoft Authenticator,productivity,983156458,microsoft-authenticator,us,false,Apple US topfreeapplications chart seed
 Paramount+,entertainment,530168168,paramount,us,false,Apple US topfreeapplications chart seed
 Google Chrome,utilities,535886823,google-chrome,us,false,Apple US topfreeapplications chart seed
-TikTok Pro - Events,entertainment,6741796873,tiktok-pro-events,us,false,Reached observed frontier in shallow-page test; rotated out
+TikTok Pro - Events,entertainment,6741796873,tiktok-pro-events,us,true,Reached observed frontier in shallow-page test; rotated out
 Life360: Family Safety & GPS,social_networking,384830320,life360-family-safety-gps,us,false,Apple US topfreeapplications chart seed
 Facebook,social_networking,284882215,facebook,us,false,Apple US topfreeapplications chart seed
 Microsoft Teams,business,1113153706,microsoft-teams,us,false,Apple US topfreeapplications chart seed
@@ -62,7 +62,7 @@ Capital One Shopping: Save Now,shopping,1089294040,capital-one-shopping-save-now
 "Discord - Talk, Play, Hang Out",social_networking,985746746,discord-talk-play-hang-out,us,false,Apple US topfreeapplications chart seed
 T-Life,lifestyle,1111876388,t-life,us,false,Apple US topfreeapplications chart seed
 Pinterest,lifestyle,429047995,pinterest,us,false,Apple US topfreeapplications chart seed
-WeatherWise.app,weather,6736407724,weatherwise-app,us,false,Reached observed frontier in shallow-page test; rotated out
+WeatherWise.app,weather,6736407724,weatherwise-app,us,true,Reached observed frontier in shallow-page test; rotated out
 YouTube,photo_and_video,544007664,youtube,us,false,Apple US topfreeapplications chart seed
 The Roku App (Official),entertainment,482066631,the-roku-app-official,us,false,Apple US topfreeapplications chart seed
 Microsoft Outlook,productivity,951937596,microsoft-outlook,us,false,Apple US topfreeapplications chart seed
@@ -72,46 +72,46 @@ Grok - AI Chat & Video,productivity,6670324846,grok-ai-chat-video,us,false,Apple
 Canva: AI Video & Photo Editor,photo_and_video,897446215,canva-ai-video-photo-editor,us,false,Apple US topfreeapplications chart seed
 Freecash - Get Paid Real Money,entertainment,1673567402,freecash-get-paid-real-money,us,false,Apple US topfreeapplications chart seed
 Rips by Triumph,shopping,6751921248,rips-by-triumph,us,false,Apple US topfreeapplications chart seed
-Google Meet,social_networking,1096918571,google-meet,us,true,Rotated in for shallow high-potential depth test; current max OK page around 65
-Speak & Learn English: Learna,education,6478287397,speak-learn-english-learna,us,false,Apple US topfreeapplications chart seed
-McDonald's,food_and_drink,922103212,mcdonalds,us,true,Rotated in for shallow high-potential depth test; current max OK page around 77
-"Strava: Run, Bike, Walk",health_and_fitness,426826309,strava-run-bike-walk,us,false,Apple US topfreeapplications chart seed
-DealSeek: Coupons & Discounts,shopping,6745274862,dealseek-coupons-discounts,us,false,Reached observed frontier in shallow-page test; rotated out
-MyChart,medical,382952264,mychart,us,false,Apple US topfreeapplications chart seed
+Google Meet,social_networking,1096918571,google-meet,us,false,Rotated in for shallow high-potential depth test; current max OK page around 65
+Speak & Learn English: Learna,education,6478287397,speak-learn-english-learna,us,true,Apple US topfreeapplications chart seed
+McDonald's,food_and_drink,922103212,mcdonalds,us,false,Rotated in for shallow high-potential depth test; current max OK page around 77
+"Strava: Run, Bike, Walk",health_and_fitness,426826309,strava-run-bike-walk,us,true,Apple US topfreeapplications chart seed
+DealSeek: Coupons & Discounts,shopping,6745274862,dealseek-coupons-discounts,us,true,Reached observed frontier in shallow-page test; rotated out
+MyChart,medical,382952264,mychart,us,true,Apple US topfreeapplications chart seed
 Snapchat,photo_and_video,447188370,snapchat,us,false,Apple US topfreeapplications chart seed
-Zoom Workplace,business,546505307,zoom-workplace,us,true,Rotated in for shallow high-potential depth test; current max OK page around 75
-AliExpress - Shopping App,shopping,436672029,aliexpress-shopping-app,us,true,Rotated in for shallow high-potential depth test; current max OK page around 77
-Chase Mobile®: Bank & Invest,finance,298867247,chase-mobile-bank-invest,us,true,Rotated in for shallow high-potential depth test; current max OK page around 66
-YouTube TV,entertainment,1193350206,youtube-tv,us,true,Rotated in for shallow high-potential depth test; current max OK page around 65
-DraftKings: Sports & Casino,sports,1375031369,draftkings-sports-casino,us,false,Apple US topfreeapplications chart seed
-VIZIO | WatchFree+,entertainment,1054033219,vizio-watchfree,us,true,Apple US topfreeapplications chart seed
+Zoom Workplace,business,546505307,zoom-workplace,us,false,Rotated in for shallow high-potential depth test; current max OK page around 75
+AliExpress - Shopping App,shopping,436672029,aliexpress-shopping-app,us,false,Rotated in for shallow high-potential depth test; current max OK page around 77
+Chase Mobile®: Bank & Invest,finance,298867247,chase-mobile-bank-invest,us,false,Rotated in for shallow high-potential depth test; current max OK page around 66
+YouTube TV,entertainment,1193350206,youtube-tv,us,false,Rotated in for shallow high-potential depth test; current max OK page around 65
+DraftKings: Sports & Casino,sports,1375031369,draftkings-sports-casino,us,true,Apple US topfreeapplications chart seed
+VIZIO | WatchFree+,entertainment,1054033219,vizio-watchfree,us,false,Apple US topfreeapplications chart seed
 Taco Bell Fast Food & Delivery,food_and_drink,497387361,taco-bell-fast-food-delivery,us,false,Apple US topfreeapplications chart seed
 eBay online shopping & selling,shopping,282614216,ebay-online-shopping-selling,us,false,Apple US topfreeapplications chart seed
-Reddit,news,1064216828,reddit,us,true,Rotated in for shallow high-potential depth test; current max OK page around 78
-LinkedIn: Community & Network,business,288429040,linkedin-community-network,us,false,Apple US topfreeapplications chart seed
-American Airlines,travel,382698565,american-airlines,us,true,Rotated in for shallow high-potential depth test; current max OK page around 70
-Fly Delta,travel,388491656,fly-delta,us,false,Apple US topfreeapplications chart seed
-ADP Mobile Solutions,business,444553167,adp-mobile-solutions,us,true,Apple US topfreeapplications chart seed
-Disney+,entertainment,1446075923,disney,us,true,Rotated in for shallow high-potential depth test; current max OK page around 65
-Costco,shopping,535509415,costco,us,true,Rotated in for shallow high-potential depth test; current max OK page around 77
-Twitch: Live Streaming,photo_and_video,460177396,twitch-live-streaming,us,true,Rotated in for shallow high-potential depth test; current max OK page around 75
-GroupMe,social_networking,392796698,groupme,us,false,Apple US topfreeapplications chart seed
-Google Drive,productivity,507874739,google-drive,us,true,Rotated in for shallow high-potential depth test; current max OK page around 68
-Chime® – Mobile Banking,finance,836215269,chime-mobile-banking,us,false,Apple US topfreeapplications chart seed
-Southwest Airlines: Travel App,travel,344542975,southwest-airlines-travel-app,us,true,Rotated in for shallow high-potential depth test; current max OK page around 65
-MLB Ballpark,sports,513135722,mlb-ballpark,us,false,Apple US topfreeapplications chart seed
-PrizePicks - Sports Picks,sports,1437843273,prizepicks-sports-picks,us,false,Apple US topfreeapplications chart seed
+Reddit,news,1064216828,reddit,us,false,Rotated in for shallow high-potential depth test; current max OK page around 78
+LinkedIn: Community & Network,business,288429040,linkedin-community-network,us,true,Apple US topfreeapplications chart seed
+American Airlines,travel,382698565,american-airlines,us,false,Rotated in for shallow high-potential depth test; current max OK page around 70
+Fly Delta,travel,388491656,fly-delta,us,true,Apple US topfreeapplications chart seed
+ADP Mobile Solutions,business,444553167,adp-mobile-solutions,us,false,Apple US topfreeapplications chart seed
+Disney+,entertainment,1446075923,disney,us,false,Rotated in for shallow high-potential depth test; current max OK page around 65
+Costco,shopping,535509415,costco,us,false,Rotated in for shallow high-potential depth test; current max OK page around 77
+Twitch: Live Streaming,photo_and_video,460177396,twitch-live-streaming,us,false,Rotated in for shallow high-potential depth test; current max OK page around 75
+GroupMe,social_networking,392796698,groupme,us,true,Apple US topfreeapplications chart seed
+Google Drive,productivity,507874739,google-drive,us,false,Rotated in for shallow high-potential depth test; current max OK page around 68
+Chime® – Mobile Banking,finance,836215269,chime-mobile-banking,us,true,Apple US topfreeapplications chart seed
+Southwest Airlines: Travel App,travel,344542975,southwest-airlines-travel-app,us,false,Rotated in for shallow high-potential depth test; current max OK page around 65
+MLB Ballpark,sports,513135722,mlb-ballpark,us,true,Apple US topfreeapplications chart seed
+PrizePicks - Sports Picks,sports,1437843273,prizepicks-sports-picks,us,true,Apple US topfreeapplications chart seed
 Google Authenticator,utilities,388497605,google-authenticator,us,false,Apple US topfreeapplications chart seed
 MONOPOLY GO!,games,1621328561,monopoly-go,us,false,Apple US topgrossingapplications chart seed
-Royal Match,games,1482155847,royal-match,us,false,Apple US topgrossingapplications chart seed
+Royal Match,games,1482155847,royal-match,us,true,Apple US topgrossingapplications chart seed
 Kingshot,games,6739554056,kingshot,us,false,Apple US topgrossingapplications chart seed
 HBO Max: Stream Movies & TV,entertainment,1666653815,hbo-max-stream-movies-tv,us,false,Apple US topgrossingapplications chart seed
 Gossip Harbor®: Merge & Story,games,1623318294,gossip-harbor-merge-story,us,false,Apple US topgrossingapplications chart seed
 Candy Crush Saga,games,553834731,candy-crush-saga,us,false,Apple US topgrossingapplications chart seed
 Whiteout Survival,games,6443575749,whiteout-survival,us,false,Apple US topgrossingapplications chart seed
 Last War:Survival,games,6448786147,last-war-survival,us,false,Apple US topgrossingapplications chart seed
-Crunchyroll,entertainment,329913454,crunchyroll,us,false,Apple US topgrossingapplications chart seed
-YouTube Music,music,1017492454,youtube-music,us,false,Apple US topgrossingapplications chart seed
+Crunchyroll,entertainment,329913454,crunchyroll,us,true,Apple US topgrossingapplications chart seed
+YouTube Music,music,1017492454,youtube-music,us,true,Apple US topgrossingapplications chart seed
 Tinder Dating App: Date & Chat,lifestyle,547702041,tinder-dating-app-date-chat,us,false,Apple US topgrossingapplications chart seed
 Royal Kingdom,games,1606549505,royal-kingdom,us,false,Apple US topgrossingapplications chart seed
 Township,games,638689075,township,us,false,Apple US topgrossingapplications chart seed
@@ -125,22 +125,22 @@ Grindr - Gay Dating & Chat,social_networking,319881193,grindr-gay-dating-chat,us
 Toon Blast,games,1176027022,toon-blast,us,false,Apple US topgrossingapplications chart seed
 Hinge Dating App: Match & Date,lifestyle,595287172,hinge-dating-app-match-date,us,false,Apple US topgrossingapplications chart seed
 Pixel Flow!,games,6751056652,pixel-flow,us,false,Apple US topgrossingapplications chart seed
-PictureThis - Plant Identifier,education,1252497129,picturethis-plant-identifier,us,false,Apple US topgrossingapplications chart seed
-Dropbox: Cloud Storage Backup,productivity,327630330,dropbox-cloud-storage-backup,us,false,Apple US topgrossingapplications chart seed
-Tasty Travels: Merge Game,games,6471045672,tasty-travels-merge-game,us,true,Apple US topgrossingapplications chart seed
+PictureThis - Plant Identifier,education,1252497129,picturethis-plant-identifier,us,true,Apple US topgrossingapplications chart seed
+Dropbox: Cloud Storage Backup,productivity,327630330,dropbox-cloud-storage-backup,us,true,Apple US topgrossingapplications chart seed
+Tasty Travels: Merge Game,games,6471045672,tasty-travels-merge-game,us,false,Apple US topgrossingapplications chart seed
 GameChanger,sports,1308415878,gamechanger,us,false,Apple US topgrossingapplications chart seed
 Match Factory!,games,6449094229,match-factory,us,false,Apple US topgrossingapplications chart seed
 Gardenscapes,games,1105855019,gardenscapes,us,false,Apple US topgrossingapplications chart seed
 Love and Deepspace,games,6443467666,love-and-deepspace,us,false,Apple US topgrossingapplications chart seed
 ReelShort - Stream Drama & TV,entertainment,1636235979,reelshort-stream-drama-tv,us,false,Apple US topgrossingapplications chart seed
 Amazon Music: Songs & Podcasts,music,510855668,amazon-music-songs-podcasts,us,false,Apple US topgrossingapplications chart seed
-Block Out! - Color Sort Puzzle,games,6752672568,block-out-color-sort-puzzle,us,false,Reached observed frontier in shallow-page test; rotated out
+Block Out! - Color Sort Puzzle,games,6752672568,block-out-color-sort-puzzle,us,true,Reached observed frontier in shallow-page test; rotated out
 Facetune: Photo & Video Editor,photo_and_video,1149994032,facetune-photo-video-editor,us,false,Apple US topgrossingapplications chart seed
 Free Fire: Undersea Mystery,games,1300146617,free-fire-undersea-mystery,us,false,Apple US topgrossingapplications chart seed
 Coin Master,games,406889139,coin-master,us,false,Apple US topgrossingapplications chart seed
 Homescapes: Match 3 Games,games,1195621598,homescapes-match-3-games,us,false,Apple US topgrossingapplications chart seed
 Lightning Link Casino Slots,games,1243005112,lightning-link-casino-slots,us,false,Apple US topgrossingapplications chart seed
-Merge Cooking®,games,1643509748,merge-cooking,us,false,Apple US topgrossingapplications chart seed
+Merge Cooking®,games,1643509748,merge-cooking,us,true,Apple US topgrossingapplications chart seed
 The Zeus Network,entertainment,1399446592,the-zeus-network,us,false,Apple US topgrossingapplications chart seed
 Clash of Clans,games,529479190,clash-of-clans,us,false,Apple US topgrossingapplications chart seed
 Jackpot Party - Casino Slots,games,575980917,jackpot-party-casino-slots,us,false,Apple US topgrossingapplications chart seed
@@ -149,53 +149,53 @@ EA SPORTS FC Soccer Mobile 26,games,1094930513,ea-sports-fc-soccer-mobile-26,us,
 Cleanup: Phone Storage Cleaner,utilities,1510944943,cleanup-phone-storage-cleaner,us,false,Apple US topgrossingapplications chart seed
 All in Hole: Black Hole Games,games,6503284107,all-in-hole-black-hole-games,us,false,Apple US topgrossingapplications chart seed
 "ViX: TV, Sports and News",entertainment,1531467766,vix-tv-sports-and-news,us,false,Apple US topgrossingapplications chart seed
-Magic Sort!,games,6499209744,magic-sort,us,false,Apple US topgrossingapplications chart seed
-Disney Solitaire,games,6475757306,disney-solitaire,us,false,Apple US topgrossingapplications chart seed
-Fishdom,games,664575829,fishdom,us,false,Apple US topgrossingapplications chart seed
-LADDER Strength Training Plans,health_and_fitness,1502936453,ladder-strength-training-plans,us,false,Apple US topgrossingapplications chart seed
+Magic Sort!,games,6499209744,magic-sort,us,true,Apple US topgrossingapplications chart seed
+Disney Solitaire,games,6475757306,disney-solitaire,us,true,Apple US topgrossingapplications chart seed
+Fishdom,games,664575829,fishdom,us,true,Apple US topgrossingapplications chart seed
+LADDER Strength Training Plans,health_and_fitness,1502936453,ladder-strength-training-plans,us,true,Apple US topgrossingapplications chart seed
 Bumble Dating App: Meet & Date,lifestyle,930441707,bumble-dating-app-meet-date,us,false,Apple US topgrossingapplications chart seed
-NYTimes: US and Global News,news,284862083,nytimes-us-and-global-news,us,false,Apple US topgrossingapplications chart seed
-FaceApp: Perfect Face Editor,photo_and_video,1180884341,faceapp-perfect-face-editor,us,false,Apple US topgrossingapplications chart seed
-Raya,lifestyle,957215308,raya,us,false,Reached observed frontier in shallow-page test; rotated out
-Cashman Casino Slots Games,games,1123582513,cashman-casino-slots-games,us,true,Apple US topgrossingapplications chart seed
+NYTimes: US and Global News,news,284862083,nytimes-us-and-global-news,us,true,Apple US topgrossingapplications chart seed
+FaceApp: Perfect Face Editor,photo_and_video,1180884341,faceapp-perfect-face-editor,us,true,Apple US topgrossingapplications chart seed
+Raya,lifestyle,957215308,raya,us,true,Reached observed frontier in shallow-page test; rotated out
+Cashman Casino Slots Games,games,1123582513,cashman-casino-slots-games,us,false,Apple US topgrossingapplications chart seed
 Wyze - Never Wonder,lifestyle,1288415553,wyze-never-wonder,us,false,Apple US topgrossingapplications chart seed
-Total Battle: War Strategy,games,1274132545,total-battle-war-strategy,us,false,Apple US topgrossingapplications chart seed
-DramaBox - Stream Drama Shorts,entertainment,6445905219,dramabox-stream-drama-shorts,us,false,Apple US topgrossingapplications chart seed
+Total Battle: War Strategy,games,1274132545,total-battle-war-strategy,us,true,Apple US topgrossingapplications chart seed
+DramaBox - Stream Drama Shorts,entertainment,6445905219,dramabox-stream-drama-shorts,us,true,Apple US topgrossingapplications chart seed
 Blink Home Monitor,utilities,1013961111,blink-home-monitor,us,false,Apple US topgrossingapplications chart seed
 NYT Games: Wordle & Crossword,games,307569751,nyt-games-wordle-crossword,us,false,Apple US topgrossingapplications chart seed
 Travel Town - Merge Adventure,games,1521236603,travel-town-merge-adventure,us,false,Apple US topgrossingapplications chart seed
 Call of Duty®: Mobile,games,1287282214,call-of-duty-mobile,us,false,Apple US topgrossingapplications chart seed
 Flo Cycle & Period Tracker,health_and_fitness,1038369065,flo-cycle-period-tracker,us,false,Apple US topgrossingapplications chart seed
-Perplexity - AI Search & Chat,productivity,1668000334,perplexity-ai-search-chat,us,false,Apple US topgrossingapplications chart seed
+Perplexity - AI Search & Chat,productivity,1668000334,perplexity-ai-search-chat,us,true,Apple US topgrossingapplications chart seed
 onX Hunt: GPS Hunting Maps,navigation,672902340,onx-hunt-gps-hunting-maps,us,false,Apple US topgrossingapplications chart seed
 STARZ,entertainment,550221096,starz,us,false,Apple US topgrossingapplications chart seed
-Screwdom,games,6740043080,screwdom,us,true,Apple US topgrossingapplications chart seed
+Screwdom,games,6740043080,screwdom,us,false,Apple US topgrossingapplications chart seed
 "BIGO LIVE-Live Stream, Go Live",social_networking,1077137248,bigo-live-live-stream-go-live,us,false,Apple US topgrossingapplications chart seed
 "Clapper: Video, Live, Chat",social_networking,1522122685,clapper-video-live-chat,us,false,Apple US topgrossingapplications chart seed
-Acrobat Reader: PDF Editor,business,469337564,acrobat-reader-pdf-editor,us,false,Apple US topgrossingapplications chart seed
+Acrobat Reader: PDF Editor,business,469337564,acrobat-reader-pdf-editor,us,true,Apple US topgrossingapplications chart seed
 ESPN: Live Sports & Scores,sports,317469184,espn-live-sports-scores,us,false,Apple US topgrossingapplications chart seed
 Feeld: Dating for the Curious,lifestyle,887914690,feeld-dating-for-the-curious,us,false,Apple US topgrossingapplications chart seed
 Cleaner Guru: Clean Up Storage,utilities,1476380919,cleaner-guru-clean-up-storage,us,false,Apple US topgrossingapplications chart seed
 Candy Crush Soda Saga,games,850417475,candy-crush-soda-saga,us,false,Apple US topgrossingapplications chart seed
 Evony,games,1098157959,evony,us,false,Apple US topgrossingapplications chart seed
-DramaWave - Dramas & Reels,entertainment,6670430706,dramawave-dramas-reels,us,false,Apple US topgrossingapplications chart seed
-Dark War:Survival,games,6670441558,dark-war-survival,us,false,Apple US topgrossingapplications chart seed
-"AllTrails: Hike, Bike & Run",health_and_fitness,405075943,alltrails-hike-bike-run,us,false,Apple US topgrossingapplications chart seed
-Minecraft: Play with Friends!,games,479516143,minecraft-play-with-friends,us,false,Apple US toppaidapplications chart seed
+DramaWave - Dramas & Reels,entertainment,6670430706,dramawave-dramas-reels,us,true,Apple US topgrossingapplications chart seed
+Dark War:Survival,games,6670441558,dark-war-survival,us,true,Apple US topgrossingapplications chart seed
+"AllTrails: Hike, Bike & Run",health_and_fitness,405075943,alltrails-hike-bike-run,us,true,Apple US topgrossingapplications chart seed
+Minecraft: Play with Friends!,games,479516143,minecraft-play-with-friends,us,true,Apple US toppaidapplications chart seed
 Geometry Dash,games,625334537,geometry-dash,us,false,Apple US toppaidapplications chart seed
-Shadowrocket,utilities,932747118,shadowrocket,us,false,Apple US toppaidapplications chart seed
-Heads Up!,games,623592465,heads-up,us,true,Apple US toppaidapplications chart seed
-HotSchedules,business,294934058,hotschedules,us,false,Apple US toppaidapplications chart seed
-Plague Inc.,games,525818839,plague-inc,us,false,Apple US toppaidapplications chart seed
+Shadowrocket,utilities,932747118,shadowrocket,us,true,Apple US toppaidapplications chart seed
+Heads Up!,games,623592465,heads-up,us,false,Apple US toppaidapplications chart seed
+HotSchedules,business,294934058,hotschedules,us,true,Apple US toppaidapplications chart seed
+Plague Inc.,games,525818839,plague-inc,us,true,Apple US toppaidapplications chart seed
 Red's First Flight,games,1596736236,reds-first-flight,us,false,Apple US toppaidapplications chart seed
-Bloons TD 6,games,1118115766,bloons-td-6,us,false,Apple US toppaidapplications chart seed
+Bloons TD 6,games,1118115766,bloons-td-6,us,true,Apple US toppaidapplications chart seed
 Stardew Valley,games,1406710800,stardew-valley,us,false,Apple US toppaidapplications chart seed
-RadarScope,weather,288419283,radarscope,us,false,Apple US toppaidapplications chart seed
+RadarScope,weather,288419283,radarscope,us,true,Apple US toppaidapplications chart seed
 Balatro,games,6502453075,balatro,us,false,Apple US toppaidapplications chart seed
-AnkiMobile Flashcards,education,373493387,ankimobile-flashcards,us,false,Reached observed frontier in shallow-page test; rotated out
-Papa's Freezeria To Go!,games,824305459,papas-freezeria-to-go,us,false,Apple US toppaidapplications chart seed
+AnkiMobile Flashcards,education,373493387,ankimobile-flashcards,us,true,Reached observed frontier in shallow-page test; rotated out
+Papa's Freezeria To Go!,games,824305459,papas-freezeria-to-go,us,true,Apple US toppaidapplications chart seed
 MONOPOLY: The Board Game,games,1477966166,monopoly-the-board-game,us,false,Apple US toppaidapplications chart seed
-Scritchy Scratchy,games,6758328352,scritchy-scratchy,us,false,Reached observed frontier in shallow-page test; rotated out
+Scritchy Scratchy,games,6758328352,scritchy-scratchy,us,true,Reached observed frontier in shallow-page test; rotated out
 Procreate Pocket,graphics_and_design,916366645,procreate-pocket,us,false,Apple US toppaidapplications chart seed
-Backyard Baseball '01,games,6740349587,backyard-baseball-01,us,false,Reached observed frontier in shallow-page test; rotated out
+Backyard Baseball '01,games,6740349587,backyard-baseball-01,us,true,Reached observed frontier in shallow-page test; rotated out
 SkyView®,education,404990064,skyview,us,false,Apple US toppaidapplications chart seed
