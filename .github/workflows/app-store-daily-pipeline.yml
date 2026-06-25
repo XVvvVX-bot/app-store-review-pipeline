@@ -7,17 +7,22 @@ on:
       limit:
         description: "Maximum active targets to ingest"
         required: false
-        default: "1"
+        default: "0"
         type: string
       target_offset:
-        description: "Number of active targets to skip before applying limit, or auto for coverage-aware rotation"
+        description: "Number of active targets to skip before applying limit; auto is treated as 0 for full-scope daily matrix"
         required: false
-        default: "auto"
+        default: "0"
+        type: string
+      max_parallel:
+        description: "Maximum app-level daily jobs to run in parallel. True parallelism requires multiple self-hosted runner instances."
+        required: false
+        default: "4"
         type: string
       max_pages_per_app_country:
-        description: "Maximum web catalog pages per app-country scope; use 0 only for manual complete-backfill probes"
+        description: "Maximum web catalog pages per app-country scope; 0 means fetch until overlap/no-next/time budget"
         required: false
-        default: "5"
+        default: "0"
         type: string
       pressure_ramp_mode:
         description: "Use stored safe web catalog pressure, candidate pressure, or keep the fixed page cap"
@@ -122,29 +127,65 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  daily:
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.build-matrix.outputs.matrix }}
+      max_parallel: ${{ steps.build-matrix.outputs.max_parallel }}
+      run_started_at: ${{ steps.build-matrix.outputs.run_started_at }}
+      selected_count: ${{ steps.build-matrix.outputs.selected_count }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Build app daily matrix
+        id: build-matrix
+        env:
+          INPUT_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '0' }}
+          INPUT_TARGET_OFFSET: ${{ github.event_name == 'workflow_dispatch' && inputs.target_offset || '0' }}
+          INPUT_MAX_PARALLEL: ${{ github.event_name == 'workflow_dispatch' && inputs.max_parallel || '4' }}
+        run: |
+          set -euo pipefail
+          echo "run_started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import csv
+          import json
+          import os
+
+          limit = max(0, int(os.environ["INPUT_LIMIT"]))
+          offset_raw = os.environ["INPUT_TARGET_OFFSET"].strip().lower()
+          start_offset = 0 if offset_raw == "auto" else max(0, int(offset_raw))
+          max_parallel = max(1, int(os.environ["INPUT_MAX_PARALLEL"]))
+          rows = []
+          with open("data/targets/apple_apps.csv", newline="", encoding="utf-8") as handle:
+              active_index = 0
+              for row in csv.DictReader(handle):
+                  if str(row.get("active", "")).strip().lower() != "true":
+                      continue
+                  if active_index >= start_offset:
+                      rows.append(
+                          {
+                              "target_offset": active_index,
+                              "app_id": row["apple_app_id"],
+                              "app_name": row["app_name"],
+                          }
+                      )
+                  active_index += 1
+          if limit:
+              rows = rows[:limit]
+          matrix = {"include": rows}
+          print(f"matrix={json.dumps(matrix, separators=(',', ':'))}")
+          print(f"selected_count={len(rows)}")
+          print(f"max_parallel={max_parallel}")
+          PY
+
+  preflight:
+    needs: prepare-matrix
     runs-on: [self-hosted, macOS, ARM64]
-    timeout-minutes: 120
+    timeout-minutes: 30
     env:
       PIP_CONFIG_FILE: /dev/null
       PIP_USER: "false"
-      INPUT_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '1' }}
-      INPUT_TARGET_OFFSET: ${{ github.event_name == 'workflow_dispatch' && inputs.target_offset || 'auto' }}
-      INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ github.event_name == 'workflow_dispatch' && inputs.max_pages_per_app_country || '5' }}
-      INPUT_PRESSURE_RAMP_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.pressure_ramp_mode || 'safe' }}
-      INPUT_PRESSURE_RAMP_LOOKBACK_MINUTES: ${{ github.event_name == 'workflow_dispatch' && inputs.pressure_ramp_lookback_minutes || '720' }}
-      INPUT_PRESSURE_RAMP_MAX_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.pressure_ramp_max_pages || '25' }}
-      INPUT_START_PAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.start_page || '1' }}
-      INPUT_REVIEW_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.review_limit || '20' }}
-      INPUT_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '10' }}
-      INPUT_REQUEST_DELAY_JITTER_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_jitter_seconds || '5' }}
-      INPUT_WEB_429_RETRIES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retries || '2' }}
-      INPUT_WEB_429_RETRY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_seconds || '300' }}
-      INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_backoff_multiplier || '1.5' }}
-      INPUT_WEB_429_RETRY_JITTER_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_jitter_seconds || '60' }}
-      INPUT_WEB_TIME_BUDGET_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_time_budget_seconds || '1200' }}
-      INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_scope_time_budget_seconds || '0' }}
-      INPUT_DISABLE_OVERLAP_STOP: ${{ github.event_name == 'workflow_dispatch' && inputs.disable_overlap_stop || 'false' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_LOOKBACK_MINUTES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_circuit_breaker_lookback_minutes || '720' }}
       INPUT_WEB_429_COOLDOWN_MINUTES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_cooldown_minutes || '0' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_circuit_breaker_min_pages || '4' }}
@@ -153,10 +194,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-
-      - name: Mark run window
-        id: run-window
-        run: echo "run_started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
       - name: Create Python virtualenv
         run: |
@@ -202,6 +239,64 @@ jobs:
       - name: Run tests
         run: .venv/bin/python -m pytest -q
 
+  daily:
+    needs:
+      - prepare-matrix
+      - preflight
+    if: ${{ fromJSON(needs.prepare-matrix.outputs.selected_count) > 0 }}
+    name: daily ${{ matrix.target_offset }} ${{ matrix.app_name }}
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: ${{ fromJSON(needs.prepare-matrix.outputs.max_parallel) }}
+      matrix: ${{ fromJSON(needs.prepare-matrix.outputs.matrix) }}
+    env:
+      PIP_CONFIG_FILE: /dev/null
+      PIP_USER: "false"
+      INPUT_LIMIT: "1"
+      INPUT_TARGET_OFFSET: ${{ matrix.target_offset }}
+      MATRIX_APP_ID: ${{ matrix.app_id }}
+      INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ github.event_name == 'workflow_dispatch' && inputs.max_pages_per_app_country || '0' }}
+      INPUT_PRESSURE_RAMP_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.pressure_ramp_mode || 'fixed' }}
+      INPUT_PRESSURE_RAMP_LOOKBACK_MINUTES: ${{ github.event_name == 'workflow_dispatch' && inputs.pressure_ramp_lookback_minutes || '720' }}
+      INPUT_PRESSURE_RAMP_MAX_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.pressure_ramp_max_pages || '25' }}
+      INPUT_START_PAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.start_page || '1' }}
+      INPUT_REVIEW_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.review_limit || '20' }}
+      INPUT_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '10' }}
+      INPUT_REQUEST_DELAY_JITTER_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_jitter_seconds || '5' }}
+      INPUT_WEB_429_RETRIES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retries || '2' }}
+      INPUT_WEB_429_RETRY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_seconds || '300' }}
+      INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_backoff_multiplier || '1.5' }}
+      INPUT_WEB_429_RETRY_JITTER_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_jitter_seconds || '60' }}
+      INPUT_WEB_TIME_BUDGET_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_time_budget_seconds || '1200' }}
+      INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_scope_time_budget_seconds || '0' }}
+      INPUT_DISABLE_OVERLAP_STOP: ${{ github.event_name == 'workflow_dispatch' && inputs.disable_overlap_stop || 'false' }}
+      INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_circuit_breaker_min_pages || '4' }}
+      INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_circuit_breaker_max_rate || '0.5' }}
+      DAILY_RUN_STARTED_AT: ${{ needs.prepare-matrix.outputs.run_started_at }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Create Python virtualenv
+        run: |
+          set -euo pipefail
+          python3.12 -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+
+      - name: Install dependencies
+        run: .venv/bin/python -m pip install -r requirements.txt
+
+      - name: Check local Postgres
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          .venv/bin/python app_store_pipeline.py init-postgres --database-url "$database_url"
+
       - name: Select web catalog pressure
         env:
           DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
@@ -238,17 +333,7 @@ jobs:
           database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
           max_pages_per_app_country="$SELECTED_MAX_PAGES_PER_APP_COUNTRY"
           echo "Using max pages per app-country: $max_pages_per_app_country"
-
-          target_offset="$INPUT_TARGET_OFFSET"
-          if [[ "$target_offset" == "auto" ]]; then
-            target_offset="$(.venv/bin/python scripts/summarize_source_coverage.py \
-              --database-url "$database_url" \
-              --targets data/targets/apple_apps.csv \
-              --max-pages-per-app-country "$max_pages_per_app_country" \
-              --review-limit "$INPUT_REVIEW_LIMIT" \
-              --print-next-target-offset)"
-          fi
-          echo "Using target offset: $target_offset"
+          echo "Daily incremental app offset $INPUT_TARGET_OFFSET: ${{ matrix.app_name }} ($MATRIX_APP_ID)"
 
           overlap_flag=""
           if [ "$INPUT_DISABLE_OVERLAP_STOP" = "true" ]; then
@@ -257,7 +342,7 @@ jobs:
           .venv/bin/python app_store_pipeline.py daily-web-catalog \
             --database-url "$database_url" \
             --limit "$INPUT_LIMIT" \
-            --target-offset "$target_offset" \
+            --target-offset "$INPUT_TARGET_OFFSET" \
             --max-pages-per-app-country "$max_pages_per_app_country" \
             --start-page "$INPUT_START_PAGE" \
             --review-limit "$INPUT_REVIEW_LIMIT" \
@@ -281,7 +366,7 @@ jobs:
           .venv/bin/python app_store_pipeline.py check-web-429-circuit-breaker \
             --database-url "$database_url" \
             --source apple_app_store_web_catalog_reviews \
-            --since "${{ steps.run-window.outputs.run_started_at }}" \
+            --since "$DAILY_RUN_STARTED_AT" \
             --min-pages 1 \
             --max-rate "$INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE"
 
@@ -296,7 +381,7 @@ jobs:
           .venv/bin/python app_store_pipeline.py record-web-catalog-pressure-result \
             --database-url "$database_url" \
             --source apple_app_store_web_catalog_reviews \
-            --since "${{ steps.run-window.outputs.run_started_at }}" \
+            --since "$DAILY_RUN_STARTED_AT" \
             --used-pages "$used_pages" \
             --base-pages "$INPUT_MAX_PAGES_PER_APP_COUNTRY" \
             --max-pages "$INPUT_PRESSURE_RAMP_MAX_PAGES"
@@ -305,7 +390,7 @@ jobs:
         if: ${{ always() && !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: app-store-review-pipeline-${{ github.run_id }}
+          name: app-store-review-pipeline-${{ github.run_id }}-${{ matrix.target_offset }}-${{ matrix.app_id }}
           retention-days: 14
           if-no-files-found: ignore
           path: |
