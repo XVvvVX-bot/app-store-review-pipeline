@@ -75,6 +75,8 @@ The daily incremental workflow uses:
 
 The scheduled daily cadence is 08:07 and 20:07 America/Los_Angeles during PDT, represented in GitHub Actions cron as `7 3,15 * * *` because GitHub schedules use UTC.
 
+The current daily incremental operating mode and full-scope run evidence are documented in `docs/daily_incremental.md`.
+
 The backfill workflow remains available for historical depth testing and uses:
 
 - local Postgres initialization before every job

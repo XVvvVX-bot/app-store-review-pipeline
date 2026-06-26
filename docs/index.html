@@ -130,6 +130,7 @@
         <p>Target list, fetch, raw storage, normalization, Postgres upsert, validation, EDA, and GitHub Actions operations.</p>
         <div class="link-list">
           <a href="architecture.md">Read architecture notes</a>
+          <a href="daily_incremental.md">Read daily incremental operations</a>
         </div>
       </div>
     </section>
@@ -139,14 +140,15 @@
       <p>
         This project uses Apple-hosted public structured catalog data, not App Store Connect owner credentials.
         Historical completeness is proven only when a backfill reaches <code>no_next_href</code>.
-        The current development store is local Postgres, and scheduled ingestion is paused while EDA and safe refresh strategy are reviewed.
+        The current development store is local Postgres, and twice-daily incremental ingestion is active across all 200 target apps while historical backfill remains manual-only.
       </p>
       <div class="pill-row">
         <span class="pill">No login</span>
         <span class="pill">No proxies</span>
         <span class="pill">No CAPTCHA bypass</span>
         <span class="pill">Postgres source of truth</span>
-        <span class="pill">Manual backfill only for now</span>
+        <span class="pill">Twice-daily incremental</span>
+        <span class="pill">Manual backfill only</span>
       </div>
     </section>
 

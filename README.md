@@ -37,7 +37,7 @@ Postgres is the source of truth. Raw JSON and GitHub artifacts are useful for au
 
 Review identity is `platform + source + country + app_id + review_id`, so repeated runs upsert existing reviews instead of duplicating them. If Apple returns changed review metadata, the row is updated and the change is recorded.
 
-See `docs/storage_schema.md` for the storage-layer design, table relationships, primary keys, deduplication logic, lineage fields, and intentionally excluded source fields.
+See `docs/storage_schema.md` for the storage-layer design, table relationships, primary keys, deduplication logic, lineage fields, and intentionally excluded source fields. See `docs/daily_incremental.md` for the current twice-daily incremental operating mode and run evidence.
 
 ## Install
 
@@ -129,6 +129,7 @@ Research-era workflows have been moved to `docs/archive/workflows/` so they rema
 ## Reports And Docs
 
 - GitHub Pages review package: https://xvvvvx-bot.github.io/app-store-review-pipeline/
+- Daily incremental operations: `docs/daily_incremental.md`
 - Data-quality report: `docs/eda/apple_review_data_quality.md`
 - Data-quality summary JSON: `docs/eda/apple_review_data_quality_summary.json`
 - Data-quality HTML dashboard: `docs/eda/apple_review_data_quality_dashboard.html`
