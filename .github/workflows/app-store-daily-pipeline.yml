@@ -1,7 +1,9 @@
 name: App Store Review Pipeline
 
 on:
-  # Dispatch-only while full-scope daily incremental behavior is being tested.
+  # GitHub cron is UTC. These map to 20:07 and 08:07 America/Los_Angeles during PDT.
+  schedule:
+    - cron: "7 3,15 * * *"
   workflow_dispatch:
     inputs:
       limit:
@@ -86,12 +88,12 @@ on:
       web_time_budget_seconds:
         description: "Wall-clock budget for web catalog fetching; 0 means no budget"
         required: false
-        default: "1200"
+        default: "3600"
         type: string
       web_scope_time_budget_seconds:
         description: "Optional per app-country budget for web catalog fetching; 0 means no per-scope budget"
         required: false
-        default: "0"
+        default: "3600"
         type: string
       disable_overlap_stop:
         description: "Fetch to page cap/no-next even after already-known web catalog review IDs are seen"
@@ -269,8 +271,8 @@ jobs:
       INPUT_WEB_429_RETRY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_seconds || '300' }}
       INPUT_WEB_429_BACKOFF_MULTIPLIER: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_backoff_multiplier || '1.5' }}
       INPUT_WEB_429_RETRY_JITTER_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_jitter_seconds || '60' }}
-      INPUT_WEB_TIME_BUDGET_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_time_budget_seconds || '1200' }}
-      INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_scope_time_budget_seconds || '0' }}
+      INPUT_WEB_TIME_BUDGET_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_time_budget_seconds || '3600' }}
+      INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_scope_time_budget_seconds || '3600' }}
       INPUT_DISABLE_OVERLAP_STOP: ${{ github.event_name == 'workflow_dispatch' && inputs.disable_overlap_stop || 'false' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_circuit_breaker_min_pages || '4' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_circuit_breaker_max_rate || '0.5' }}

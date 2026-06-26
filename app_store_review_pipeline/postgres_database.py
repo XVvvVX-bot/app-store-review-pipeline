@@ -1187,6 +1187,104 @@ def existing_review_ids_by_scope(
     return results
 
 
+def trusted_existing_review_ids_by_scope(
+    database_url: str,
+    scopes: Iterable[tuple[str, str, str]],
+    *,
+    source: str = SOURCE,
+) -> dict[tuple[str, str, str], set[str]]:
+    scope_list = [(str(app_id), country.lower(), sort_by) for app_id, country, sort_by in scopes]
+    results = {scope: set() for scope in scope_list}
+    if not scope_list:
+        return results
+    initialize_postgres(database_url)
+    with connect_postgres(database_url) as connection:
+        for app_id, country, sort_by in scope_list:
+            rows = connection.execute(
+                """
+                SELECT r.review_id
+                FROM app_store_reviews r
+                LEFT JOIN app_store_sync_state s
+                  ON s.app_id = r.app_id
+                 AND s.country = r.country
+                 AND s.sort_by = %s
+                LEFT JOIN app_store_runs first_run
+                  ON first_run.run_id = r.first_seen_run_id
+                LEFT JOIN app_store_runs success_run
+                  ON success_run.run_id = s.last_successful_run_id
+                LEFT JOIN LATERAL (
+                  SELECT p.run_id, page_run.loaded_at
+                  FROM app_store_review_pages p
+                  JOIN app_store_runs page_run
+                    ON page_run.run_id = p.run_id
+                  WHERE p.app_id = %s
+                    AND p.country = %s
+                    AND p.sort_by = %s
+                    AND p.source = %s
+                    AND p.terminal_reason IN (
+                      'caught_up_to_existing_reviews',
+                      'no_next_href',
+                      'target_review_count_reached',
+                      'target_review_count_zero'
+                    )
+                  ORDER BY page_run.loaded_at DESC
+                  LIMIT 1
+                ) inferred_success ON TRUE
+                LEFT JOIN LATERAL (
+                  SELECT p.run_id, page_run.loaded_at
+                  FROM app_store_review_pages p
+                  JOIN app_store_runs page_run
+                    ON page_run.run_id = p.run_id
+                  WHERE p.app_id = %s
+                    AND p.country = %s
+                    AND p.sort_by = %s
+                    AND p.source = %s
+                  GROUP BY p.run_id, page_run.loaded_at
+                  HAVING COALESCE(BOOL_OR(p.terminal_reason IN (
+                    'caught_up_to_existing_reviews',
+                    'no_next_href',
+                    'target_review_count_reached',
+                    'target_review_count_zero'
+                  )), FALSE) = FALSE
+                  ORDER BY page_run.loaded_at DESC
+                  LIMIT 1
+                ) inferred_incomplete ON TRUE
+                LEFT JOIN app_store_runs trusted_success_run
+                  ON trusted_success_run.run_id = COALESCE(success_run.run_id, inferred_success.run_id)
+                WHERE r.app_id = %s
+                  AND r.country = %s
+                  AND r.source = %s
+                  AND (
+                    (
+                      trusted_success_run.loaded_at IS NOT NULL
+                      AND first_run.loaded_at <= trusted_success_run.loaded_at
+                    )
+                    OR (
+                      trusted_success_run.loaded_at IS NULL
+                      AND inferred_incomplete.loaded_at IS NOT NULL
+                      AND first_run.loaded_at < inferred_incomplete.loaded_at
+                    )
+                  )
+                """,
+                (
+                    sort_by,
+                    app_id,
+                    country,
+                    sort_by,
+                    source,
+                    app_id,
+                    country,
+                    sort_by,
+                    source,
+                    app_id,
+                    country,
+                    source,
+                ),
+            ).fetchall()
+            results[(app_id, country, sort_by)] = {str(row["review_id"]) for row in rows}
+    return results
+
+
 def review_counts_by_scope(
     database_url: str,
     scopes: Iterable[tuple[str, str, str]],
@@ -1669,6 +1767,7 @@ def update_sync_states_postgres(
     sort_by: str,
     started_at: str,
     completed_at: str,
+    source: str = SOURCE,
 ) -> dict:
     grouped_pages: dict[tuple[str, str, str], list[dict]] = {}
     grouped_reviews: dict[tuple[str, str, str], list[dict]] = {}
@@ -1687,17 +1786,50 @@ def update_sync_states_postgres(
             reviews = grouped_reviews.get(key, [])
             terminal_reason = pages[-1].get("terminal_reason") if pages else None
             overlap = sum(int(page.get("overlap_review_count") or 0) for page in pages)
-            backlog_reasons = {"page_cap", "empty_page_before_overlap", "empty_page_after_sparse_scan"}
+            backlog_reasons = {
+                "page_cap",
+                "empty_page_before_overlap",
+                "empty_page_after_sparse_scan",
+                "fetch_error",
+                "sparse_fetch_error_threshold",
+                "time_budget_exceeded",
+                "scope_time_budget_exceeded",
+                "time_budget_retry_window_exceeded",
+                "scope_time_budget_retry_window_exceeded",
+            }
+            success_reasons = {
+                "caught_up_to_existing_reviews",
+                "no_next_href",
+                "target_review_count_reached",
+                "target_review_count_zero",
+            }
             backlogged = terminal_reason in backlog_reasons and overlap == 0
+            state_row = connection.execute(
+                """
+                SELECT complete_through_updated_epoch_seconds, last_successful_run_id
+                FROM app_store_sync_state
+                WHERE scope_key = %s
+                """,
+                (scope_key(app_id, country, scope_sort),),
+            ).fetchone()
             current_high_water = connection.execute(
                 """
                 SELECT COALESCE(MAX(updated_epoch_seconds), 0) AS high_water
                 FROM app_store_reviews
                 WHERE app_id = %s AND country = %s AND source = %s
                 """,
-                (app_id, country, SOURCE),
+                (app_id, country, source),
             ).fetchone()["high_water"]
-            high_water = int(current_high_water or 0)
+            if terminal_reason in success_reasons:
+                high_water = int(current_high_water or 0)
+                last_successful_run_id = run_id
+            else:
+                high_water = int(
+                    state_row["complete_through_updated_epoch_seconds"]
+                    if state_row
+                    else 0
+                )
+                last_successful_run_id = state_row["last_successful_run_id"] if state_row else None
             connection.execute(
                 """
                 INSERT INTO app_store_sync_state (
@@ -1732,7 +1864,7 @@ def update_sync_states_postgres(
                     started_at,
                     completed_at,
                     run_id,
-                    run_id if terminal_reason != "fetch_error" else None,
+                    last_successful_run_id,
                     terminal_reason,
                     len(pages),
                     len(reviews),

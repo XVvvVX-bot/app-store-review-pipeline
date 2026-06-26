@@ -178,6 +178,8 @@ Important fields:
 - `last_run_id`, `last_successful_run_id`: run lineage.
 - `last_terminal_reason`: latest stop reason for this scope.
 - `last_page_count`, `last_review_count`, `last_overlap_review_count`: latest run outcome.
+
+Daily incremental uses `last_successful_run_id` as the trusted historical boundary for overlap stopping. Review IDs first seen after the last successful catch-up run are not treated as safe overlap anchors, because they may come from an incomplete daily run that did not bridge back to older stored history. Time-budget, retry-window, page-cap, sparse-fetch, and fetch-error stops preserve the prior successful boundary and mark the scope as backlogged when no trusted overlap was reached.
 - `updated_at`: state update timestamp.
 
 This table is used to resume work and to distinguish incremental refresh from historical backfill.

@@ -17,13 +17,14 @@ from app_store_review_pipeline.config import (
 from app_store_review_pipeline.eda import DEFAULT_EDA_HTML, DEFAULT_EDA_JSON, DEFAULT_EDA_MARKDOWN, generate_eda_report
 from app_store_review_pipeline.files import write_json, write_jsonl
 from app_store_review_pipeline.postgres_database import (
-    existing_review_ids_by_scope,
     initialize_postgres,
     load_pipeline_run_postgres,
     mask_database_url,
     record_web_catalog_pressure_result,
     review_counts_by_scope,
     sync_targets_postgres,
+    trusted_existing_review_ids_by_scope,
+    update_sync_states_postgres,
     validate_postgres,
     web_catalog_429_circuit_breaker_status,
     web_catalog_429_cooldown_status,
@@ -452,7 +453,7 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
     scopes = [(target.apple_app_id, country, args.sort_by) for target in targets for country in target.countries]
     use_overlap_stop = not getattr(args, "disable_overlap_stop", False)
     known_ids = (
-        existing_review_ids_by_scope(args.database_url, scopes, source=WEB_CATALOG_SOURCE)
+        trusted_existing_review_ids_by_scope(args.database_url, scopes, source=WEB_CATALOG_SOURCE)
         if use_overlap_stop
         else {}
     )
@@ -488,8 +489,18 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
     write_jsonl(raw_dir / "reviews.jsonl", fetch_report["reviews"])
     write_json(raw_dir / "fetch_report.json", fetch_report)
     load_summary = load_pipeline_run_postgres(args.database_url, raw_dir, args.targets)
-    validation_report = validate_postgres(args.database_url, run_id)
     completed_at = utc_timestamp()
+    sync_summary = update_sync_states_postgres(
+        args.database_url,
+        fetch_report["page_reports"],
+        fetch_report["reviews"],
+        run_id=run_id,
+        sort_by=args.sort_by,
+        started_at=started_at,
+        completed_at=completed_at,
+        source=WEB_CATALOG_SOURCE,
+    )
+    validation_report = validate_postgres(args.database_url, run_id)
     validation_path = reports_dir / "validation_report.json"
     write_json(validation_path, validation_report)
     report = {
@@ -523,6 +534,7 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         "rss_parity_target_scope_count": len(target_review_counts),
         "fetch_summary": summarize_fetch_cli(fetch_report),
         "load_summary": load_summary,
+        "sync_summary": sync_summary,
         "validation_report_path": str(validation_path),
         "report_path": str(reports_dir / "daily_report.json"),
     }

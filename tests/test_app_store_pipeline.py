@@ -315,6 +315,55 @@ def test_web_catalog_429_circuit_breaker_waits_for_min_pages(monkeypatch):
     assert status["http_429_rate"] == 1.0
 
 
+def test_trusted_existing_review_ids_use_successful_frontier(monkeypatch):
+    queries = []
+
+    class FakeResult:
+        def fetchall(self):
+            return [{"review_id": "old-review"}]
+
+    class FakeConnection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def execute(self, query, params=None):
+            queries.append((query, params))
+            return FakeResult()
+
+    monkeypatch.setattr(postgres_database, "initialize_postgres", lambda database_url: None)
+    monkeypatch.setattr(postgres_database, "connect_postgres", lambda database_url: FakeConnection())
+
+    result = postgres_database.trusted_existing_review_ids_by_scope(
+        "postgresql:///fixture",
+        [("123456789", "us", "recent")],
+        source=WEB_CATALOG_SOURCE,
+    )
+
+    assert result == {("123456789", "us", "recent"): {"old-review"}}
+    assert queries[0][1] == (
+        "recent",
+        "123456789",
+        "us",
+        "recent",
+        WEB_CATALOG_SOURCE,
+        "123456789",
+        "us",
+        "recent",
+        WEB_CATALOG_SOURCE,
+        "123456789",
+        "us",
+        WEB_CATALOG_SOURCE,
+    )
+    assert "s.last_successful_run_id" in queries[0][0]
+    assert "inferred_incomplete" in queries[0][0]
+    assert "COALESCE(BOOL_OR" in queries[0][0]
+    assert "first_run.loaded_at <= trusted_success_run.loaded_at" in queries[0][0]
+    assert "first_run.loaded_at < inferred_incomplete.loaded_at" in queries[0][0]
+
+
 def test_check_web_429_circuit_breaker_command_returns_two_when_tripped(monkeypatch, capsys):
     monkeypatch.setattr(
         "app_store_review_pipeline.cli.web_catalog_429_circuit_breaker_status",
@@ -1313,6 +1362,7 @@ def test_fetch_web_catalog_targets_stops_before_request_without_retry_window(tmp
             "reason": "time_budget_retry_window_exceeded",
         }
     ]
+    assert report["page_reports"][0]["terminal_reason"] == "time_budget_retry_window_exceeded"
 
 
 def test_fetch_web_catalog_targets_zero_page_cap_follows_until_no_next(tmp_path):
@@ -1435,6 +1485,7 @@ def test_fetch_web_catalog_targets_scope_time_budget_stops_one_scope(tmp_path):
         }
     ]
     assert report["page_reports"][0]["app_id"] == "111111111"
+    assert report["page_reports"][0]["terminal_reason"] == "scope_time_budget_exceeded"
     assert report["page_reports"][1]["app_id"] == "222222222"
     assert report["page_reports"][1]["terminal_reason"] == "no_next_href"
 
@@ -1530,6 +1581,7 @@ def test_daily_web_catalog_passes_start_page_to_fetcher(tmp_path, monkeypatch):
     monkeypatch.setattr("app_store_review_pipeline.cli.fetch_web_catalog_targets", fake_fetch_web_catalog_targets)
     monkeypatch.setattr("app_store_review_pipeline.cli.sync_targets_postgres", lambda *args, **kwargs: {})
     monkeypatch.setattr("app_store_review_pipeline.cli.load_pipeline_run_postgres", lambda *args, **kwargs: {})
+    monkeypatch.setattr("app_store_review_pipeline.cli.update_sync_states_postgres", lambda *args, **kwargs: {})
     monkeypatch.setattr("app_store_review_pipeline.cli.validate_postgres", lambda *args, **kwargs: {})
 
     args = argparse.Namespace(
@@ -1584,7 +1636,7 @@ def test_daily_web_catalog_can_pass_rss_parity_targets_to_fetcher(tmp_path, monk
     monkeypatch.setattr("app_store_review_pipeline.cli.fetch_web_catalog_targets", fake_fetch_web_catalog_targets)
     monkeypatch.setattr("app_store_review_pipeline.cli.sync_targets_postgres", lambda *args, **kwargs: {})
     monkeypatch.setattr(
-        "app_store_review_pipeline.cli.existing_review_ids_by_scope",
+        "app_store_review_pipeline.cli.trusted_existing_review_ids_by_scope",
         lambda *args, **kwargs: {("123456789", "us", "recent"): {"web-review-1"}},
     )
     monkeypatch.setattr(
@@ -1592,6 +1644,7 @@ def test_daily_web_catalog_can_pass_rss_parity_targets_to_fetcher(tmp_path, monk
         lambda *args, **kwargs: {("123456789", "us", "recent"): 535},
     )
     monkeypatch.setattr("app_store_review_pipeline.cli.load_pipeline_run_postgres", lambda *args, **kwargs: {})
+    monkeypatch.setattr("app_store_review_pipeline.cli.update_sync_states_postgres", lambda *args, **kwargs: {})
     monkeypatch.setattr("app_store_review_pipeline.cli.validate_postgres", lambda *args, **kwargs: {})
 
     args = argparse.Namespace(

@@ -118,6 +118,13 @@ def fetch_web_catalog_targets(
                                 "reason": stop_reason,
                             }
                         )
+                        mark_last_scope_page_terminal(
+                            page_reports,
+                            app_id=target.apple_app_id,
+                            country=country.lower(),
+                            sort_by=sort_by,
+                            terminal_reason=stop_reason,
+                        )
                         if stop_reason == "time_budget_exceeded":
                             overall_time_budget_exceeded = True
                         break
@@ -148,6 +155,13 @@ def fetch_web_catalog_targets(
                                     "reason": stop_reason,
                                 }
                             )
+                            mark_last_scope_page_terminal(
+                                page_reports,
+                                app_id=target.apple_app_id,
+                                country=country.lower(),
+                                sort_by=sort_by,
+                                terminal_reason=stop_reason,
+                            )
                             if stop_reason == "time_budget_exceeded":
                                 overall_time_budget_exceeded = True
                             break
@@ -170,6 +184,13 @@ def fetch_web_catalog_targets(
                                 "sort_by": sort_by,
                                 "reason": retry_budget_stop,
                             }
+                        )
+                        mark_last_scope_page_terminal(
+                            page_reports,
+                            app_id=target.apple_app_id,
+                            country=country.lower(),
+                            sort_by=sort_by,
+                            terminal_reason=retry_budget_stop,
                         )
                         if retry_budget_stop == "time_budget_retry_window_exceeded":
                             overall_time_budget_exceeded = True
@@ -243,7 +264,15 @@ def fetch_web_catalog_targets(
                                     "fetched_review_count": scope_review_total,
                                 }
                             )
-                        if terminal_reason in {"page_cap", "fetch_error", "sparse_fetch_error_threshold"}:
+                        if terminal_reason in {
+                            "page_cap",
+                            "fetch_error",
+                            "sparse_fetch_error_threshold",
+                            "time_budget_exceeded",
+                            "scope_time_budget_exceeded",
+                            "time_budget_retry_window_exceeded",
+                            "scope_time_budget_retry_window_exceeded",
+                        }:
                             warning_scopes.append(
                                 {
                                     "app_id": target.apple_app_id,
@@ -309,6 +338,26 @@ def fetch_web_catalog_targets(
         "target_review_count_scopes": len(target_review_counts_by_scope),
         "target_reached_scopes": target_reached_scopes,
     }
+
+
+def mark_last_scope_page_terminal(
+    page_reports: list[dict[str, Any]],
+    *,
+    app_id: str,
+    country: str,
+    sort_by: str,
+    terminal_reason: str,
+) -> bool:
+    for row in reversed(page_reports):
+        if (
+            str(row.get("app_id")) == str(app_id)
+            and str(row.get("country") or "").lower() == country.lower()
+            and str(row.get("sort_by") or "") == sort_by
+        ):
+            if not row.get("terminal_reason"):
+                row["terminal_reason"] = terminal_reason
+            return True
+    return False
 
 
 def earliest_deadline(*deadlines: float | None) -> float | None:

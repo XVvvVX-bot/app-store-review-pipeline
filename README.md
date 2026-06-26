@@ -77,7 +77,8 @@ Fetch and load a full-scope daily incremental window:
   --web-429-retries 2 \
   --web-429-retry-seconds 300 \
   --web-429-retry-jitter-seconds 60 \
-  --web-time-budget-seconds 7200
+  --web-time-budget-seconds 3600 \
+  --web-scope-time-budget-seconds 3600
 ```
 
 Run a controlled backfill continuation for selected active targets:
@@ -120,7 +121,7 @@ Generate the reproducible EDA/data-quality report:
 Active workflows:
 
 - `CI`: test suite.
-- `App Store Review Pipeline`: dispatch-only app-level matrix daily incremental profile. Each app starts at page 1 and fetches until it hits known review overlap, no-next, a time budget, or a fetch stop.
+- `App Store Review Pipeline`: scheduled and dispatchable app-level matrix daily incremental profile. It runs at 08:07 and 20:07 America/Los_Angeles during PDT. Each app starts at page 1 and fetches until it hits trusted historical review overlap, no-next, a time budget, or a fetch stop.
 - `App Store Web Catalog Backfill`: manual matrix backfill using self-hosted Mac runners and local Postgres. Keep this paused unless explicitly testing historical depth.
 
 Research-era workflows have been moved to `docs/archive/workflows/` so they remain auditable but no longer appear as active runnable Actions.
@@ -139,6 +140,7 @@ Research-era workflows have been moved to `docs/archive/workflows/` so they rema
 ## Known Limitations
 
 - The public web catalog path is public Apple-hosted structured catalog data, not a contractual App Store Connect API.
-- Completeness is proven per app-country scope only when the crawler reaches `no_next_href`.
+- Historical completeness is proven per app-country scope only when the crawler reaches `no_next_href`.
+- Incremental catch-up is proven when a daily run reaches trusted historical review overlap. This avoids stopping on reviews inserted by an earlier incomplete daily run.
 - Deep historical backfill can trigger Apple pressure signals; individual HTTP 429 responses are handled with a 5-minute per-request retry delay plus jitter, while the current-run circuit breaker remains the main global stop condition.
 - Local Postgres is the current development store. Managed Postgres can be evaluated later if the project moves toward production hosting.
