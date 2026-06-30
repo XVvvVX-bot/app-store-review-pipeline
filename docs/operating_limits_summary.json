@@ -391,6 +391,10 @@
       "fetch_error_rate_gte": 0.01,
       "http_429_rate_gte": 0.005,
       "repeated_non_200_source_errors": true
+    },
+    "strategy_test_scope": {
+      "default_strategy_test_scope": "fixed_randomized_25_app_group",
+      "full_scope_200_apps": "baseline_or_final_control_only"
     }
   },
   "depth_audit_findings": [
@@ -474,6 +478,54 @@
       "skipped": 3924,
       "source_pressure_clean_run_count": 1,
       "status": "completed_source_clean_github_artifact_failure",
+      "successful_run_count": 0
+    },
+    {
+      "capped_scopes": 0,
+      "comparison_group": "FG1_six_hour_grouped_frequency",
+      "duplicate_skip_rate": 0,
+      "experiment_group": "om_group_03",
+      "experiment_id": "FG1",
+      "fetch_error_rate": 0,
+      "fetch_errors": 0,
+      "finding": "Pending. No matching run has been recorded in the ledger yet.",
+      "http_429": 0,
+      "http_429_rate": 0,
+      "inserted": 0,
+      "inserted_per_page": 0,
+      "matching_run_count": 0,
+      "median_runtime_minutes": 0,
+      "non_200": 0,
+      "page_count": 0,
+      "retried_pages": 0,
+      "review_rows": 0,
+      "skipped": 0,
+      "source_pressure_clean_run_count": 0,
+      "status": "planned",
+      "successful_run_count": 0
+    },
+    {
+      "capped_scopes": 0,
+      "comparison_group": "FG2_three_hour_grouped_frequency",
+      "duplicate_skip_rate": 0,
+      "experiment_group": "om_group_04",
+      "experiment_id": "FG2",
+      "fetch_error_rate": 0,
+      "fetch_errors": 0,
+      "finding": "Pending. No matching run has been recorded in the ledger yet.",
+      "http_429": 0,
+      "http_429_rate": 0,
+      "inserted": 0,
+      "inserted_per_page": 0,
+      "matching_run_count": 0,
+      "median_runtime_minutes": 0,
+      "non_200": 0,
+      "page_count": 0,
+      "retried_pages": 0,
+      "review_rows": 0,
+      "skipped": 0,
+      "source_pressure_clean_run_count": 0,
+      "status": "planned",
       "successful_run_count": 0
     },
     {
@@ -585,7 +637,7 @@
   ],
   "metadata": {
     "database_url": "postgresql:///app_store_reviews",
-    "generated_at": "2026-06-30T21:59:08+00:00",
+    "generated_at": "2026-06-30T22:23:04+00:00",
     "grace_minutes": 5,
     "ledger_path": "docs/experiments/operating_model_run_ledger.json",
     "source": "apple_app_store_web_catalog_reviews"
@@ -593,7 +645,7 @@
   "planned_experiments": [
     {
       "comparison_group": "F1_six_hour_full_scope",
-      "description": "Manual full-scope uncapped incremental run six hours after the previous clean full-scope run.",
+      "description": "Completed full-scope six-hour calibration run. Kept as control evidence; do not repeat as the default strategy-test pattern.",
       "experiment_id": "F1",
       "inputs": {
         "limit": "0",
@@ -606,7 +658,7 @@
     },
     {
       "comparison_group": "F2_three_hour_full_scope",
-      "description": "Manual full-scope uncapped incremental run three hours after the previous clean full-scope run.",
+      "description": "Completed full-scope three-hour calibration run. Source ingestion was clean, but the workflow ended with a post-ingestion GitHub artifact failure. Kept as control evidence; do not repeat as the default strategy-test pattern.",
       "experiment_id": "F2",
       "inputs": {
         "limit": "0",
@@ -615,7 +667,37 @@
         "start_page": "1"
       },
       "status": "completed_source_clean_github_artifact_failure",
-      "success_criteria": "Same as F1, plus enough marginal inserts per page to justify higher frequency."
+      "success_criteria": "Source-pressure metrics clean enough to inform grouped frequency-test design."
+    },
+    {
+      "comparison_group": "FG1_six_hour_grouped_frequency",
+      "description": "Randomized 25-app group uncapped incremental treatment run six hours after a clean same-group seed/control pass.",
+      "experiment_group": "om_group_03",
+      "experiment_id": "FG1",
+      "inputs": {
+        "experiment_group": "om_group_03",
+        "limit": "0",
+        "max_pages_per_app_country": "0",
+        "max_parallel": "4",
+        "start_page": "1"
+      },
+      "status": "planned",
+      "success_criteria": "Clean source-pressure metrics, no abnormal runtime growth, and enough marginal inserted rows per page to justify a six-hour grouped refresh."
+    },
+    {
+      "comparison_group": "FG2_three_hour_grouped_frequency",
+      "description": "Randomized 25-app group uncapped incremental treatment run three hours after a clean same-group seed/control pass.",
+      "experiment_group": "om_group_04",
+      "experiment_id": "FG2",
+      "inputs": {
+        "experiment_group": "om_group_04",
+        "limit": "0",
+        "max_pages_per_app_country": "0",
+        "max_parallel": "4",
+        "start_page": "1"
+      },
+      "status": "planned",
+      "success_criteria": "Clean source-pressure metrics, no abnormal runtime growth, and enough marginal inserted rows per page to justify a three-hour grouped refresh."
     },
     {
       "audit_comparison_group": "D1_one_page_uncapped_audit",
@@ -656,6 +738,8 @@
     "confidence": "interim",
     "current_recommendation": "Keep the twice-daily full-scope incremental schedule as the production baseline while remaining controlled tests are completed.",
     "pending_experiments": [
+      "FG1",
+      "FG2",
       "D1",
       "D2"
     ],

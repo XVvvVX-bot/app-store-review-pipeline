@@ -5,7 +5,8 @@ This runbook records the controlled procedure for validating the App Store revie
 ## Guardrails
 
 - Use `workflow_dispatch` only for controlled experiments.
-- Do not start F2 until at least three hours after the previous clean full-scope run completed.
+- Do not run new strategy experiments against all 200 apps unless the goal is a baseline/control observation.
+- For strategy comparisons, use fixed randomized 25-app groups and wait the intended gap only for that group.
 - Do not start a new experiment if an `App Store Review Pipeline` run is active.
 - Stop frequency escalation if any run has failed jobs, HTTP 429 rate >= 0.5%, repeated source non-200 errors, fetch error rate >= 1%, or abnormal runtime growth.
 - Keep the twice-daily schedule unchanged while experiments run.
@@ -44,9 +45,33 @@ from app_store_review_pages
 where source = 'apple_app_store_web_catalog_reviews';
 ```
 
-## F2: Three-Hour Full-Scope Frequency Test
+## Full-Scope Calibration Evidence
 
-Purpose: test whether a full-scope run three hours after a clean run remains reliable and produces enough marginal inserts to justify higher frequency.
+The completed F1/F2 full-scope runs are kept as calibration/control evidence, not as the template for future strategy tests. They were useful because they showed that shorter gaps can remain source-pressure clean, but they also consumed the incremental signal across all 200 apps. Repeating that pattern would force every later experiment to wait much longer for fresh reviews.
+
+Use all 200 apps only for:
+
+- scheduled F0 baseline observations;
+- occasional full-scope control runs;
+- final production smoke checks after a recommendation is chosen.
+
+## Grouped Frequency Tests
+
+Purpose: test whether shorter refresh gaps add useful fresh rows without consuming the newest incremental-review signal across the full target list.
+
+Use a same-group pair for each frequency test:
+
+1. Run a grouped uncapped seed/control pass.
+2. Wait the intended gap for that group.
+3. Run the same grouped uncapped treatment pass.
+4. Compare treatment inserted rows per page, duplicate rate, runtime, and source-pressure metrics.
+
+Planned grouped frequency tests:
+
+- `FG1_six_hour_grouped_frequency` on `om_group_03`.
+- `FG2_three_hour_grouped_frequency` on `om_group_04`.
+
+Run a grouped uncapped frequency pass by setting `experiment_group` and keeping `max_pages_per_app_country=0`.
 
 ```bash
 gh workflow run app-store-daily-pipeline.yml \
@@ -54,6 +79,7 @@ gh workflow run app-store-daily-pipeline.yml \
   --ref main \
   -f limit=0 \
   -f target_offset=0 \
+  -f experiment_group=om_group_03 \
   -f max_parallel=4 \
   -f max_pages_per_app_country=0 \
   -f pressure_ramp_mode=fixed \
@@ -75,8 +101,9 @@ gh workflow run app-store-daily-pipeline.yml \
 
 Ledger fields:
 
-- `label`: `F2 three-hour full-scope experiment`
-- `comparison_group`: `F2_three_hour_full_scope`
+- `label`: `FG1 six-hour grouped frequency experiment` or `FG2 three-hour grouped frequency experiment`
+- `comparison_group`: `FG1_six_hour_grouped_frequency` or `FG2_three_hour_grouped_frequency`
+- `experiment_group`: `om_group_03` or `om_group_04`
 - `event`: `workflow_dispatch`
 - `inputs`: same as command above, with `overlap_stop` set to `enabled`
 
@@ -88,7 +115,9 @@ Do not use all 200 apps for every strategy test. Full-scope runs are useful as b
 
 - `om_group_01`: D1 one-page cap and D1 uncapped audit.
 - `om_group_02`: D2 three-page cap and D2 uncapped audit.
-- `om_group_03` through `om_group_08`: reserved for follow-up frequency, hybrid, or replication tests.
+- `om_group_03`: FG1 six-hour grouped frequency test.
+- `om_group_04`: FG2 three-hour grouped frequency test.
+- `om_group_05` through `om_group_08`: reserved for hybrid, replication, or follow-up tests.
 
 The manifest is generated from active targets using a fixed seed. Apps are bucketed by category, shuffled inside each category, then assigned to the smallest eligible group with a category-count tie breaker. This keeps all eight groups at 25 apps while preserving reproducibility and a reasonably balanced category mix.
 

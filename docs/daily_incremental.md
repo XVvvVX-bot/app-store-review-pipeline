@@ -98,7 +98,7 @@ The daily path is intentionally different from backfill. Backfill can be resumed
 
 ## Current Operating Recommendation
 
-The current recommendation is to keep the twice-daily full-scope incremental schedule as the production baseline while controlled F1/F2/D1/D2 operating-limit tests are completed.
+The current recommendation is to keep the twice-daily full-scope incremental schedule as the production baseline while controlled grouped operating-limit tests are completed.
 
 The reproducible operating-limits report is the source of truth for run evidence:
 
@@ -108,7 +108,9 @@ The reproducible operating-limits report is the source of truth for run evidence
 
 As of the latest generated report, the successful full-scope baseline/control observations show clean source-pressure behavior: 0 HTTP 429 pages across successful observed runs, median successful runtime around 51 minutes, and median successful page volume around 276 pages. The high-activity app segment currently accounts for most newly inserted rows, which is why a hybrid model remains a candidate after the planned controlled tests.
 
-Controlled strategy tests should not repeatedly use all 200 apps. A full-scope run consumes the available incremental-review signal for the next few hours, so page-cap and hybrid experiments use fixed randomized 25-app groups from `docs/experiments/operating_model_target_groups.json`. Full-scope 200-app runs remain the baseline/control path; grouped tests are the faster experimental path for comparing depth and operating patterns without waiting a day for fresh review activity.
+Controlled strategy tests should not repeatedly use all 200 apps. A full-scope run consumes the available incremental-review signal for the next few hours, so frequency, page-cap, and hybrid experiments use fixed randomized 25-app groups from `docs/experiments/operating_model_target_groups.json`. Full-scope 200-app runs remain the production baseline/control path; grouped tests are the faster experimental path for comparing depth and operating patterns without waiting a day for fresh review activity.
+
+The completed full-scope F1/F2 runs are retained as calibration evidence. Future strategy tests should use `FG1/FG2/D1/D2`-style grouped runs instead of repeating 200-app manual experiments.
 
 ## Monitoring Checklist
 

@@ -376,7 +376,7 @@
       "experiment_id": "F1",
       "status": "completed",
       "comparison_group": "F1_six_hour_full_scope",
-      "description": "Manual full-scope uncapped incremental run six hours after the previous clean full-scope run.",
+      "description": "Completed full-scope six-hour calibration run. Kept as control evidence; do not repeat as the default strategy-test pattern.",
       "success_criteria": "202/202 jobs success, HTTP 429 rate below 0.5%, fetch error rate below 1%, no abnormal runtime growth.",
       "inputs": {
         "limit": "0",
@@ -389,14 +389,44 @@
       "experiment_id": "F2",
       "status": "completed_source_clean_github_artifact_failure",
       "comparison_group": "F2_three_hour_full_scope",
-      "description": "Manual full-scope uncapped incremental run three hours after the previous clean full-scope run.",
-      "success_criteria": "Same as F1, plus enough marginal inserts per page to justify higher frequency.",
+      "description": "Completed full-scope three-hour calibration run. Source ingestion was clean, but the workflow ended with a post-ingestion GitHub artifact failure. Kept as control evidence; do not repeat as the default strategy-test pattern.",
+      "success_criteria": "Source-pressure metrics clean enough to inform grouped frequency-test design.",
       "inputs": {
         "limit": "0",
         "max_parallel": "4",
         "max_pages_per_app_country": "0",
         "start_page": "1"
       }
+    },
+    {
+      "experiment_id": "FG1",
+      "status": "planned",
+      "comparison_group": "FG1_six_hour_grouped_frequency",
+      "description": "Randomized 25-app group uncapped incremental treatment run six hours after a clean same-group seed/control pass.",
+      "success_criteria": "Clean source-pressure metrics, no abnormal runtime growth, and enough marginal inserted rows per page to justify a six-hour grouped refresh.",
+      "inputs": {
+        "limit": "0",
+        "max_parallel": "4",
+        "max_pages_per_app_country": "0",
+        "start_page": "1",
+        "experiment_group": "om_group_03"
+      },
+      "experiment_group": "om_group_03"
+    },
+    {
+      "experiment_id": "FG2",
+      "status": "planned",
+      "comparison_group": "FG2_three_hour_grouped_frequency",
+      "description": "Randomized 25-app group uncapped incremental treatment run three hours after a clean same-group seed/control pass.",
+      "success_criteria": "Clean source-pressure metrics, no abnormal runtime growth, and enough marginal inserted rows per page to justify a three-hour grouped refresh.",
+      "inputs": {
+        "limit": "0",
+        "max_parallel": "4",
+        "max_pages_per_app_country": "0",
+        "start_page": "1",
+        "experiment_group": "om_group_04"
+      },
+      "experiment_group": "om_group_04"
     },
     {
       "experiment_id": "D1",
@@ -442,6 +472,10 @@
     },
     "capped_run_acceptance": {
       "max_missed_insert_rate_vs_uncapped_audit": 0.05
+    },
+    "strategy_test_scope": {
+      "full_scope_200_apps": "baseline_or_final_control_only",
+      "default_strategy_test_scope": "fixed_randomized_25_app_group"
     }
   },
   "experiment_group_manifest": "docs/experiments/operating_model_target_groups.json"

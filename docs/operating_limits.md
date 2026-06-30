@@ -1,6 +1,6 @@
 # Apple Review Pipeline Operating Limits
 
-Generated at: `2026-06-30T21:59:08+00:00`
+Generated at: `2026-06-30T22:23:04+00:00`
 Database: `postgresql:///app_store_reviews`
 Source: `apple_app_store_web_catalog_reviews`
 Ledger: `docs/experiments/operating_model_run_ledger.json`
@@ -9,7 +9,7 @@ Ledger: `docs/experiments/operating_model_run_ledger.json`
 
 Keep the twice-daily full-scope incremental schedule as the production baseline while remaining controlled tests are completed.
 
-Evidence status: **interim**. Pending controlled experiments: D1, D2.
+Evidence status: **interim**. Pending controlled experiments: FG1, FG2, D1, D2.
 
 Rationale:
 - Recent successful full-scope runs show clean source-pressure metrics.
@@ -37,11 +37,13 @@ Strategy comparisons use fixed randomized 25-app groups instead of running every
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | F1 | completed |  | 1 | 1 | 1 | 283 | 5,640 | 2,826 | 2,811 | 0.4987 | 9.986 | 0 | 1 | 1 | 11 | 38.45 | Clean. The six-hour full-scope run passed source-pressure thresholds; its marginal yield was 9.986 inserts/page with 49.9% duplicate skips. |
 | F2 | completed_source_clean_github_artifact_failure |  | 1 | 0 | 1 | 203 | 4,060 | 136 | 3,924 | 0.9665 | 0.67 | 0 | 0 | 0 | 14 | 41.35 | Source-clean but not GitHub-clean. The run passed source-pressure checks, but at least one matching job failed after ingestion. |
+| FG1 | planned | om_group_03 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | Pending. No matching run has been recorded in the ledger yet. |
+| FG2 | planned | om_group_04 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | Pending. No matching run has been recorded in the ledger yet. |
 | D1 | planned | om_group_01 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | Pending. No matching run has been recorded in the ledger yet. |
 | D2 | planned | om_group_02 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | Pending. No matching run has been recorded in the ledger yet. |
 
 Interpretation:
-- Frequency tests (F1/F2) measure whether shorter gaps add useful fresh rows without increasing source pressure.
+- Full-scope F1/F2 runs are calibration/control evidence; future frequency strategy tests use randomized 25-app groups so one test does not consume the full 200-app incremental signal.
 - `successful_run_count` is GitHub-clean; `source_pressure_clean_run_count` is source-pressure clean and can include post-ingestion artifact-only failures.
 - Depth tests (D1/D2) use randomized 25-app groups and measure whether page caps miss more than 5% of rows later captured by a same-group uncapped audit.
 - A final recommendation should wait for the pending tests unless source-pressure thresholds stop the ladder early.
@@ -135,8 +137,10 @@ Segments are computed from successful ledger runs by app-level inserted rows and
 
 | experiment_id | status | comparison_group | experiment_group | description | success_criteria |
 | --- | --- | --- | --- | --- | --- |
-| F1 | completed | F1_six_hour_full_scope |  | Manual full-scope uncapped incremental run six hours after the previous clean full-scope run. | 202/202 jobs success, HTTP 429 rate below 0.5%, fetch error rate below 1%, no abnormal runtime growth. |
-| F2 | completed_source_clean_github_artifact_failure | F2_three_hour_full_scope |  | Manual full-scope uncapped incremental run three hours after the previous clean full-scope run. | Same as F1, plus enough marginal inserts per page to justify higher frequency. |
+| F1 | completed | F1_six_hour_full_scope |  | Completed full-scope six-hour calibration run. Kept as control evidence; do not repeat as the default strategy-test pattern. | 202/202 jobs success, HTTP 429 rate below 0.5%, fetch error rate below 1%, no abnormal runtime growth. |
+| F2 | completed_source_clean_github_artifact_failure | F2_three_hour_full_scope |  | Completed full-scope three-hour calibration run. Source ingestion was clean, but the workflow ended with a post-ingestion GitHub artifact failure. Kept as control evidence; do not repeat as the default strategy-test pattern. | Source-pressure metrics clean enough to inform grouped frequency-test design. |
+| FG1 | planned | FG1_six_hour_grouped_frequency | om_group_03 | Randomized 25-app group uncapped incremental treatment run six hours after a clean same-group seed/control pass. | Clean source-pressure metrics, no abnormal runtime growth, and enough marginal inserted rows per page to justify a six-hour grouped refresh. |
+| FG2 | planned | FG2_three_hour_grouped_frequency | om_group_04 | Randomized 25-app group uncapped incremental treatment run three hours after a clean same-group seed/control pass. | Clean source-pressure metrics, no abnormal runtime growth, and enough marginal inserted rows per page to justify a three-hour grouped refresh. |
 | D1 | planned | D1_one_page_cap | om_group_01 | Randomized 25-app group capped at one page per app, followed by an uncapped audit on the same group. | Audit inserts after the capped pass are no more than 5% of total capped-plus-audit inserts, with clean source-pressure metrics. |
 | D2 | planned | D2_three_page_cap | om_group_02 | Randomized 25-app group capped at three pages per app, followed by an uncapped audit on the same group. | Audit inserts after the capped pass are no more than 5% of total capped-plus-audit inserts, with clean source-pressure metrics. |
 

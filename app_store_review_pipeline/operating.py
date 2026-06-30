@@ -854,7 +854,7 @@ def render_operating_markdown(summary: dict[str, Any]) -> str:
         ),
         "",
         "Interpretation:",
-        "- Frequency tests (F1/F2) measure whether shorter gaps add useful fresh rows without increasing source pressure.",
+        "- Full-scope F1/F2 runs are calibration/control evidence; future frequency strategy tests use randomized 25-app groups so one test does not consume the full 200-app incremental signal.",
         "- `successful_run_count` is GitHub-clean; `source_pressure_clean_run_count` is source-pressure clean and can include post-ingestion artifact-only failures.",
         "- Depth tests (D1/D2) use randomized 25-app groups and measure whether page caps miss more than 5% of rows later captured by a same-group uncapped audit.",
         "- A final recommendation should wait for the pending tests unless source-pressure thresholds stop the ladder early.",
