@@ -18,6 +18,7 @@ DEFAULT_OPERATING_JSON = Path("docs/operating_limits_summary.json")
 DEFAULT_GRACE_MINUTES = 5
 SCHEDULE_HOURS_UTC = (3, 15)
 SCHEDULE_MINUTE_UTC = 7
+FULL_SCOPE_COMPARISON_GROUP_PREFIXES = ("F0_", "F1_", "F2_", "D3_")
 
 
 def generate_operating_report(
@@ -191,6 +192,78 @@ def is_source_pressure_clean_run(run: dict[str, Any]) -> bool:
     return http_429_rate < 0.005 and fetch_error_rate < 0.01
 
 
+def run_experiment_group(run: dict[str, Any]) -> str:
+    return str(run.get("experiment_group") or (run.get("inputs") or {}).get("experiment_group") or "")
+
+
+def is_full_scope_ledger_run(run: dict[str, Any]) -> bool:
+    comparison_group = str(run.get("comparison_group") or "")
+    if run_experiment_group(run):
+        return False
+    if "full_scope" in comparison_group or comparison_group.startswith(FULL_SCOPE_COMPARISON_GROUP_PREFIXES):
+        return True
+    return int(run.get("job_total") or 0) >= 100
+
+
+def build_frequency_isolation_status(
+    experiment: dict[str, Any],
+    *,
+    matching_runs: list[dict[str, Any]],
+    all_runs: list[dict[str, Any]],
+) -> dict[str, Any]:
+    comparison_group = str(experiment.get("comparison_group") or "")
+    if "grouped_frequency" not in comparison_group:
+        return {
+            "frequency_isolation_status": "",
+            "seed_run_id": "",
+            "treatment_run_id": "",
+            "contaminating_run_count": 0,
+            "contaminating_run_ids": "",
+        }
+
+    fallback_time = datetime.min.replace(tzinfo=timezone.utc)
+    ordered_runs = sorted(
+        matching_runs,
+        key=lambda run: (parse_utc(run.get("created_at")) or fallback_time, run.get("github_run_id", "")),
+    )
+    if not ordered_runs:
+        return {
+            "frequency_isolation_status": "pending_seed",
+            "seed_run_id": "",
+            "treatment_run_id": "",
+            "contaminating_run_count": 0,
+            "contaminating_run_ids": "",
+        }
+
+    seed_run = ordered_runs[0]
+    treatment_run = ordered_runs[1] if len(ordered_runs) > 1 else None
+    seed_end = parse_utc(seed_run.get("updated_at")) or parse_utc(seed_run.get("created_at"))
+    treatment_start = parse_utc(treatment_run.get("created_at")) if treatment_run else None
+    contaminating_runs: list[dict[str, Any]] = []
+    if seed_end is not None:
+        for run in all_runs:
+            if run.get("comparison_group") == comparison_group:
+                continue
+            created_at = parse_utc(run.get("created_at"))
+            if created_at is None or created_at <= seed_end:
+                continue
+            if treatment_start is not None and created_at >= treatment_start:
+                continue
+            if is_full_scope_ledger_run(run):
+                contaminating_runs.append(run)
+
+    status = "clean_pair" if treatment_run else "pending_treatment"
+    if contaminating_runs:
+        status = "contaminated"
+    return {
+        "frequency_isolation_status": status,
+        "seed_run_id": str(seed_run.get("github_run_id") or ""),
+        "treatment_run_id": str(treatment_run.get("github_run_id") or "") if treatment_run else "",
+        "contaminating_run_count": len(contaminating_runs),
+        "contaminating_run_ids": ", ".join(str(run.get("github_run_id") or "") for run in contaminating_runs),
+    }
+
+
 def build_operating_summary(
     database_url: str,
     *,
@@ -270,6 +343,11 @@ def build_experiment_findings(
         http_429_rate = round(http_429 / page_count, 4) if page_count else 0
         fetch_error_rate = round(fetch_errors / page_count, 4) if page_count else 0
         status = experiment.get("status", "planned")
+        frequency_isolation = build_frequency_isolation_status(
+            experiment,
+            matching_runs=matching_runs,
+            all_runs=runs,
+        )
         finding = describe_experiment_finding(
             experiment,
             matching_runs=matching_runs,
@@ -279,6 +357,8 @@ def build_experiment_findings(
             fetch_error_rate=fetch_error_rate,
             inserted_per_page=inserted_per_page,
             duplicate_skip_rate=duplicate_skip_rate,
+            frequency_isolation_status=str(frequency_isolation.get("frequency_isolation_status") or ""),
+            contaminating_run_ids=str(frequency_isolation.get("contaminating_run_ids") or ""),
         )
         findings.append(
             {
@@ -304,6 +384,7 @@ def build_experiment_findings(
                 "retried_pages": retried_pages,
                 "capped_scopes": capped_scopes,
                 "median_runtime_minutes": runtime_minutes,
+                **frequency_isolation,
                 "finding": finding,
             }
         )
@@ -385,11 +466,20 @@ def describe_experiment_finding(
     fetch_error_rate: float,
     inserted_per_page: float,
     duplicate_skip_rate: float,
+    frequency_isolation_status: str = "",
+    contaminating_run_ids: str = "",
 ) -> str:
     experiment_id = experiment.get("experiment_id", "experiment")
     status = experiment.get("status", "planned")
     if not matching_runs:
         return "Pending. No matching run has been recorded in the ledger yet."
+    if frequency_isolation_status == "contaminated":
+        return (
+            "Contaminated. A full-scope run occurred between the grouped seed and treatment "
+            f"windows ({contaminating_run_ids}); restart this frequency test on a fresh group."
+        )
+    if frequency_isolation_status == "pending_treatment":
+        return "Seed clean. Treatment is pending, and no tracked full-scope run has contaminated the pair yet."
     if len(successful_runs) != len(matching_runs):
         if "source_clean" in str(status):
             return (
@@ -892,6 +982,8 @@ def render_operating_markdown(summary: dict[str, Any]) -> str:
                 "experiment_id",
                 "status",
                 "experiment_group",
+                "frequency_isolation_status",
+                "contaminating_run_count",
                 "matching_run_count",
                 "successful_run_count",
                 "source_pressure_clean_run_count",

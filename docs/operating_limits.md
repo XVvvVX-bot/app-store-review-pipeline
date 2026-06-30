@@ -1,6 +1,6 @@
 # Apple Review Pipeline Operating Limits
 
-Generated at: `2026-06-30T23:16:12+00:00`
+Generated at: `2026-06-30T23:29:59+00:00`
 Database: `postgresql:///app_store_reviews`
 Source: `apple_app_store_web_catalog_reviews`
 Ledger: `docs/experiments/operating_model_run_ledger.json`
@@ -33,14 +33,14 @@ Strategy comparisons use fixed randomized 25-app groups instead of running every
 
 ## Controlled Experiment Findings
 
-| experiment_id | status | experiment_group | matching_run_count | successful_run_count | source_pressure_clean_run_count | page_count | review_rows | inserted | skipped | duplicate_skip_rate | inserted_per_page | http_429 | non_200 | fetch_errors | retried_pages | median_runtime_minutes | finding |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| F1 | completed |  | 1 | 1 | 1 | 283 | 5,640 | 2,826 | 2,811 | 0.4987 | 9.986 | 0 | 1 | 1 | 11 | 38.45 | Clean. The six-hour full-scope run passed source-pressure thresholds; its marginal yield was 9.986 inserts/page with 49.9% duplicate skips. |
-| F2 | completed_source_clean_github_artifact_failure |  | 1 | 0 | 1 | 203 | 4,060 | 136 | 3,924 | 0.9665 | 0.67 | 0 | 0 | 0 | 14 | 41.35 | Source-clean but not GitHub-clean. The run passed source-pressure checks, but at least one matching job failed after ingestion. |
-| FG1 | planned | om_group_03 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | Pending. No matching run has been recorded in the ledger yet. |
-| FG2 | seed_completed | om_group_04 | 1 | 1 | 1 | 27 | 540 | 107 | 433 | 0.8019 | 3.963 | 0 | 0 | 0 | 0 | 3.1 | In progress or pending completion. Existing matching runs are clean, but the experiment is not marked complete. |
-| D1 | completed_rejected | om_group_01 | 1 | 1 | 1 | 25 | 500 | 0 | 500 | 1 | 0 | 0 | 0 | 0 | 0 | 2.78 | Source-pressure clean, but rejected by the paired audit or strategy-specific decision rule. |
-| D2 | completed_rejected | om_group_02 | 1 | 1 | 1 | 29 | 580 | 188 | 392 | 0.6759 | 6.483 | 0 | 0 | 0 | 0 | 3.02 | Source-pressure clean, but rejected by the paired audit or strategy-specific decision rule. |
+| experiment_id | status | experiment_group | frequency_isolation_status | contaminating_run_count | matching_run_count | successful_run_count | source_pressure_clean_run_count | page_count | review_rows | inserted | skipped | duplicate_skip_rate | inserted_per_page | http_429 | non_200 | fetch_errors | retried_pages | median_runtime_minutes | finding |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| F1 | completed |  |  | 0 | 1 | 1 | 1 | 283 | 5,640 | 2,826 | 2,811 | 0.4987 | 9.986 | 0 | 1 | 1 | 11 | 38.45 | Clean. The six-hour full-scope run passed source-pressure thresholds; its marginal yield was 9.986 inserts/page with 49.9% duplicate skips. |
+| F2 | completed_source_clean_github_artifact_failure |  |  | 0 | 1 | 0 | 1 | 203 | 4,060 | 136 | 3,924 | 0.9665 | 0.67 | 0 | 0 | 0 | 14 | 41.35 | Source-clean but not GitHub-clean. The run passed source-pressure checks, but at least one matching job failed after ingestion. |
+| FG1 | planned | om_group_03 | pending_seed | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | Pending. No matching run has been recorded in the ledger yet. |
+| FG2 | seed_completed | om_group_04 | pending_treatment | 0 | 1 | 1 | 1 | 27 | 540 | 107 | 433 | 0.8019 | 3.963 | 0 | 0 | 0 | 0 | 3.1 | Seed clean. Treatment is pending, and no tracked full-scope run has contaminated the pair yet. |
+| D1 | completed_rejected | om_group_01 |  | 0 | 1 | 1 | 1 | 25 | 500 | 0 | 500 | 1 | 0 | 0 | 0 | 0 | 0 | 2.78 | Source-pressure clean, but rejected by the paired audit or strategy-specific decision rule. |
+| D2 | completed_rejected | om_group_02 |  | 0 | 1 | 1 | 1 | 29 | 580 | 188 | 392 | 0.6759 | 6.483 | 0 | 0 | 0 | 0 | 3.02 | Source-pressure clean, but rejected by the paired audit or strategy-specific decision rule. |
 
 Interpretation:
 - Full-scope F1/F2 runs are calibration/control evidence; future frequency strategy tests use randomized 25-app groups so one test does not consume the full 200-app incremental signal.

@@ -838,6 +838,100 @@ def test_operating_experiment_finding_marks_rejected_strategy():
     assert "rejected" in findings[0]["finding"]
 
 
+def test_operating_grouped_frequency_finding_tracks_pending_treatment():
+    runs = [
+        {
+            "github_run_id": "seed",
+            "comparison_group": "FG2_three_hour_grouped_frequency",
+            "experiment_group": "om_group_04",
+            "conclusion": "success",
+            "created_at": "2026-06-30T23:11:44Z",
+            "updated_at": "2026-06-30T23:14:50Z",
+            "runtime_minutes": 3.1,
+            "page_metrics": {
+                "page_count": 27,
+                "review_rows": 540,
+                "http_429_pages": 0,
+                "http_429_rate": 0,
+            },
+            "load_metrics": {
+                "reviews_inserted": 107,
+                "duplicates_skipped": 433,
+                "fetch_errors": 0,
+                "capped_scopes": 0,
+            },
+        }
+    ]
+    experiments = [
+        {
+            "experiment_id": "FG2",
+            "status": "seed_completed",
+            "comparison_group": "FG2_three_hour_grouped_frequency",
+            "experiment_group": "om_group_04",
+        }
+    ]
+
+    findings = build_experiment_findings(runs, experiments)
+
+    assert findings[0]["frequency_isolation_status"] == "pending_treatment"
+    assert findings[0]["seed_run_id"] == "seed"
+    assert findings[0]["treatment_run_id"] == ""
+    assert findings[0]["contaminating_run_count"] == 0
+    assert "Treatment is pending" in findings[0]["finding"]
+
+
+def test_operating_grouped_frequency_finding_detects_full_scope_contamination():
+    runs = [
+        {
+            "github_run_id": "seed",
+            "comparison_group": "FG2_three_hour_grouped_frequency",
+            "experiment_group": "om_group_04",
+            "conclusion": "success",
+            "created_at": "2026-06-30T23:11:44Z",
+            "updated_at": "2026-06-30T23:14:50Z",
+            "runtime_minutes": 3.1,
+            "page_metrics": {"page_count": 27, "review_rows": 540, "http_429_pages": 0, "http_429_rate": 0},
+            "load_metrics": {"reviews_inserted": 107, "duplicates_skipped": 433, "fetch_errors": 0},
+        },
+        {
+            "github_run_id": "full-scope",
+            "comparison_group": "F0_twice_daily_baseline",
+            "conclusion": "success",
+            "created_at": "2026-07-01T00:00:00Z",
+            "updated_at": "2026-07-01T00:45:00Z",
+            "job_total": 202,
+            "page_metrics": {"page_count": 260, "http_429_pages": 0, "http_429_rate": 0},
+            "load_metrics": {"reviews_inserted": 100, "duplicates_skipped": 5100, "fetch_errors": 0},
+        },
+        {
+            "github_run_id": "treatment",
+            "comparison_group": "FG2_three_hour_grouped_frequency",
+            "experiment_group": "om_group_04",
+            "conclusion": "success",
+            "created_at": "2026-07-01T02:15:00Z",
+            "updated_at": "2026-07-01T02:18:00Z",
+            "runtime_minutes": 3.0,
+            "page_metrics": {"page_count": 25, "review_rows": 500, "http_429_pages": 0, "http_429_rate": 0},
+            "load_metrics": {"reviews_inserted": 1, "duplicates_skipped": 499, "fetch_errors": 0},
+        },
+    ]
+    experiments = [
+        {
+            "experiment_id": "FG2",
+            "status": "completed",
+            "comparison_group": "FG2_three_hour_grouped_frequency",
+            "experiment_group": "om_group_04",
+        }
+    ]
+
+    findings = build_experiment_findings(runs, experiments)
+
+    assert findings[0]["frequency_isolation_status"] == "contaminated"
+    assert findings[0]["contaminating_run_count"] == 1
+    assert findings[0]["contaminating_run_ids"] == "full-scope"
+    assert "Contaminated" in findings[0]["finding"]
+
+
 def test_command_operating_report_passes_paths(tmp_path, monkeypatch):
     observed = {}
 
