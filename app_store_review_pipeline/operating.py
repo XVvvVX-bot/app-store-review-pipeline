@@ -106,6 +106,21 @@ def is_experiment_status_done(status: Any) -> bool:
     return status_text in {"complete", "completed", "skipped"} or status_text.startswith("completed_")
 
 
+def is_source_pressure_clean_run(run: dict[str, Any]) -> bool:
+    if run.get("conclusion") == "cancelled":
+        return False
+    page_metrics = run.get("page_metrics", {})
+    load_metrics = run.get("load_metrics", {})
+    page_count = int(page_metrics.get("page_count") or 0)
+    if page_count <= 0:
+        return False
+    http_429_rate = float(page_metrics.get("http_429_rate") or 0)
+    fetch_errors = int(load_metrics.get("fetch_errors") or 0)
+    fetch_error_rate = round(fetch_errors / page_count, 4) if page_count else 0
+    capped_scopes = int(load_metrics.get("capped_scopes") or 0)
+    return http_429_rate < 0.005 and fetch_error_rate < 0.01 and capped_scopes == 0
+
+
 def build_operating_summary(
     database_url: str,
     *,
@@ -159,6 +174,7 @@ def build_experiment_findings(
         comparison_group = experiment.get("comparison_group")
         matching_runs = [run for run in runs if run.get("comparison_group") == comparison_group]
         successful_runs = [run for run in matching_runs if run.get("conclusion") == "success"]
+        source_pressure_clean_runs = [run for run in matching_runs if is_source_pressure_clean_run(run)]
         page_count = sum(int(run.get("page_metrics", {}).get("page_count") or 0) for run in matching_runs)
         review_rows = sum(int(run.get("page_metrics", {}).get("review_rows") or 0) for run in matching_runs)
         inserted = sum(int(run.get("load_metrics", {}).get("reviews_inserted") or 0) for run in matching_runs)
@@ -197,6 +213,7 @@ def build_experiment_findings(
                 or experiment.get("inputs", {}).get("experiment_group", ""),
                 "matching_run_count": len(matching_runs),
                 "successful_run_count": len(successful_runs),
+                "source_pressure_clean_run_count": len(source_pressure_clean_runs),
                 "page_count": page_count,
                 "review_rows": review_rows,
                 "inserted": inserted,
@@ -469,6 +486,7 @@ def add_run_rates(page_metrics: dict[str, Any], load_metrics: dict[str, Any]) ->
 def build_aggregate_summary(runs: list[dict[str, Any]]) -> dict[str, Any]:
     observed_runs = [run for run in runs if int(run.get("page_metrics", {}).get("page_count") or 0) > 0]
     successful_runs = [run for run in observed_runs if run.get("conclusion") == "success"]
+    source_pressure_clean_runs = [run for run in observed_runs if is_source_pressure_clean_run(run)]
     baseline_runs = [
         run
         for run in successful_runs
@@ -484,6 +502,26 @@ def build_aggregate_summary(runs: list[dict[str, Any]]) -> dict[str, Any]:
         "successful_run_count": len(successful_runs),
         "failed_or_cancelled_run_count": len(runs) - len(successful_runs),
         "successful_baseline_run_count": len(baseline_runs),
+        "source_pressure_clean_run_count": len(source_pressure_clean_runs),
+        "source_pressure_clean_pages": sum(
+            int(run.get("page_metrics", {}).get("page_count") or 0) for run in source_pressure_clean_runs
+        ),
+        "source_pressure_clean_http_429_rate": round(
+            sum(int(run.get("page_metrics", {}).get("http_429_pages") or 0) for run in source_pressure_clean_runs)
+            / sum(int(run.get("page_metrics", {}).get("page_count") or 0) for run in source_pressure_clean_runs),
+            4,
+        )
+        if source_pressure_clean_runs
+        else 0,
+        "source_pressure_clean_review_rows": sum(
+            int(run.get("page_metrics", {}).get("review_rows") or 0) for run in source_pressure_clean_runs
+        ),
+        "source_pressure_clean_reviews_inserted": sum(
+            int(run.get("load_metrics", {}).get("reviews_inserted") or 0) for run in source_pressure_clean_runs
+        ),
+        "source_pressure_clean_duplicates_skipped": sum(
+            int(run.get("load_metrics", {}).get("duplicates_skipped") or 0) for run in source_pressure_clean_runs
+        ),
         "successful_pages": source_pressure_pages,
         "successful_http_429_pages": source_pressure_429,
         "successful_http_429_rate": round(source_pressure_429 / source_pressure_pages, 4) if source_pressure_pages else 0,
@@ -728,6 +766,7 @@ def render_operating_markdown(summary: dict[str, Any]) -> str:
                 "experiment_group",
                 "matching_run_count",
                 "successful_run_count",
+                "source_pressure_clean_run_count",
                 "page_count",
                 "review_rows",
                 "inserted",
@@ -745,6 +784,7 @@ def render_operating_markdown(summary: dict[str, Any]) -> str:
         "",
         "Interpretation:",
         "- Frequency tests (F1/F2) measure whether shorter gaps add useful fresh rows without increasing source pressure.",
+        "- `successful_run_count` is GitHub-clean; `source_pressure_clean_run_count` is source-pressure clean and can include post-ingestion artifact-only failures.",
         "- Depth tests (D1/D2) use randomized 25-app groups and measure whether page caps miss more than 5% of rows later captured by a same-group uncapped audit.",
         "- A final recommendation should wait for the pending tests unless source-pressure thresholds stop the ladder early.",
         "",
@@ -775,6 +815,12 @@ def render_operating_markdown(summary: dict[str, Any]) -> str:
             [
                 "observed_run_count",
                 "successful_run_count",
+                "source_pressure_clean_run_count",
+                "source_pressure_clean_pages",
+                "source_pressure_clean_review_rows",
+                "source_pressure_clean_reviews_inserted",
+                "source_pressure_clean_duplicates_skipped",
+                "source_pressure_clean_http_429_rate",
                 "failed_or_cancelled_run_count",
                 "successful_pages",
                 "successful_review_rows",

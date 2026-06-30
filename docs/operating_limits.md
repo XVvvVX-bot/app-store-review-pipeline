@@ -1,6 +1,6 @@
 # Apple Review Pipeline Operating Limits
 
-Generated at: `2026-06-30T21:48:55+00:00`
+Generated at: `2026-06-30T21:59:08+00:00`
 Database: `postgresql:///app_store_reviews`
 Source: `apple_app_store_web_catalog_reviews`
 Ledger: `docs/experiments/operating_model_run_ledger.json`
@@ -33,15 +33,16 @@ Strategy comparisons use fixed randomized 25-app groups instead of running every
 
 ## Controlled Experiment Findings
 
-| experiment_id | status | experiment_group | matching_run_count | successful_run_count | page_count | review_rows | inserted | skipped | duplicate_skip_rate | inserted_per_page | http_429 | non_200 | fetch_errors | retried_pages | median_runtime_minutes | finding |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| F1 | completed |  | 1 | 1 | 283 | 5,640 | 2,826 | 2,811 | 0.4987 | 9.986 | 0 | 1 | 1 | 11 | 38.45 | Clean. The six-hour full-scope run passed source-pressure thresholds; its marginal yield was 9.986 inserts/page with 49.9% duplicate skips. |
-| F2 | completed_source_clean_github_artifact_failure |  | 1 | 0 | 203 | 4,060 | 136 | 3,924 | 0.9665 | 0.67 | 0 | 0 | 0 | 14 | 41.35 | Source-clean but not GitHub-clean. The run passed source-pressure checks, but at least one matching job failed after ingestion. |
-| D1 | planned | om_group_01 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | Pending. No matching run has been recorded in the ledger yet. |
-| D2 | planned | om_group_02 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | Pending. No matching run has been recorded in the ledger yet. |
+| experiment_id | status | experiment_group | matching_run_count | successful_run_count | source_pressure_clean_run_count | page_count | review_rows | inserted | skipped | duplicate_skip_rate | inserted_per_page | http_429 | non_200 | fetch_errors | retried_pages | median_runtime_minutes | finding |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| F1 | completed |  | 1 | 1 | 1 | 283 | 5,640 | 2,826 | 2,811 | 0.4987 | 9.986 | 0 | 1 | 1 | 11 | 38.45 | Clean. The six-hour full-scope run passed source-pressure thresholds; its marginal yield was 9.986 inserts/page with 49.9% duplicate skips. |
+| F2 | completed_source_clean_github_artifact_failure |  | 1 | 0 | 1 | 203 | 4,060 | 136 | 3,924 | 0.9665 | 0.67 | 0 | 0 | 0 | 14 | 41.35 | Source-clean but not GitHub-clean. The run passed source-pressure checks, but at least one matching job failed after ingestion. |
+| D1 | planned | om_group_01 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | Pending. No matching run has been recorded in the ledger yet. |
+| D2 | planned | om_group_02 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | Pending. No matching run has been recorded in the ledger yet. |
 
 Interpretation:
 - Frequency tests (F1/F2) measure whether shorter gaps add useful fresh rows without increasing source pressure.
+- `successful_run_count` is GitHub-clean; `source_pressure_clean_run_count` is source-pressure clean and can include post-ingestion artifact-only failures.
 - Depth tests (D1/D2) use randomized 25-app groups and measure whether page caps miss more than 5% of rows later captured by a same-group uncapped audit.
 - A final recommendation should wait for the pending tests unless source-pressure thresholds stop the ladder early.
 
@@ -54,9 +55,9 @@ Interpretation:
 
 ## Aggregate Observations
 
-| observed_run_count | successful_run_count | failed_or_cancelled_run_count | successful_pages | successful_review_rows | successful_reviews_inserted | successful_duplicates_skipped | successful_http_429_rate | successful_retried_pages | successful_fetch_errors | successful_capped_scopes | median_successful_runtime_minutes | median_successful_pages | median_successful_inserted_per_page | max_schedule_delay_minutes |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 13 | 10 | 3 | 4,092 | 81,760 | 50,199 | 31,545 | 0 | 128 | 4 | 0 | 46.02 | 279.5 | 8.036 | 315.5 |
+| observed_run_count | successful_run_count | source_pressure_clean_run_count | source_pressure_clean_pages | source_pressure_clean_review_rows | source_pressure_clean_reviews_inserted | source_pressure_clean_duplicates_skipped | source_pressure_clean_http_429_rate | failed_or_cancelled_run_count | successful_pages | successful_review_rows | successful_reviews_inserted | successful_duplicates_skipped | successful_http_429_rate | successful_retried_pages | successful_fetch_errors | successful_capped_scopes | median_successful_runtime_minutes | median_successful_pages | median_successful_inserted_per_page | max_schedule_delay_minutes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 13 | 10 | 12 | 4,632 | 92,540 | 54,381 | 38,142 | 0 | 3 | 4,092 | 81,760 | 50,199 | 31,545 | 0 | 128 | 4 | 0 | 46.02 | 279.5 | 8.036 | 315.5 |
 
 ### Successful Run Attempt Distribution
 

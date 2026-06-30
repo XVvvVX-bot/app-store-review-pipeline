@@ -40,6 +40,7 @@ from app_store_review_pipeline.experiment_groups import build_daily_matrix_rows
 from app_store_review_pipeline.fetcher import fetch_targets, terminal_reason_for_page
 from app_store_review_pipeline.models import AppTarget, ReviewPage
 from app_store_review_pipeline.operating import (
+    build_aggregate_summary,
     build_depth_audit_findings,
     build_experiment_findings,
     load_operating_ledger,
@@ -665,6 +666,47 @@ def test_operating_experiment_findings_summarize_completed_f1():
     assert findings[0]["http_429_rate"] == 0
     assert findings[0]["fetch_error_rate"] < 0.01
     assert "Clean" in findings[0]["finding"]
+
+
+def test_operating_source_pressure_clean_counts_artifact_only_failure():
+    runs = [
+        {
+            "comparison_group": "F2_three_hour_full_scope",
+            "conclusion": "failure",
+            "runtime_minutes": 41.35,
+            "page_metrics": {
+                "page_count": 203,
+                "review_rows": 4060,
+                "http_429_pages": 0,
+                "http_429_rate": 0,
+                "other_non_200_pages": 0,
+                "retried_pages": 14,
+            },
+            "load_metrics": {
+                "reviews_inserted": 136,
+                "duplicates_skipped": 3924,
+                "fetch_errors": 0,
+                "capped_scopes": 0,
+            },
+        }
+    ]
+    experiments = [
+        {
+            "experiment_id": "F2",
+            "status": "completed_source_clean_github_artifact_failure",
+            "comparison_group": "F2_three_hour_full_scope",
+        }
+    ]
+
+    findings = build_experiment_findings(runs, experiments)
+    aggregate = build_aggregate_summary(runs)
+
+    assert findings[0]["successful_run_count"] == 0
+    assert findings[0]["source_pressure_clean_run_count"] == 1
+    assert "Source-clean" in findings[0]["finding"]
+    assert aggregate["successful_run_count"] == 0
+    assert aggregate["source_pressure_clean_run_count"] == 1
+    assert aggregate["source_pressure_clean_pages"] == 203
 
 
 def test_operating_depth_audit_rejects_caps_that_miss_too_many_rows():
