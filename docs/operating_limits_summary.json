@@ -3,7 +3,7 @@
     "attempt_distribution": [
       {
         "attempt_count": "1",
-        "page_count": 4015
+        "page_count": 4076
       },
       {
         "attempt_count": "2",
@@ -17,37 +17,37 @@
     "failed_or_cancelled_run_count": 4,
     "max_schedule_delay_minutes": 315.47,
     "median_successful_inserted_per_page": 6.069,
-    "median_successful_pages": 253.0,
-    "median_successful_runtime_minutes": 40.895,
-    "observed_run_count": 16,
-    "source_pressure_clean_duplicates_skipped": 39551,
+    "median_successful_pages": 228.5,
+    "median_successful_runtime_minutes": 40.76,
+    "observed_run_count": 18,
+    "source_pressure_clean_duplicates_skipped": 40558,
     "source_pressure_clean_http_429_rate": 0.0,
-    "source_pressure_clean_pages": 4708,
-    "source_pressure_clean_review_rows": 94060,
-    "source_pressure_clean_reviews_inserted": 54492,
-    "source_pressure_clean_run_count": 15,
+    "source_pressure_clean_pages": 4769,
+    "source_pressure_clean_review_rows": 95280,
+    "source_pressure_clean_reviews_inserted": 54705,
+    "source_pressure_clean_run_count": 17,
     "successful_baseline_run_count": 9,
-    "successful_capped_scopes": 1,
-    "successful_duplicates_skipped": 32553,
+    "successful_capped_scopes": 3,
+    "successful_duplicates_skipped": 33560,
     "successful_fetch_errors": 4,
     "successful_http_429_pages": 0,
     "successful_http_429_rate": 0.0,
-    "successful_pages": 4143,
+    "successful_pages": 4204,
     "successful_retried_pages": 128,
-    "successful_review_rows": 82780,
-    "successful_reviews_inserted": 50211,
-    "successful_run_count": 12,
+    "successful_review_rows": 84000,
+    "successful_reviews_inserted": 50424,
+    "successful_run_count": 14,
     "terminal_reason_distribution": [
       {
-        "page_count": 2094,
+        "page_count": 2105,
         "terminal_reason": "none"
       },
       {
-        "page_count": 2048,
+        "page_count": 2096,
         "terminal_reason": "caught_up_to_existing_reviews"
       },
       {
-        "page_count": 1,
+        "page_count": 3,
         "terminal_reason": "page_cap"
       }
     ]
@@ -56,29 +56,29 @@
     "segments": [
       {
         "app_count": 50,
-        "insert_share": 0.7205,
-        "inserted": 36177,
-        "inserted_per_page": 16.489,
-        "page_count": 2194,
-        "page_share": 0.5296,
+        "insert_share": 0.7211,
+        "inserted": 36361,
+        "inserted_per_page": 16.371,
+        "page_count": 2221,
+        "page_share": 0.5283,
         "segment": "high"
       },
       {
         "app_count": 100,
-        "insert_share": 0.248,
-        "inserted": 12453,
-        "inserted_per_page": 8.914,
-        "page_count": 1397,
-        "page_share": 0.3372,
+        "insert_share": 0.2475,
+        "inserted": 12482,
+        "inserted_per_page": 8.796,
+        "page_count": 1419,
+        "page_share": 0.3375,
         "segment": "normal"
       },
       {
         "app_count": 50,
-        "insert_share": 0.0315,
+        "insert_share": 0.0314,
         "inserted": 1581,
-        "inserted_per_page": 2.864,
-        "page_count": 552,
-        "page_share": 0.1332,
+        "inserted_per_page": 2.803,
+        "page_count": 564,
+        "page_share": 0.1342,
         "segment": "low"
       }
     ],
@@ -88,10 +88,10 @@
         "app_id": "324684580",
         "app_name": "Spotify",
         "category": "entertainment",
-        "inserted": 3339,
-        "observed_runs": 10,
-        "page_count": 266,
-        "review_rows": 5300,
+        "inserted": 3404,
+        "observed_runs": 12,
+        "page_count": 274,
+        "review_rows": 5460,
         "updated": 0
       },
       {
@@ -121,10 +121,10 @@
         "app_id": "570060128",
         "app_name": "Duolingo",
         "category": "education",
-        "inserted": 2023,
-        "observed_runs": 10,
-        "page_count": 107,
-        "review_rows": 2120,
+        "inserted": 2083,
+        "observed_runs": 12,
+        "page_count": 114,
+        "review_rows": 2260,
         "updated": 0
       },
       {
@@ -264,10 +264,10 @@
         "app_id": "333903271",
         "app_name": "X",
         "category": "news",
-        "inserted": 633,
-        "observed_runs": 10,
-        "page_count": 36,
-        "review_rows": 720,
+        "inserted": 647,
+        "observed_runs": 12,
+        "page_count": 38,
+        "review_rows": 760,
         "updated": 0
       },
       {
@@ -305,6 +305,17 @@
       },
       {
         "activity_segment": "high",
+        "app_id": "6477489729",
+        "app_name": "Google Gemini",
+        "category": "productivity",
+        "inserted": 524,
+        "observed_runs": 12,
+        "page_count": 32,
+        "review_rows": 640,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
         "app_id": "6443467666",
         "app_name": "Love and Deepspace",
         "category": "games",
@@ -313,17 +324,6 @@
         "page_count": 32,
         "review_rows": 640,
         "updated": 3
-      },
-      {
-        "activity_segment": "high",
-        "app_id": "6477489729",
-        "app_name": "Google Gemini",
-        "category": "productivity",
-        "inserted": 507,
-        "observed_runs": 10,
-        "page_count": 30,
-        "review_rows": 600,
-        "updated": 0
       },
       {
         "activity_segment": "high",
@@ -362,28 +362,28 @@
   },
   "database_snapshot": [
     {
-      "row_count": 2269967,
+      "row_count": 2270180,
       "table_name": "app_store_review_changes",
-      "total_bytes": 1215062016,
+      "total_bytes": 1215168512,
       "total_size": "1159 MB"
     },
     {
-      "row_count": 117773,
+      "row_count": 117834,
       "table_name": "app_store_review_pages",
-      "total_bytes": 88375296,
+      "total_bytes": 88424448,
       "total_size": "84 MB"
     },
     {
-      "row_count": 2269897,
+      "row_count": 2270110,
       "table_name": "app_store_reviews",
-      "total_bytes": 2583396352,
+      "total_bytes": 2584002560,
       "total_size": "2464 MB"
     },
     {
-      "row_count": 4508,
+      "row_count": 4558,
       "table_name": "app_store_runs",
-      "total_bytes": 1515520,
-      "total_size": "1480 kB"
+      "total_bytes": 1540096,
+      "total_size": "1504 kB"
     }
   ],
   "decision_rules": {
@@ -421,17 +421,17 @@
     {
       "audit_group": "D2_three_page_uncapped_audit",
       "audit_http_429": 0,
-      "audit_inserted_after_cap": 0,
-      "audit_pages": 0,
-      "audit_run_count": 0,
+      "audit_inserted_after_cap": 25,
+      "audit_pages": 32,
+      "audit_run_count": 1,
       "cap_group": "D2_three_page_cap",
       "cap_http_429": 0,
-      "cap_inserted": 0,
-      "cap_pages": 0,
-      "cap_run_count": 0,
+      "cap_inserted": 188,
+      "cap_pages": 29,
+      "cap_run_count": 1,
       "experiment_id": "D2",
-      "finding": "Pending. The capped run has not been recorded yet.",
-      "missed_insert_rate_vs_uncapped_audit": 0,
+      "finding": "Rejected. The cap missed more than the configured audit threshold.",
+      "missed_insert_rate_vs_uncapped_audit": 0.1174,
       "threshold": 0.05
     }
   ],
@@ -557,28 +557,28 @@
       "successful_run_count": 1
     },
     {
-      "capped_scopes": 0,
+      "capped_scopes": 2,
       "comparison_group": "D2_three_page_cap",
-      "duplicate_skip_rate": 0,
+      "duplicate_skip_rate": 0.6759,
       "experiment_group": "om_group_02",
       "experiment_id": "D2",
-      "fetch_error_rate": 0,
+      "fetch_error_rate": 0.0,
       "fetch_errors": 0,
-      "finding": "Pending. No matching run has been recorded in the ledger yet.",
+      "finding": "Source-pressure clean, but rejected by the paired audit or strategy-specific decision rule.",
       "http_429": 0,
-      "http_429_rate": 0,
-      "inserted": 0,
-      "inserted_per_page": 0,
-      "matching_run_count": 0,
-      "median_runtime_minutes": 0,
+      "http_429_rate": 0.0,
+      "inserted": 188,
+      "inserted_per_page": 6.483,
+      "matching_run_count": 1,
+      "median_runtime_minutes": 3.02,
       "non_200": 0,
-      "page_count": 0,
+      "page_count": 29,
       "retried_pages": 0,
-      "review_rows": 0,
-      "skipped": 0,
-      "source_pressure_clean_run_count": 0,
-      "status": "planned",
-      "successful_run_count": 0
+      "review_rows": 580,
+      "skipped": 392,
+      "source_pressure_clean_run_count": 1,
+      "status": "completed_rejected",
+      "successful_run_count": 1
     }
   ],
   "experiment_groups": [
@@ -641,7 +641,7 @@
   ],
   "metadata": {
     "database_url": "postgresql:///app_store_reviews",
-    "generated_at": "2026-06-30T22:54:21+00:00",
+    "generated_at": "2026-06-30T23:08:51+00:00",
     "grace_minutes": 5,
     "ledger_path": "docs/experiments/operating_model_run_ledger.json",
     "source": "apple_app_store_web_catalog_reviews"
@@ -724,7 +724,7 @@
       "audit_comparison_group": "D2_three_page_uncapped_audit",
       "audit_missed_insert_threshold": 0.05,
       "comparison_group": "D2_three_page_cap",
-      "description": "Randomized 25-app group capped at three pages per app, followed by an uncapped audit on the same group.",
+      "description": "Completed cap=3 randomized 25-app test. Rejected: audit inserted 25 additional Spotify reviews, an 11.7% missed-insert rate.",
       "experiment_group": "om_group_02",
       "experiment_id": "D2",
       "inputs": {
@@ -734,7 +734,7 @@
         "max_parallel": "4",
         "start_page": "1"
       },
-      "status": "planned",
+      "status": "completed_rejected",
       "success_criteria": "Audit inserts after the capped pass are no more than 5% of total capped-plus-audit inserts, with clean source-pressure metrics."
     }
   ],
@@ -743,8 +743,7 @@
     "current_recommendation": "Keep the twice-daily full-scope incremental schedule as the production baseline while remaining controlled tests are completed.",
     "pending_experiments": [
       "FG1",
-      "FG2",
-      "D2"
+      "FG2"
     ],
     "stop_thresholds": {
       "fetch_error_rate": 0.01,
@@ -754,7 +753,7 @@
     "why": [
       "Recent successful full-scope runs show clean source-pressure metrics.",
       "There are enough successful baseline observations to compare against experiments.",
-      "High-activity apps account for 72.0% of recent inserts and 53.0% of recent pages."
+      "High-activity apps account for 72.1% of recent inserts and 52.8% of recent pages."
     ]
   },
   "runs": [
@@ -4813,6 +4812,528 @@
       ],
       "updated_at": "2026-06-30T22:42:03Z",
       "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28480461263"
+    },
+    {
+      "attempt_counts": [
+        {
+          "attempt_count": 1,
+          "page_count": 32
+        }
+      ],
+      "comparison_group": "D2_three_page_uncapped_audit",
+      "conclusion": "success",
+      "created_at": "2026-06-30T23:01:25Z",
+      "event": "workflow_dispatch",
+      "experiment_group": "om_group_02",
+      "github_run_id": "28481422182",
+      "head_sha": "1ca27c06220ef5228e1da7c2906f014121a7d89e",
+      "inputs": {
+        "experiment_group": "om_group_02",
+        "limit": "0",
+        "max_pages_per_app_country": "0",
+        "max_parallel": "4",
+        "pressure_ramp_mode": "fixed",
+        "request_delay_jitter_seconds": "5",
+        "request_delay_seconds": "10",
+        "review_limit": "20",
+        "start_page": "1",
+        "target_offset": "0",
+        "web_429_backoff_multiplier": "1.5",
+        "web_429_cooldown_minutes": "0",
+        "web_429_retries": "2",
+        "web_429_retry_jitter_seconds": "60",
+        "web_429_retry_seconds": "300",
+        "web_scope_time_budget_seconds": "3600",
+        "web_time_budget_seconds": "3600"
+      },
+      "job_cancelled": 0,
+      "job_failure": 0,
+      "job_success": 27,
+      "job_total": 27,
+      "label": "D2 three-page grouped uncapped audit",
+      "load_metrics": {
+        "capped_scopes": 0,
+        "duplicates_skipped": 615,
+        "fetch_errors": 0,
+        "loaded_pages": 32,
+        "loaded_review_rows": 640,
+        "reviews_inserted": 25,
+        "reviews_updated": 0,
+        "run_rows": 25
+      },
+      "long_tail_apps": [
+        {
+          "app_id": "324684580",
+          "app_name": "Spotify",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 15,
+          "page_count": 5,
+          "retried_pages": 0,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "570060128",
+          "app_name": "Duolingo",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 20,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "405075943",
+          "app_name": "AllTrails: Hike, Bike & Run",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "850417475",
+          "app_name": "Candy Crush Soda Saga",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1123582513",
+          "app_name": "Cashman Casino Slots Games",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "535509415",
+          "app_name": "Costco",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "6745274862",
+          "app_name": "DealSeek: Coupons & Discounts",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "985746746",
+          "app_name": "Discord - Talk, Play, Hang Out",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "6476561442",
+          "app_name": "FIFA World Cup 2026\u2122",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "388491656",
+          "app_name": "Fly Delta",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1105855019",
+          "app_name": "Gardenscapes",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "6477489729",
+          "app_name": "Google Gemini",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1195621598",
+          "app_name": "Homescapes: Match 3 Games",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "294934058",
+          "app_name": "HotSchedules",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "6739554056",
+          "app_name": "Kingshot",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        }
+      ],
+      "metric_window_end": "2026-06-30T23:09:25Z",
+      "metric_window_start": "2026-06-30T23:01:25Z",
+      "notes": "Uncapped audit after D2 three-page cap for om_group_02: 32 pages, 640 rows, 25 inserts, 0 HTTP 429, 0 non-200; Spotify needed page 5 and accounted for all 25 audit inserts, Duolingo needed page 4.",
+      "page_metrics": {
+        "app_count": 25,
+        "duplicate_skip_rate": 0.9609,
+        "error_pages": 0,
+        "first_page_at": "2026-06-30T16:02:08.826613-07:00",
+        "http_200_pages": 32,
+        "http_429_pages": 0,
+        "http_429_rate": 0.0,
+        "inserted_per_fetched_row": 0.0391,
+        "inserted_per_page": 0.781,
+        "last_page_at": "2026-06-30T16:04:19.680770-07:00",
+        "max_attempt_count": 1,
+        "non_200_rate": 0.0,
+        "null_status_pages": 0,
+        "ok_pages": 32,
+        "other_non_200_pages": 0,
+        "page_count": 32,
+        "page_duplicate_rows": 0,
+        "page_window_minutes": 2.18,
+        "retried_page_rate": 0.0,
+        "retried_pages": 0,
+        "review_rows": 640,
+        "terminal_pages": 25,
+        "unique_review_rows": 640
+      },
+      "runtime_minutes": 3.0,
+      "schedule_delay_minutes": null,
+      "status": "completed",
+      "terminal_reasons": [
+        {
+          "page_count": 25,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "page_count": 7,
+          "terminal_reason": "none"
+        }
+      ],
+      "updated_at": "2026-06-30T23:04:25Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28481422182"
+    },
+    {
+      "attempt_counts": [
+        {
+          "attempt_count": 1,
+          "page_count": 29
+        }
+      ],
+      "comparison_group": "D2_three_page_cap",
+      "conclusion": "success",
+      "created_at": "2026-06-30T22:57:11Z",
+      "event": "workflow_dispatch",
+      "experiment_group": "om_group_02",
+      "github_run_id": "28481235165",
+      "head_sha": "1ca27c06220ef5228e1da7c2906f014121a7d89e",
+      "inputs": {
+        "experiment_group": "om_group_02",
+        "limit": "0",
+        "max_pages_per_app_country": "3",
+        "max_parallel": "4",
+        "pressure_ramp_mode": "fixed",
+        "request_delay_jitter_seconds": "5",
+        "request_delay_seconds": "10",
+        "review_limit": "20",
+        "start_page": "1",
+        "target_offset": "0",
+        "web_429_backoff_multiplier": "1.5",
+        "web_429_cooldown_minutes": "0",
+        "web_429_retries": "2",
+        "web_429_retry_jitter_seconds": "60",
+        "web_429_retry_seconds": "300",
+        "web_scope_time_budget_seconds": "3600",
+        "web_time_budget_seconds": "3600"
+      },
+      "job_cancelled": 0,
+      "job_failure": 0,
+      "job_success": 27,
+      "job_total": 27,
+      "label": "D2 three-page grouped cap",
+      "load_metrics": {
+        "capped_scopes": 2,
+        "duplicates_skipped": 392,
+        "fetch_errors": 0,
+        "loaded_pages": 29,
+        "loaded_review_rows": 580,
+        "reviews_inserted": 188,
+        "reviews_updated": 0,
+        "run_rows": 25
+      },
+      "long_tail_apps": [
+        {
+          "app_id": "570060128",
+          "app_name": "Duolingo",
+          "http_429_pages": 0,
+          "max_page_number": 3,
+          "overlap_rows": 0,
+          "page_count": 3,
+          "retried_pages": 0,
+          "review_rows": 60,
+          "terminal_reason": "page_cap"
+        },
+        {
+          "app_id": "324684580",
+          "app_name": "Spotify",
+          "http_429_pages": 0,
+          "max_page_number": 3,
+          "overlap_rows": 0,
+          "page_count": 3,
+          "retried_pages": 0,
+          "review_rows": 60,
+          "terminal_reason": "page_cap"
+        },
+        {
+          "app_id": "405075943",
+          "app_name": "AllTrails: Hike, Bike & Run",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 18,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "850417475",
+          "app_name": "Candy Crush Soda Saga",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1123582513",
+          "app_name": "Cashman Casino Slots Games",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "535509415",
+          "app_name": "Costco",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "6745274862",
+          "app_name": "DealSeek: Coupons & Discounts",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 16,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "985746746",
+          "app_name": "Discord - Talk, Play, Hang Out",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 7,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "6476561442",
+          "app_name": "FIFA World Cup 2026\u2122",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 16,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "388491656",
+          "app_name": "Fly Delta",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1105855019",
+          "app_name": "Gardenscapes",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 19,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "6477489729",
+          "app_name": "Google Gemini",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 3,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1195621598",
+          "app_name": "Homescapes: Match 3 Games",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 16,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "294934058",
+          "app_name": "HotSchedules",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "6739554056",
+          "app_name": "Kingshot",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 17,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        }
+      ],
+      "metric_window_end": "2026-06-30T23:01:24.999999Z",
+      "metric_window_start": "2026-06-30T22:57:11Z",
+      "notes": "Grouped three-page cap run for om_group_02: 29 pages, 580 rows, 188 inserts, 0 HTTP 429, 0 non-200; Spotify and Duolingo hit page cap.",
+      "page_metrics": {
+        "app_count": 25,
+        "duplicate_skip_rate": 0.6759,
+        "error_pages": 0,
+        "first_page_at": "2026-06-30T15:58:05.310074-07:00",
+        "http_200_pages": 29,
+        "http_429_pages": 0,
+        "http_429_rate": 0.0,
+        "inserted_per_fetched_row": 0.3241,
+        "inserted_per_page": 6.483,
+        "last_page_at": "2026-06-30T16:00:06.812609-07:00",
+        "max_attempt_count": 1,
+        "non_200_rate": 0.0,
+        "null_status_pages": 0,
+        "ok_pages": 29,
+        "other_non_200_pages": 0,
+        "page_count": 29,
+        "page_duplicate_rows": 0,
+        "page_window_minutes": 2.03,
+        "retried_page_rate": 0.0,
+        "retried_pages": 0,
+        "review_rows": 580,
+        "terminal_pages": 25,
+        "unique_review_rows": 580
+      },
+      "runtime_minutes": 3.02,
+      "schedule_delay_minutes": null,
+      "status": "completed",
+      "terminal_reasons": [
+        {
+          "page_count": 23,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "page_count": 4,
+          "terminal_reason": "none"
+        },
+        {
+          "page_count": 2,
+          "terminal_reason": "page_cap"
+        }
+      ],
+      "updated_at": "2026-06-30T23:00:12Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28481235165"
     }
   ]
 }

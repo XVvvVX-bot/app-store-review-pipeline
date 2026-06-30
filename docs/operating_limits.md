@@ -1,6 +1,6 @@
 # Apple Review Pipeline Operating Limits
 
-Generated at: `2026-06-30T22:54:21+00:00`
+Generated at: `2026-06-30T23:08:51+00:00`
 Database: `postgresql:///app_store_reviews`
 Source: `apple_app_store_web_catalog_reviews`
 Ledger: `docs/experiments/operating_model_run_ledger.json`
@@ -9,12 +9,12 @@ Ledger: `docs/experiments/operating_model_run_ledger.json`
 
 Keep the twice-daily full-scope incremental schedule as the production baseline while remaining controlled tests are completed.
 
-Evidence status: **interim**. Pending controlled experiments: FG1, FG2, D2.
+Evidence status: **interim**. Pending controlled experiments: FG1, FG2.
 
 Rationale:
 - Recent successful full-scope runs show clean source-pressure metrics.
 - There are enough successful baseline observations to compare against experiments.
-- High-activity apps account for 72.0% of recent inserts and 53.0% of recent pages.
+- High-activity apps account for 72.1% of recent inserts and 52.8% of recent pages.
 
 ## Experiment Target Groups
 
@@ -40,7 +40,7 @@ Strategy comparisons use fixed randomized 25-app groups instead of running every
 | FG1 | planned | om_group_03 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | Pending. No matching run has been recorded in the ledger yet. |
 | FG2 | planned | om_group_04 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | Pending. No matching run has been recorded in the ledger yet. |
 | D1 | completed_rejected | om_group_01 | 1 | 1 | 1 | 25 | 500 | 0 | 500 | 1 | 0 | 0 | 0 | 0 | 0 | 2.78 | Source-pressure clean, but rejected by the paired audit or strategy-specific decision rule. |
-| D2 | planned | om_group_02 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | Pending. No matching run has been recorded in the ledger yet. |
+| D2 | completed_rejected | om_group_02 | 1 | 1 | 1 | 29 | 580 | 188 | 392 | 0.6759 | 6.483 | 0 | 0 | 0 | 0 | 3.02 | Source-pressure clean, but rejected by the paired audit or strategy-specific decision rule. |
 
 Interpretation:
 - Full-scope F1/F2 runs are calibration/control evidence; future frequency strategy tests use randomized 25-app groups so one test does not consume the full 200-app incremental signal.
@@ -53,19 +53,19 @@ Interpretation:
 | experiment_id | cap_run_count | audit_run_count | cap_pages | audit_pages | cap_inserted | audit_inserted_after_cap | missed_insert_rate_vs_uncapped_audit | threshold | cap_http_429 | audit_http_429 | finding |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | D1 | 1 | 1 | 25 | 26 | 0 | 12 | 1 | 0.05 | 0 | 0 | Rejected. The cap missed more than the configured audit threshold. |
-| D2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0.05 | 0 | 0 | Pending. The capped run has not been recorded yet. |
+| D2 | 1 | 1 | 29 | 32 | 188 | 25 | 0.1174 | 0.05 | 0 | 0 | Rejected. The cap missed more than the configured audit threshold. |
 
 ## Aggregate Observations
 
 | observed_run_count | successful_run_count | source_pressure_clean_run_count | source_pressure_clean_pages | source_pressure_clean_review_rows | source_pressure_clean_reviews_inserted | source_pressure_clean_duplicates_skipped | source_pressure_clean_http_429_rate | failed_or_cancelled_run_count | successful_pages | successful_review_rows | successful_reviews_inserted | successful_duplicates_skipped | successful_http_429_rate | successful_retried_pages | successful_fetch_errors | successful_capped_scopes | median_successful_runtime_minutes | median_successful_pages | median_successful_inserted_per_page | max_schedule_delay_minutes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 16 | 12 | 15 | 4,708 | 94,060 | 54,492 | 39,551 | 0 | 4 | 4,143 | 82,780 | 50,211 | 32,553 | 0 | 128 | 4 | 1 | 40.9 | 253 | 6.069 | 315.5 |
+| 18 | 14 | 17 | 4,769 | 95,280 | 54,705 | 40,558 | 0 | 4 | 4,204 | 84,000 | 50,424 | 33,560 | 0 | 128 | 4 | 3 | 40.76 | 228.5 | 6.069 | 315.5 |
 
 ### Successful Run Attempt Distribution
 
 | attempt_count | page_count |
 | --- | --- |
-| 1 | 4,015 |
+| 1 | 4,076 |
 | 2 | 113 |
 | 3 | 15 |
 
@@ -73,9 +73,9 @@ Interpretation:
 
 | terminal_reason | page_count |
 | --- | --- |
-| none | 2,094 |
-| caught_up_to_existing_reviews | 2,048 |
-| page_cap | 1 |
+| none | 2,105 |
+| caught_up_to_existing_reviews | 2,096 |
+| page_cap | 3 |
 
 ## Observed Runs
 
@@ -97,6 +97,8 @@ Interpretation:
 | 28479893917 | D1 one-page grouped cap deadlock observation | om_group_01 | workflow_dispatch | failure | 2.73 |  | 26/27 | 25 | 25 | 500 | 99 | 0 | 401 | 0.802 | 0 | 0 | 0 | 1 |
 | 28480629280 | D1 one-page grouped uncapped audit | om_group_01 | workflow_dispatch | success | 2.98 |  | 27/27 | 25 | 26 | 520 | 12 | 0 | 508 | 0.9769 | 0 | 0 | 0 | 0 |
 | 28480461263 | D1 one-page grouped cap | om_group_01 | workflow_dispatch | success | 2.78 |  | 27/27 | 25 | 25 | 500 | 0 | 0 | 500 | 1 | 0 | 0 | 0 | 1 |
+| 28481422182 | D2 three-page grouped uncapped audit | om_group_02 | workflow_dispatch | success | 3 |  | 27/27 | 25 | 32 | 640 | 25 | 0 | 615 | 0.9609 | 0 | 0 | 0 | 0 |
+| 28481235165 | D2 three-page grouped cap | om_group_02 | workflow_dispatch | success | 3.02 |  | 27/27 | 25 | 29 | 580 | 188 | 0 | 392 | 0.6759 | 0 | 0 | 0 | 2 |
 
 ## Activity Segments
 
@@ -104,18 +106,18 @@ Segments are computed from successful ledger runs by app-level inserted rows and
 
 | segment | app_count | page_count | inserted | page_share | insert_share | inserted_per_page |
 | --- | --- | --- | --- | --- | --- | --- |
-| high | 50 | 2,194 | 36,177 | 0.5296 | 0.7205 | 16.49 |
-| normal | 100 | 1,397 | 12,453 | 0.3372 | 0.248 | 8.914 |
-| low | 50 | 552 | 1,581 | 0.1332 | 0.0315 | 2.864 |
+| high | 50 | 2,221 | 36,361 | 0.5283 | 0.7211 | 16.37 |
+| normal | 100 | 1,419 | 12,482 | 0.3375 | 0.2475 | 8.796 |
+| low | 50 | 564 | 1,581 | 0.1342 | 0.0314 | 2.803 |
 
 ### Top Recent Activity Apps
 
 | app_name | category | activity_segment | page_count | review_rows | inserted | updated | observed_runs |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Spotify | entertainment | high | 266 | 5,300 | 3,339 | 0 | 10 |
+| Spotify | entertainment | high | 274 | 5,460 | 3,404 | 0 | 12 |
 | ChatGPT | ai_tools | high | 127 | 2,540 | 2,450 | 0 | 10 |
 | YouTube | photo_and_video | high | 117 | 2,340 | 2,185 | 0 | 10 |
-| Duolingo | education | high | 107 | 2,120 | 2,023 | 0 | 10 |
+| Duolingo | education | high | 114 | 2,260 | 2,083 | 0 | 12 |
 | Vinted: Pre-loved marketplace | shopping | high | 85 | 1,700 | 1,557 | 0 | 12 |
 | Facebook | social_networking | high | 73 | 1,460 | 1,340 | 0 | 10 |
 | DoorDash | food_delivery | high | 67 | 1,340 | 1,234 | 0 | 10 |
@@ -132,10 +134,10 @@ Segments are computed from successful ledger runs by app-level inserted rows and
 
 | table_name | row_count | total_size | total_bytes |
 | --- | --- | --- | --- |
-| app_store_review_changes | 2,269,967 | 1159 MB | 1,215,062,016 |
-| app_store_review_pages | 117,773 | 84 MB | 88,375,296 |
-| app_store_reviews | 2,269,897 | 2464 MB | 2,583,396,352 |
-| app_store_runs | 4,508 | 1480 kB | 1,515,520 |
+| app_store_review_changes | 2,270,180 | 1159 MB | 1,215,168,512 |
+| app_store_review_pages | 117,834 | 84 MB | 88,424,448 |
+| app_store_reviews | 2,270,110 | 2464 MB | 2,584,002,560 |
+| app_store_runs | 4,558 | 1504 kB | 1,540,096 |
 
 ## Planned Controlled Tests
 
@@ -146,7 +148,7 @@ Segments are computed from successful ledger runs by app-level inserted rows and
 | FG1 | planned | FG1_six_hour_grouped_frequency | om_group_03 | Randomized 25-app group uncapped incremental treatment run six hours after a clean same-group seed/control pass. | Clean source-pressure metrics, no abnormal runtime growth, and enough marginal inserted rows per page to justify a six-hour grouped refresh. |
 | FG2 | planned | FG2_three_hour_grouped_frequency | om_group_04 | Randomized 25-app group uncapped incremental treatment run three hours after a clean same-group seed/control pass. | Clean source-pressure metrics, no abnormal runtime growth, and enough marginal inserted rows per page to justify a three-hour grouped refresh. |
 | D1 | completed_rejected | D1_one_page_cap | om_group_01 | Completed randomized 25-app group capped at one page per app, followed by an uncapped audit on the same group. Rejected because the audit found missed inserts beyond the threshold. | Audit inserts after the capped pass are no more than 5% of total capped-plus-audit inserts, with clean source-pressure metrics. |
-| D2 | planned | D2_three_page_cap | om_group_02 | Randomized 25-app group capped at three pages per app, followed by an uncapped audit on the same group. | Audit inserts after the capped pass are no more than 5% of total capped-plus-audit inserts, with clean source-pressure metrics. |
+| D2 | completed_rejected | D2_three_page_cap | om_group_02 | Completed cap=3 randomized 25-app test. Rejected: audit inserted 25 additional Spotify reviews, an 11.7% missed-insert rate. | Audit inserts after the capped pass are no more than 5% of total capped-plus-audit inserts, with clean source-pressure metrics. |
 
 ## Operating Decision Rules
 
