@@ -1,6 +1,6 @@
 # Apple Review Pipeline Operating Limits
 
-Generated at: `2026-06-30T21:36:28+00:00`
+Generated at: `2026-06-30T21:48:55+00:00`
 Database: `postgresql:///app_store_reviews`
 Source: `apple_app_store_web_catalog_reviews`
 Ledger: `docs/experiments/operating_model_run_ledger.json`
@@ -15,6 +15,21 @@ Rationale:
 - Recent successful full-scope runs show clean source-pressure metrics.
 - There are enough successful baseline observations to compare against experiments.
 - High-activity apps account for 72.0% of recent inserts and 53.3% of recent pages.
+
+## Experiment Target Groups
+
+Strategy comparisons use fixed randomized 25-app groups instead of running every strategy on all 200 apps. This keeps each experiment fast and prevents one strategy test from consuming the incremental-review signal needed by the next strategy test.
+
+| group | app_count | category_count | top_categories | example_apps |
+| --- | --- | --- | --- | --- |
+| om_group_01 | 25 | 15 | games:7, entertainment:3, shopping:2, social_networking:2 | Netflix, Vinted: Pre-loved marketplace, Depop - Buy & Sell Clothes, Fubo: Watch Live TV & Sports |
+| om_group_02 | 25 | 16 | games:6, entertainment:3, productivity:2, shopping:2 | Spotify, Duolingo, Love Island USA, Google Gemini |
+| om_group_03 | 25 | 16 | games:7, entertainment:3, productivity:2, business:1 | Walmart, Uber, Instagram, MyFitnessPal |
+| om_group_04 | 25 | 17 | games:6, entertainment:3, shopping:2, books:1 | Target, DoorDash, Shop: All your favorite brands, Tubi: Movies & Live TV |
+| om_group_05 | 25 | 15 | games:6, entertainment:4, shopping:2, social_networking:2 | Amazon Shopping, Airbnb, PayPal, Planet Fitness |
+| om_group_06 | 25 | 16 | games:6, entertainment:3, finance:2, shopping:2 | Expedia, Cash App, FOX One: Live News, Sports, TV, Telemundo: Series y TV en vivo |
+| om_group_07 | 25 | 14 | games:7, entertainment:4, shopping:2, social_networking:2 | Uber Eats, Booking.com, Venmo, ChatGPT |
+| om_group_08 | 25 | 15 | games:7, entertainment:4, shopping:2, business:1 | Lyft, TikTok, Peacock TV: Stream TV & Movies, Trump Accounts: Official App |
 
 ## Controlled Experiment Findings
 
@@ -111,9 +126,9 @@ Segments are computed from successful ledger runs by app-level inserted rows and
 | table_name | row_count | total_size | total_bytes |
 | --- | --- | --- | --- |
 | app_store_review_changes | 2,269,856 | 1159 MB | 1,215,021,056 |
-| app_store_review_pages | 117,696 | 84 MB | 88,317,952 |
-| app_store_reviews | 2,269,786 | 2463 MB | 2,582,814,720 |
-| app_store_runs | 4,432 | 1456 kB | 1,490,944 |
+| app_store_review_pages | 117,697 | 84 MB | 88,317,952 |
+| app_store_reviews | 2,269,786 | 2463 MB | 2,582,822,912 |
+| app_store_runs | 4,433 | 1456 kB | 1,490,944 |
 
 ## Planned Controlled Tests
 

@@ -64,6 +64,43 @@ def load_operating_ledger(path: Path) -> dict[str, Any]:
     return payload
 
 
+def load_experiment_group_summary(ledger: dict[str, Any]) -> list[dict[str, Any]]:
+    manifest_value = ledger.get("experiment_group_manifest")
+    if not manifest_value:
+        return []
+    manifest_path = Path(str(manifest_value))
+    if not manifest_path.exists():
+        return [
+            {
+                "group": "missing_manifest",
+                "app_count": 0,
+                "category_count": 0,
+                "top_categories": "",
+                "example_apps": "",
+            }
+        ]
+
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    output = []
+    for group_name, group in sorted(payload.get("groups", {}).items()):
+        category_counts = sorted(
+            group.get("category_counts", {}).items(),
+            key=lambda item: (-int(item[1]), item[0]),
+        )
+        top_categories = ", ".join(f"{category}:{count}" for category, count in category_counts[:4])
+        example_apps = ", ".join(app.get("app_name", "") for app in group.get("apps", [])[:4])
+        output.append(
+            {
+                "group": group_name,
+                "app_count": int(group.get("app_count") or 0),
+                "category_count": len(group.get("category_counts", {})),
+                "top_categories": top_categories,
+                "example_apps": example_apps,
+            }
+        )
+    return output
+
+
 def is_experiment_status_done(status: Any) -> bool:
     status_text = str(status or "planned")
     return status_text in {"complete", "completed", "skipped"} or status_text.startswith("completed_")
@@ -104,6 +141,7 @@ def build_operating_summary(
         "app_activity_segments": app_segments,
         "experiment_findings": experiment_findings,
         "depth_audit_findings": depth_audit_findings,
+        "experiment_groups": load_experiment_group_summary(ledger),
         "database_snapshot": database_snapshot,
         "recommendation": recommendation,
         "planned_experiments": ledger.get("planned_experiments", []),
@@ -670,6 +708,15 @@ def render_operating_markdown(summary: dict[str, Any]) -> str:
         "",
         "Rationale:",
         *[f"- {item}" for item in recommendation["why"]],
+        "",
+        "## Experiment Target Groups",
+        "",
+        "Strategy comparisons use fixed randomized 25-app groups instead of running every strategy on all 200 apps. This keeps each experiment fast and prevents one strategy test from consuming the incremental-review signal needed by the next strategy test.",
+        "",
+        markdown_table(
+            summary.get("experiment_groups", []),
+            ["group", "app_count", "category_count", "top_categories", "example_apps"],
+        ),
         "",
         "## Controlled Experiment Findings",
         "",

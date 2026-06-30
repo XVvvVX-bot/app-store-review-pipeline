@@ -12,6 +12,7 @@ This runbook records the controlled procedure for validating the App Store revie
 - Record every experimental run in `docs/experiments/operating_model_run_ledger.json`.
 - Use randomized 25-app experiment groups for strategy comparisons instead of running every strategy on all 200 apps. The group manifest is `docs/experiments/operating_model_target_groups.json`.
 - Run a capped depth pass and its uncapped audit on the same group. Run different strategy families on different groups so one experiment does not consume the next experiment's incremental signal.
+- Treat Postgres as the ingestion source of truth. Raw artifacts are best-effort diagnostics; an `upload-artifact` timeout after complete Postgres writes is a GitHub artifact issue, not an Apple source-ingestion failure.
 
 ## Preflight Checks
 
@@ -82,6 +83,8 @@ Ledger fields:
 ## Randomized Experiment Groups
 
 The controlled depth/scope tests use fixed randomized groups from `docs/experiments/operating_model_target_groups.json`.
+
+Do not use all 200 apps for every strategy test. Full-scope runs are useful as baseline/control observations, but they also consume the newest incremental-review signal across the entire target list. If D1, D2, hybrid, and frequency tests all use the same 200 apps, each later test has to wait much longer for fresh reviews to accumulate. Fixed randomized groups preserve comparability while allowing multiple strategy tests to run in shorter windows.
 
 - `om_group_01`: D1 one-page cap and D1 uncapped audit.
 - `om_group_02`: D2 three-page cap and D2 uncapped audit.

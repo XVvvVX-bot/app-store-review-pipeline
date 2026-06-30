@@ -358,7 +358,7 @@
       "total_size": "1159 MB"
     },
     {
-      "row_count": 117696,
+      "row_count": 117697,
       "table_name": "app_store_review_pages",
       "total_bytes": 88317952,
       "total_size": "84 MB"
@@ -366,11 +366,11 @@
     {
       "row_count": 2269786,
       "table_name": "app_store_reviews",
-      "total_bytes": 2582814720,
+      "total_bytes": 2582822912,
       "total_size": "2463 MB"
     },
     {
-      "row_count": 4432,
+      "row_count": 4433,
       "table_name": "app_store_runs",
       "total_bytes": 1490944,
       "total_size": "1456 kB"
@@ -515,9 +515,67 @@
       "successful_run_count": 0
     }
   ],
+  "experiment_groups": [
+    {
+      "app_count": 25,
+      "category_count": 15,
+      "example_apps": "Netflix, Vinted: Pre-loved marketplace, Depop - Buy & Sell Clothes, Fubo: Watch Live TV & Sports",
+      "group": "om_group_01",
+      "top_categories": "games:7, entertainment:3, shopping:2, social_networking:2"
+    },
+    {
+      "app_count": 25,
+      "category_count": 16,
+      "example_apps": "Spotify, Duolingo, Love Island USA, Google Gemini",
+      "group": "om_group_02",
+      "top_categories": "games:6, entertainment:3, productivity:2, shopping:2"
+    },
+    {
+      "app_count": 25,
+      "category_count": 16,
+      "example_apps": "Walmart, Uber, Instagram, MyFitnessPal",
+      "group": "om_group_03",
+      "top_categories": "games:7, entertainment:3, productivity:2, business:1"
+    },
+    {
+      "app_count": 25,
+      "category_count": 17,
+      "example_apps": "Target, DoorDash, Shop: All your favorite brands, Tubi: Movies & Live TV",
+      "group": "om_group_04",
+      "top_categories": "games:6, entertainment:3, shopping:2, books:1"
+    },
+    {
+      "app_count": 25,
+      "category_count": 15,
+      "example_apps": "Amazon Shopping, Airbnb, PayPal, Planet Fitness",
+      "group": "om_group_05",
+      "top_categories": "games:6, entertainment:4, shopping:2, social_networking:2"
+    },
+    {
+      "app_count": 25,
+      "category_count": 16,
+      "example_apps": "Expedia, Cash App, FOX One: Live News, Sports, TV, Telemundo: Series y TV en vivo",
+      "group": "om_group_06",
+      "top_categories": "games:6, entertainment:3, finance:2, shopping:2"
+    },
+    {
+      "app_count": 25,
+      "category_count": 14,
+      "example_apps": "Uber Eats, Booking.com, Venmo, ChatGPT",
+      "group": "om_group_07",
+      "top_categories": "games:7, entertainment:4, shopping:2, social_networking:2"
+    },
+    {
+      "app_count": 25,
+      "category_count": 15,
+      "example_apps": "Lyft, TikTok, Peacock TV: Stream TV & Movies, Trump Accounts: Official App",
+      "group": "om_group_08",
+      "top_categories": "games:7, entertainment:4, shopping:2, business:1"
+    }
+  ],
   "metadata": {
     "database_url": "postgresql:///app_store_reviews",
-    "generated_at": "2026-06-30T21:36:28+00:00",
+    "generated_at": "2026-06-30T21:48:55+00:00",
     "grace_minutes": 5,
     "ledger_path": "docs/experiments/operating_model_run_ledger.json",
     "source": "apple_app_store_web_catalog_reviews"

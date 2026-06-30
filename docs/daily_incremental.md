@@ -41,7 +41,7 @@ The daily incremental run writes directly into the reusable storage schema:
 5. Record inserted or updated review observations in `app_store_review_changes`.
 6. Update `app_store_sync_state` so future incremental runs know which historical overlap is trusted.
 
-Postgres is the source of truth. Raw JSON and GitHub artifacts are audit/debug outputs, not the cumulative store.
+Postgres is the source of truth. Raw JSON and GitHub artifacts are audit/debug outputs, not the cumulative store. Artifact upload failures after Postgres run/page/review writes complete should be treated as post-ingestion infrastructure noise, not as Apple-source ingestion failures.
 
 ## Review Identity And Deduplication
 
@@ -107,6 +107,8 @@ The reproducible operating-limits report is the source of truth for run evidence
 - GitHub run ledger: `docs/experiments/operating_model_run_ledger.json`
 
 As of the latest generated report, the successful full-scope baseline/control observations show clean source-pressure behavior: 0 HTTP 429 pages across successful observed runs, median successful runtime around 51 minutes, and median successful page volume around 276 pages. The high-activity app segment currently accounts for most newly inserted rows, which is why a hybrid model remains a candidate after the planned controlled tests.
+
+Controlled strategy tests should not repeatedly use all 200 apps. A full-scope run consumes the available incremental-review signal for the next few hours, so page-cap and hybrid experiments use fixed randomized 25-app groups from `docs/experiments/operating_model_target_groups.json`. Full-scope 200-app runs remain the baseline/control path; grouped tests are the faster experimental path for comparing depth and operating patterns without waiting a day for fresh review activity.
 
 ## Monitoring Checklist
 
