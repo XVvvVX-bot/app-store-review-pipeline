@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -29,13 +30,21 @@ from app_store_review_pipeline.cli import (
     command_check_web_429_cooldown,
     command_select_web_catalog_pressure,
     command_daily_web_catalog,
+    command_operating_report,
     select_target_window,
     summarize_fetch_cli,
 )
 from app_store_review_pipeline.config import WEB_CATALOG_SOURCE
 from app_store_review_pipeline.eda import add_rates, calculate_concentration, render_eda_html, render_eda_markdown
+from app_store_review_pipeline.experiment_groups import build_daily_matrix_rows
 from app_store_review_pipeline.fetcher import fetch_targets, terminal_reason_for_page
 from app_store_review_pipeline.models import AppTarget, ReviewPage
+from app_store_review_pipeline.operating import (
+    build_depth_audit_findings,
+    build_experiment_findings,
+    load_operating_ledger,
+    schedule_delay_minutes,
+)
 from app_store_review_pipeline import postgres_database
 from app_store_review_pipeline.postgres_database import infer_field_value, mask_database_url, scope_key
 from app_store_review_pipeline.provider_apptweak import (
@@ -605,6 +614,120 @@ def test_eda_helpers_render_core_sections():
     assert "categoryVolume" in html
 
 
+def test_operating_schedule_delay_uses_previous_cron_slot():
+    created_at = datetime(2026, 6, 28, 7, 7, 53, tzinfo=timezone.utc)
+
+    assert schedule_delay_minutes(created_at) == 240.88
+
+
+def test_load_operating_ledger_supports_missing_and_legacy_list(tmp_path):
+    missing_path = tmp_path / "missing.json"
+    assert load_operating_ledger(missing_path)["runs"] == []
+
+    legacy_path = tmp_path / "legacy.json"
+    legacy_path.write_text(json.dumps([{"github_run_id": "1"}]), encoding="utf-8")
+    assert load_operating_ledger(legacy_path)["runs"] == [{"github_run_id": "1"}]
+
+
+def test_operating_experiment_findings_summarize_completed_f1():
+    runs = [
+        {
+            "comparison_group": "F1_six_hour_full_scope",
+            "conclusion": "success",
+            "runtime_minutes": 38.45,
+            "page_metrics": {
+                "page_count": 283,
+                "review_rows": 5640,
+                "http_429_pages": 0,
+                "other_non_200_pages": 1,
+                "retried_pages": 11,
+            },
+            "load_metrics": {
+                "reviews_inserted": 2826,
+                "duplicates_skipped": 2811,
+                "fetch_errors": 1,
+                "capped_scopes": 0,
+            },
+        }
+    ]
+    experiments = [
+        {
+            "experiment_id": "F1",
+            "status": "completed",
+            "comparison_group": "F1_six_hour_full_scope",
+        }
+    ]
+
+    findings = build_experiment_findings(runs, experiments)
+
+    assert findings[0]["experiment_id"] == "F1"
+    assert findings[0]["inserted"] == 2826
+    assert findings[0]["http_429_rate"] == 0
+    assert findings[0]["fetch_error_rate"] < 0.01
+    assert "Clean" in findings[0]["finding"]
+
+
+def test_operating_depth_audit_rejects_caps_that_miss_too_many_rows():
+    runs = [
+        {
+            "comparison_group": "D1_one_page_cap",
+            "conclusion": "success",
+            "page_metrics": {"page_count": 200, "http_429_pages": 0},
+            "load_metrics": {"reviews_inserted": 1000},
+        },
+        {
+            "comparison_group": "D1_one_page_uncapped_audit",
+            "conclusion": "success",
+            "page_metrics": {"page_count": 40, "http_429_pages": 0},
+            "load_metrics": {"reviews_inserted": 100},
+        },
+    ]
+    experiments = [
+        {
+            "experiment_id": "D1",
+            "comparison_group": "D1_one_page_cap",
+            "audit_comparison_group": "D1_one_page_uncapped_audit",
+            "audit_missed_insert_threshold": 0.05,
+        }
+    ]
+
+    findings = build_depth_audit_findings(runs, experiments)
+
+    assert findings[0]["missed_insert_rate_vs_uncapped_audit"] == 0.0909
+    assert "Rejected" in findings[0]["finding"]
+
+
+def test_command_operating_report_passes_paths(tmp_path, monkeypatch):
+    observed = {}
+
+    def fake_generate_operating_report(*args, **kwargs):
+        observed["database_url"] = args[0]
+        observed.update(kwargs)
+        return {
+            "database_url": "postgresql:///fixture",
+            "generated_at": "2026-06-29T00:00:00+00:00",
+            "observed_run_count": 1,
+            "successful_baseline_run_count": 1,
+        }
+
+    monkeypatch.setattr("app_store_review_pipeline.cli.generate_operating_report", fake_generate_operating_report)
+    args = argparse.Namespace(
+        database_url="postgresql:///fixture",
+        source=WEB_CATALOG_SOURCE,
+        ledger=tmp_path / "ledger.json",
+        markdown_output=tmp_path / "operating.md",
+        json_output=tmp_path / "operating.json",
+        grace_minutes=7,
+    )
+
+    assert command_operating_report(args) == 0
+    assert observed["database_url"] == "postgresql:///fixture"
+    assert observed["ledger_path"] == tmp_path / "ledger.json"
+    assert observed["markdown_path"] == tmp_path / "operating.md"
+    assert observed["json_path"] == tmp_path / "operating.json"
+    assert observed["grace_minutes"] == 7
+
+
 def test_web_catalog_pressure_starts_at_base_without_state(monkeypatch):
     rows = [
         {
@@ -981,6 +1104,91 @@ def test_select_target_window_supports_offset_and_limit():
     assert [target.apple_app_id for target in select_target_window(targets, limit=2, offset=3)] == ["3", "4"]
     assert [target.apple_app_id for target in select_target_window(targets, limit=0, offset=4)] == ["4", "5"]
     assert [target.apple_app_id for target in select_target_window(targets, limit=2, offset=-5)] == ["0", "1"]
+
+
+def test_build_daily_matrix_rows_supports_experiment_group(tmp_path):
+    targets_path = tmp_path / "targets.csv"
+    targets_path.write_text(
+        "\n".join(
+            [
+                "app_name,category,apple_app_id,apple_slug,countries,active,notes",
+                "App A,test,111,app-a,us,true,",
+                "App B,test,222,app-b,us,true,",
+                "App C,test,333,app-c,us,false,",
+                "App D,test,444,app-d,us,true,",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    groups_path = tmp_path / "groups.json"
+    groups_path.write_text(
+        json.dumps({"groups": {"sample": {"app_ids": ["444", "111"]}}}),
+        encoding="utf-8",
+    )
+
+    rows = build_daily_matrix_rows(targets_path, experiment_group="sample", group_path=groups_path)
+
+    assert rows == [
+        {"target_offset": 0, "app_id": "111", "app_name": "App A"},
+        {"target_offset": 2, "app_id": "444", "app_name": "App D"},
+    ]
+
+
+def test_build_daily_matrix_rows_applies_offset_and_limit_after_group_filter(tmp_path):
+    targets_path = tmp_path / "targets.csv"
+    targets_path.write_text(
+        "\n".join(
+            [
+                "app_name,category,apple_app_id,apple_slug,countries,active,notes",
+                "App A,test,111,app-a,us,true,",
+                "App B,test,222,app-b,us,true,",
+                "App C,test,333,app-c,us,true,",
+                "App D,test,444,app-d,us,true,",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    groups_path = tmp_path / "groups.json"
+    groups_path.write_text(
+        json.dumps({"groups": {"sample": {"app_ids": ["111", "222", "333", "444"]}}}),
+        encoding="utf-8",
+    )
+
+    rows = build_daily_matrix_rows(
+        targets_path,
+        limit=2,
+        target_offset=1,
+        experiment_group="sample",
+        group_path=groups_path,
+    )
+
+    assert [row["app_id"] for row in rows] == ["222", "333"]
+    assert [row["target_offset"] for row in rows] == [1, 2]
+
+
+def test_build_daily_matrix_rows_rejects_inactive_group_member(tmp_path):
+    targets_path = tmp_path / "targets.csv"
+    targets_path.write_text(
+        "\n".join(
+            [
+                "app_name,category,apple_app_id,apple_slug,countries,active,notes",
+                "App A,test,111,app-a,us,true,",
+                "App B,test,222,app-b,us,false,",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    groups_path = tmp_path / "groups.json"
+    groups_path.write_text(
+        json.dumps({"groups": {"sample": {"app_ids": ["111", "222"]}}}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="inactive or missing"):
+        build_daily_matrix_rows(targets_path, experiment_group="sample", group_path=groups_path)
 
 
 def write_source_comparison_report(

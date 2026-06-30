@@ -37,7 +37,7 @@ Postgres is the source of truth. Raw JSON and GitHub artifacts are useful for au
 
 Review identity is `platform + source + country + app_id + review_id`, so repeated runs upsert existing reviews instead of duplicating them. If Apple returns changed review metadata, the row is updated and the change is recorded.
 
-See `docs/storage_schema.md` for the storage-layer design, table relationships, primary keys, deduplication logic, lineage fields, and intentionally excluded source fields. See `docs/daily_incremental.md` for the current twice-daily incremental operating mode and run evidence.
+See `docs/storage_schema.md` for the storage-layer design, table relationships, primary keys, deduplication logic, lineage fields, and intentionally excluded source fields. See `docs/daily_incremental.md` for the current twice-daily incremental operating mode, and `docs/operating_limits.md` for the controlled operating-model evidence.
 
 ## Install
 
@@ -116,6 +116,16 @@ Generate the reproducible EDA/data-quality report:
   --html-output docs/eda/apple_review_data_quality_dashboard.html
 ```
 
+Generate the reproducible operating-limits report:
+
+```bash
+.venv/bin/python app_store_pipeline.py operating-report \
+  --database-url postgresql:///app_store_reviews \
+  --ledger docs/experiments/operating_model_run_ledger.json \
+  --markdown-output docs/operating_limits.md \
+  --json-output docs/operating_limits_summary.json
+```
+
 ## GitHub Actions
 
 Active workflows:
@@ -130,6 +140,10 @@ Research-era workflows have been moved to `docs/archive/workflows/` so they rema
 
 - GitHub Pages review package: https://xvvvvx-bot.github.io/app-store-review-pipeline/
 - Daily incremental operations: `docs/daily_incremental.md`
+- Operating-limits report: `docs/operating_limits.md`
+- Operating-limits summary JSON: `docs/operating_limits_summary.json`
+- Operating-model run ledger: `docs/experiments/operating_model_run_ledger.json`
+- Operating-model experiment runbook: `docs/experiments/operating_model_runbook.md`
 - Data-quality report: `docs/eda/apple_review_data_quality.md`
 - Data-quality summary JSON: `docs/eda/apple_review_data_quality_summary.json`
 - Data-quality HTML dashboard: `docs/eda/apple_review_data_quality_dashboard.html`

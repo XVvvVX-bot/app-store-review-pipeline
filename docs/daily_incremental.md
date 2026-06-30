@@ -96,17 +96,17 @@ Current defaults:
 
 The daily path is intentionally different from backfill. Backfill can be resumed manually with separate settings when historical depth testing is needed.
 
-## Successful Full-Scope Evidence
+## Current Operating Recommendation
 
-The current full-scope daily incremental path has completed three successful all-target runs:
+The current recommendation is to keep the twice-daily full-scope incremental schedule as the production baseline while controlled F1/F2/D1/D2 operating-limit tests are completed.
 
-| Run | Trigger | Result | Apps | Jobs | Pages | Review rows | Inserts | Updates | Existing rows skipped | HTTP 429 | Other non-200 | Fetch errors | Capped scopes |
-| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| [28200344910](https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28200344910) | manual validation | success | 200 | 202/202 | 1,588 | 31,740 | 29,561 | 7 | 2,172 | 0 | 1 | 1 | 0 |
-| [28215541622](https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28215541622) | manual validation | success | 200 | 202/202 | 322 | 6,420 | 1,425 | 0 | 4,995 | 0 | 1 | 1 | 0 |
-| [28253196497](https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28253196497) | schedule | success | 200 | 202/202 | 276 | 5,520 | 2,690 | 0 | 2,830 | 0 | 0 | 0 | 0 |
+The reproducible operating-limits report is the source of truth for run evidence:
 
-The latest scheduled run is the cleanest production-style signal so far: all 200 apps completed, all 202 GitHub Actions jobs succeeded, every fetched page returned HTTP 200, and Postgres recorded no fetch errors or capped scopes.
+- Markdown report: `docs/operating_limits.md`
+- Machine-readable summary: `docs/operating_limits_summary.json`
+- GitHub run ledger: `docs/experiments/operating_model_run_ledger.json`
+
+As of the latest generated report, the successful full-scope baseline/control observations show clean source-pressure behavior: 0 HTTP 429 pages across successful observed runs, median successful runtime around 51 minutes, and median successful page volume around 276 pages. The high-activity app segment currently accounts for most newly inserted rows, which is why a hybrid model remains a candidate after the planned controlled tests.
 
 ## Monitoring Checklist
 

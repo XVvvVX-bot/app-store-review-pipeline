@@ -1,0 +1,1624 @@
+{
+  "generated_at": "2026-06-30T21:32:31+00:00",
+  "group_count": 8,
+  "group_sizes": [
+    25,
+    25,
+    25,
+    25,
+    25,
+    25,
+    25,
+    25
+  ],
+  "groups": {
+    "om_group_01": {
+      "app_count": 25,
+      "app_ids": [
+        "363590051",
+        "632064380",
+        "518684914",
+        "905401434",
+        "309735670",
+        "384830320",
+        "407558537",
+        "1096918571",
+        "6478287397",
+        "382952264",
+        "1054033219",
+        "507874739",
+        "344542975",
+        "1176027022",
+        "6471045672",
+        "1308415878",
+        "6752672568",
+        "1094930513",
+        "1510944943",
+        "1180884341",
+        "957215308",
+        "1274132545",
+        "1038369065",
+        "1098157959",
+        "6758328352"
+      ],
+      "apps": [
+        {
+          "active_index": 14,
+          "app_id": "363590051",
+          "app_name": "Netflix",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 39,
+          "app_id": "632064380",
+          "app_name": "Vinted: Pre-loved marketplace",
+          "category": "shopping"
+        },
+        {
+          "active_index": 40,
+          "app_id": "518684914",
+          "app_name": "Depop - Buy & Sell Clothes",
+          "category": "shopping"
+        },
+        {
+          "active_index": 42,
+          "app_id": "905401434",
+          "app_name": "Fubo: Watch Live TV & Sports",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 47,
+          "app_id": "309735670",
+          "app_name": "Indeed Job Search",
+          "category": "business"
+        },
+        {
+          "active_index": 53,
+          "app_id": "384830320",
+          "app_name": "Life360: Family Safety & GPS",
+          "category": "social_networking"
+        },
+        {
+          "active_index": 67,
+          "app_id": "407558537",
+          "app_name": "Capital One Mobile",
+          "category": "finance"
+        },
+        {
+          "active_index": 73,
+          "app_id": "1096918571",
+          "app_name": "Google Meet",
+          "category": "social_networking"
+        },
+        {
+          "active_index": 74,
+          "app_id": "6478287397",
+          "app_name": "Speak & Learn English: Learna",
+          "category": "education"
+        },
+        {
+          "active_index": 78,
+          "app_id": "382952264",
+          "app_name": "MyChart",
+          "category": "medical"
+        },
+        {
+          "active_index": 85,
+          "app_id": "1054033219",
+          "app_name": "VIZIO | WatchFree+",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 97,
+          "app_id": "507874739",
+          "app_name": "Google Drive",
+          "category": "productivity"
+        },
+        {
+          "active_index": 99,
+          "app_id": "344542975",
+          "app_name": "Southwest Airlines: Travel App",
+          "category": "travel"
+        },
+        {
+          "active_index": 123,
+          "app_id": "1176027022",
+          "app_name": "Toon Blast",
+          "category": "games"
+        },
+        {
+          "active_index": 128,
+          "app_id": "6471045672",
+          "app_name": "Tasty Travels: Merge Game",
+          "category": "games"
+        },
+        {
+          "active_index": 129,
+          "app_id": "1308415878",
+          "app_name": "GameChanger",
+          "category": "sports"
+        },
+        {
+          "active_index": 135,
+          "app_id": "6752672568",
+          "app_name": "Block Out! - Color Sort Puzzle",
+          "category": "games"
+        },
+        {
+          "active_index": 146,
+          "app_id": "1094930513",
+          "app_name": "EA SPORTS FC Soccer Mobile 26",
+          "category": "games"
+        },
+        {
+          "active_index": 147,
+          "app_id": "1510944943",
+          "app_name": "Cleanup: Phone Storage Cleaner",
+          "category": "utilities"
+        },
+        {
+          "active_index": 156,
+          "app_id": "1180884341",
+          "app_name": "FaceApp: Perfect Face Editor",
+          "category": "photo_and_video"
+        },
+        {
+          "active_index": 157,
+          "app_id": "957215308",
+          "app_name": "Raya",
+          "category": "lifestyle"
+        },
+        {
+          "active_index": 160,
+          "app_id": "1274132545",
+          "app_name": "Total Battle: War Strategy",
+          "category": "games"
+        },
+        {
+          "active_index": 166,
+          "app_id": "1038369065",
+          "app_name": "Flo Cycle & Period Tracker",
+          "category": "health_and_fitness"
+        },
+        {
+          "active_index": 178,
+          "app_id": "1098157959",
+          "app_name": "Evony",
+          "category": "games"
+        },
+        {
+          "active_index": 196,
+          "app_id": "6758328352",
+          "app_name": "Scritchy Scratchy",
+          "category": "games"
+        }
+      ],
+      "category_counts": {
+        "business": 1,
+        "education": 1,
+        "entertainment": 3,
+        "finance": 1,
+        "games": 7,
+        "health_and_fitness": 1,
+        "lifestyle": 1,
+        "medical": 1,
+        "photo_and_video": 1,
+        "productivity": 1,
+        "shopping": 2,
+        "social_networking": 2,
+        "sports": 1,
+        "travel": 1,
+        "utilities": 1
+      },
+      "description": "Operating-model randomized target group 01"
+    },
+    "om_group_02": {
+      "app_count": 25,
+      "app_ids": [
+        "324684580",
+        "570060128",
+        "1465944282",
+        "6477489729",
+        "6648798962",
+        "6476561442",
+        "530168168",
+        "333903271",
+        "985746746",
+        "1111876388",
+        "951937596",
+        "922103212",
+        "6745274862",
+        "388491656",
+        "535509415",
+        "6739554056",
+        "284035177",
+        "1105855019",
+        "1195621598",
+        "1123582513",
+        "850417475",
+        "405075943",
+        "932747118",
+        "294934058",
+        "1406710800"
+      ],
+      "apps": [
+        {
+          "active_index": 13,
+          "app_id": "324684580",
+          "app_name": "Spotify",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 18,
+          "app_id": "570060128",
+          "app_name": "Duolingo",
+          "category": "education"
+        },
+        {
+          "active_index": 21,
+          "app_id": "1465944282",
+          "app_name": "Love Island USA",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 26,
+          "app_id": "6477489729",
+          "app_name": "Google Gemini",
+          "category": "productivity"
+        },
+        {
+          "active_index": 35,
+          "app_id": "6648798962",
+          "app_name": "Polymarket",
+          "category": "finance"
+        },
+        {
+          "active_index": 36,
+          "app_id": "6476561442",
+          "app_name": "FIFA World Cup 2026\u2122",
+          "category": "sports"
+        },
+        {
+          "active_index": 50,
+          "app_id": "530168168",
+          "app_name": "Paramount+",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 56,
+          "app_id": "333903271",
+          "app_name": "X",
+          "category": "news"
+        },
+        {
+          "active_index": 60,
+          "app_id": "985746746",
+          "app_name": "Discord - Talk, Play, Hang Out",
+          "category": "social_networking"
+        },
+        {
+          "active_index": 61,
+          "app_id": "1111876388",
+          "app_name": "T-Life",
+          "category": "lifestyle"
+        },
+        {
+          "active_index": 66,
+          "app_id": "951937596",
+          "app_name": "Microsoft Outlook",
+          "category": "productivity"
+        },
+        {
+          "active_index": 75,
+          "app_id": "922103212",
+          "app_name": "McDonald's",
+          "category": "food_and_drink"
+        },
+        {
+          "active_index": 77,
+          "app_id": "6745274862",
+          "app_name": "DealSeek: Coupons & Discounts",
+          "category": "shopping"
+        },
+        {
+          "active_index": 91,
+          "app_id": "388491656",
+          "app_name": "Fly Delta",
+          "category": "travel"
+        },
+        {
+          "active_index": 94,
+          "app_id": "535509415",
+          "app_name": "Costco",
+          "category": "shopping"
+        },
+        {
+          "active_index": 105,
+          "app_id": "6739554056",
+          "app_name": "Kingshot",
+          "category": "games"
+        },
+        {
+          "active_index": 116,
+          "app_id": "284035177",
+          "app_name": "Pandora: Music & Podcasts",
+          "category": "music"
+        },
+        {
+          "active_index": 131,
+          "app_id": "1105855019",
+          "app_name": "Gardenscapes",
+          "category": "games"
+        },
+        {
+          "active_index": 139,
+          "app_id": "1195621598",
+          "app_name": "Homescapes: Match 3 Games",
+          "category": "games"
+        },
+        {
+          "active_index": 158,
+          "app_id": "1123582513",
+          "app_name": "Cashman Casino Slots Games",
+          "category": "games"
+        },
+        {
+          "active_index": 177,
+          "app_id": "850417475",
+          "app_name": "Candy Crush Soda Saga",
+          "category": "games"
+        },
+        {
+          "active_index": 181,
+          "app_id": "405075943",
+          "app_name": "AllTrails: Hike, Bike & Run",
+          "category": "health_and_fitness"
+        },
+        {
+          "active_index": 184,
+          "app_id": "932747118",
+          "app_name": "Shadowrocket",
+          "category": "utilities"
+        },
+        {
+          "active_index": 186,
+          "app_id": "294934058",
+          "app_name": "HotSchedules",
+          "category": "business"
+        },
+        {
+          "active_index": 190,
+          "app_id": "1406710800",
+          "app_name": "Stardew Valley",
+          "category": "games"
+        }
+      ],
+      "category_counts": {
+        "business": 1,
+        "education": 1,
+        "entertainment": 3,
+        "finance": 1,
+        "food_and_drink": 1,
+        "games": 6,
+        "health_and_fitness": 1,
+        "lifestyle": 1,
+        "music": 1,
+        "news": 1,
+        "productivity": 2,
+        "shopping": 2,
+        "social_networking": 1,
+        "sports": 1,
+        "travel": 1,
+        "utilities": 1
+      },
+      "description": "Operating-model randomized target group 02"
+    },
+    "om_group_03": {
+      "app_count": 25,
+      "app_ids": [
+        "338137227",
+        "368677368",
+        "389801252",
+        "341232718",
+        "1632713844",
+        "6447582581",
+        "6532603739",
+        "284815942",
+        "1500855883",
+        "1558240027",
+        "6670324846",
+        "1673567402",
+        "288429040",
+        "329913454",
+        "1606549505",
+        "595287172",
+        "1643509748",
+        "307569751",
+        "1521236603",
+        "672902340",
+        "6740043080",
+        "1522122685",
+        "525818839",
+        "1118115766",
+        "373493387"
+      ],
+      "apps": [
+        {
+          "active_index": 1,
+          "app_id": "338137227",
+          "app_name": "Walmart",
+          "category": "shopping"
+        },
+        {
+          "active_index": 3,
+          "app_id": "368677368",
+          "app_name": "Uber",
+          "category": "travel"
+        },
+        {
+          "active_index": 16,
+          "app_id": "389801252",
+          "app_name": "Instagram",
+          "category": "social"
+        },
+        {
+          "active_index": 19,
+          "app_id": "341232718",
+          "app_name": "MyFitnessPal",
+          "category": "health"
+        },
+        {
+          "active_index": 22,
+          "app_id": "1632713844",
+          "app_name": "Kalshi: Trade the Cup",
+          "category": "finance"
+        },
+        {
+          "active_index": 27,
+          "app_id": "6447582581",
+          "app_name": "Netflix Game Controller",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 29,
+          "app_id": "6532603739",
+          "app_name": "FWC2026 Mobile Tickets",
+          "category": "sports"
+        },
+        {
+          "active_index": 31,
+          "app_id": "284815942",
+          "app_name": "Google",
+          "category": "utilities"
+        },
+        {
+          "active_index": 33,
+          "app_id": "1500855883",
+          "app_name": "CapCut: Photo & Video Editor",
+          "category": "photo_and_video"
+        },
+        {
+          "active_index": 48,
+          "app_id": "1558240027",
+          "app_name": "Meta AI",
+          "category": "productivity"
+        },
+        {
+          "active_index": 68,
+          "app_id": "6670324846",
+          "app_name": "Grok - AI Chat & Video",
+          "category": "productivity"
+        },
+        {
+          "active_index": 71,
+          "app_id": "1673567402",
+          "app_name": "Freecash - Get Paid Real Money",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 89,
+          "app_id": "288429040",
+          "app_name": "LinkedIn: Community & Network",
+          "category": "business"
+        },
+        {
+          "active_index": 111,
+          "app_id": "329913454",
+          "app_name": "Crunchyroll",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 114,
+          "app_id": "1606549505",
+          "app_name": "Royal Kingdom",
+          "category": "games"
+        },
+        {
+          "active_index": 124,
+          "app_id": "595287172",
+          "app_name": "Hinge Dating App: Match & Date",
+          "category": "lifestyle"
+        },
+        {
+          "active_index": 141,
+          "app_id": "1643509748",
+          "app_name": "Merge Cooking\u00ae",
+          "category": "games"
+        },
+        {
+          "active_index": 163,
+          "app_id": "307569751",
+          "app_name": "NYT Games: Wordle & Crossword",
+          "category": "games"
+        },
+        {
+          "active_index": 164,
+          "app_id": "1521236603",
+          "app_name": "Travel Town - Merge Adventure",
+          "category": "games"
+        },
+        {
+          "active_index": 168,
+          "app_id": "672902340",
+          "app_name": "onX Hunt: GPS Hunting Maps",
+          "category": "navigation"
+        },
+        {
+          "active_index": 170,
+          "app_id": "6740043080",
+          "app_name": "Screwdom",
+          "category": "games"
+        },
+        {
+          "active_index": 172,
+          "app_id": "1522122685",
+          "app_name": "Clapper: Video, Live, Chat",
+          "category": "social_networking"
+        },
+        {
+          "active_index": 187,
+          "app_id": "525818839",
+          "app_name": "Plague Inc.",
+          "category": "games"
+        },
+        {
+          "active_index": 189,
+          "app_id": "1118115766",
+          "app_name": "Bloons TD 6",
+          "category": "games"
+        },
+        {
+          "active_index": 193,
+          "app_id": "373493387",
+          "app_name": "AnkiMobile Flashcards",
+          "category": "education"
+        }
+      ],
+      "category_counts": {
+        "business": 1,
+        "education": 1,
+        "entertainment": 3,
+        "finance": 1,
+        "games": 7,
+        "health": 1,
+        "lifestyle": 1,
+        "navigation": 1,
+        "photo_and_video": 1,
+        "productivity": 2,
+        "shopping": 1,
+        "social": 1,
+        "social_networking": 1,
+        "sports": 1,
+        "travel": 1,
+        "utilities": 1
+      },
+      "description": "Operating-model randomized target group 03"
+    },
+    "om_group_04": {
+      "app_count": 25,
+      "app_ids": [
+        "297430070",
+        "719972451",
+        "1223471316",
+        "886445756",
+        "983156458",
+        "897446215",
+        "426826309",
+        "298867247",
+        "1064216828",
+        "382698565",
+        "388497605",
+        "553834731",
+        "6443575749",
+        "6448786147",
+        "379693831",
+        "6449094229",
+        "1636235979",
+        "510855668",
+        "1399446592",
+        "930441707",
+        "1077137248",
+        "469337564",
+        "317469184",
+        "6670441558",
+        "6740349587"
+      ],
+      "apps": [
+        {
+          "active_index": 2,
+          "app_id": "297430070",
+          "app_name": "Target",
+          "category": "shopping"
+        },
+        {
+          "active_index": 5,
+          "app_id": "719972451",
+          "app_name": "DoorDash",
+          "category": "food_delivery"
+        },
+        {
+          "active_index": 43,
+          "app_id": "1223471316",
+          "app_name": "Shop: All your favorite brands",
+          "category": "shopping"
+        },
+        {
+          "active_index": 46,
+          "app_id": "886445756",
+          "app_name": "Tubi: Movies & Live TV",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 49,
+          "app_id": "983156458",
+          "app_name": "Microsoft Authenticator",
+          "category": "productivity"
+        },
+        {
+          "active_index": 70,
+          "app_id": "897446215",
+          "app_name": "Canva: AI Video & Photo Editor",
+          "category": "photo_and_video"
+        },
+        {
+          "active_index": 76,
+          "app_id": "426826309",
+          "app_name": "Strava: Run, Bike, Walk",
+          "category": "health_and_fitness"
+        },
+        {
+          "active_index": 82,
+          "app_id": "298867247",
+          "app_name": "Chase Mobile\u00ae: Bank & Invest",
+          "category": "finance"
+        },
+        {
+          "active_index": 88,
+          "app_id": "1064216828",
+          "app_name": "Reddit",
+          "category": "news"
+        },
+        {
+          "active_index": 90,
+          "app_id": "382698565",
+          "app_name": "American Airlines",
+          "category": "travel"
+        },
+        {
+          "active_index": 102,
+          "app_id": "388497605",
+          "app_name": "Google Authenticator",
+          "category": "utilities"
+        },
+        {
+          "active_index": 108,
+          "app_id": "553834731",
+          "app_name": "Candy Crush Saga",
+          "category": "games"
+        },
+        {
+          "active_index": 109,
+          "app_id": "6443575749",
+          "app_name": "Whiteout Survival",
+          "category": "games"
+        },
+        {
+          "active_index": 110,
+          "app_id": "6448786147",
+          "app_name": "Last War:Survival",
+          "category": "games"
+        },
+        {
+          "active_index": 119,
+          "app_id": "379693831",
+          "app_name": "Audible: Audiobooks & Podcasts",
+          "category": "books"
+        },
+        {
+          "active_index": 130,
+          "app_id": "6449094229",
+          "app_name": "Match Factory!",
+          "category": "games"
+        },
+        {
+          "active_index": 133,
+          "app_id": "1636235979",
+          "app_name": "ReelShort - Stream Drama & TV",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 134,
+          "app_id": "510855668",
+          "app_name": "Amazon Music: Songs & Podcasts",
+          "category": "music"
+        },
+        {
+          "active_index": 142,
+          "app_id": "1399446592",
+          "app_name": "The Zeus Network",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 154,
+          "app_id": "930441707",
+          "app_name": "Bumble Dating App: Meet & Date",
+          "category": "lifestyle"
+        },
+        {
+          "active_index": 171,
+          "app_id": "1077137248",
+          "app_name": "BIGO LIVE-Live Stream, Go Live",
+          "category": "social_networking"
+        },
+        {
+          "active_index": 173,
+          "app_id": "469337564",
+          "app_name": "Acrobat Reader: PDF Editor",
+          "category": "business"
+        },
+        {
+          "active_index": 174,
+          "app_id": "317469184",
+          "app_name": "ESPN: Live Sports & Scores",
+          "category": "sports"
+        },
+        {
+          "active_index": 180,
+          "app_id": "6670441558",
+          "app_name": "Dark War:Survival",
+          "category": "games"
+        },
+        {
+          "active_index": 198,
+          "app_id": "6740349587",
+          "app_name": "Backyard Baseball '01",
+          "category": "games"
+        }
+      ],
+      "category_counts": {
+        "books": 1,
+        "business": 1,
+        "entertainment": 3,
+        "finance": 1,
+        "food_delivery": 1,
+        "games": 6,
+        "health_and_fitness": 1,
+        "lifestyle": 1,
+        "music": 1,
+        "news": 1,
+        "photo_and_video": 1,
+        "productivity": 1,
+        "shopping": 2,
+        "social_networking": 1,
+        "sports": 1,
+        "travel": 1,
+        "utilities": 1
+      },
+      "description": "Operating-model randomized target group 04"
+    },
+    "om_group_05": {
+      "app_count": 25,
+      "app_ids": [
+        "297606951",
+        "401626263",
+        "283646709",
+        "399857015",
+        "1641486558",
+        "1113153706",
+        "686449807",
+        "482066631",
+        "500003565",
+        "497387361",
+        "1446075923",
+        "1482155847",
+        "1017492454",
+        "6503272652",
+        "319881193",
+        "327630330",
+        "1149994032",
+        "1300146617",
+        "1288415553",
+        "6445905219",
+        "1013961111",
+        "1287282214",
+        "625334537",
+        "288419283",
+        "6502453075"
+      ],
+      "apps": [
+        {
+          "active_index": 0,
+          "app_id": "297606951",
+          "app_name": "Amazon Shopping",
+          "category": "shopping"
+        },
+        {
+          "active_index": 7,
+          "app_id": "401626263",
+          "app_name": "Airbnb",
+          "category": "travel"
+        },
+        {
+          "active_index": 10,
+          "app_id": "283646709",
+          "app_name": "PayPal",
+          "category": "finance"
+        },
+        {
+          "active_index": 37,
+          "app_id": "399857015",
+          "app_name": "Planet Fitness",
+          "category": "health_and_fitness"
+        },
+        {
+          "active_index": 38,
+          "app_id": "1641486558",
+          "app_name": "Temu: Shop Like a Billionaire",
+          "category": "shopping"
+        },
+        {
+          "active_index": 55,
+          "app_id": "1113153706",
+          "app_name": "Microsoft Teams",
+          "category": "business"
+        },
+        {
+          "active_index": 58,
+          "app_id": "686449807",
+          "app_name": "Telegram Messenger",
+          "category": "social_networking"
+        },
+        {
+          "active_index": 65,
+          "app_id": "482066631",
+          "app_name": "The Roku App (Official)",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 69,
+          "app_id": "500003565",
+          "app_name": "Ticketmaster\uff0dBuy, Sell Tickets",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 86,
+          "app_id": "497387361",
+          "app_name": "Taco Bell Fast Food & Delivery",
+          "category": "food_and_drink"
+        },
+        {
+          "active_index": 93,
+          "app_id": "1446075923",
+          "app_name": "Disney+",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 104,
+          "app_id": "1482155847",
+          "app_name": "Royal Match",
+          "category": "games"
+        },
+        {
+          "active_index": 112,
+          "app_id": "1017492454",
+          "app_name": "YouTube Music",
+          "category": "music"
+        },
+        {
+          "active_index": 117,
+          "app_id": "6503272652",
+          "app_name": "Last Z: Survival Shooter",
+          "category": "games"
+        },
+        {
+          "active_index": 122,
+          "app_id": "319881193",
+          "app_name": "Grindr - Gay Dating & Chat",
+          "category": "social_networking"
+        },
+        {
+          "active_index": 127,
+          "app_id": "327630330",
+          "app_name": "Dropbox: Cloud Storage Backup",
+          "category": "productivity"
+        },
+        {
+          "active_index": 136,
+          "app_id": "1149994032",
+          "app_name": "Facetune: Photo & Video Editor",
+          "category": "photo_and_video"
+        },
+        {
+          "active_index": 137,
+          "app_id": "1300146617",
+          "app_name": "Free Fire: Undersea Mystery",
+          "category": "games"
+        },
+        {
+          "active_index": 159,
+          "app_id": "1288415553",
+          "app_name": "Wyze - Never Wonder",
+          "category": "lifestyle"
+        },
+        {
+          "active_index": 161,
+          "app_id": "6445905219",
+          "app_name": "DramaBox - Stream Drama Shorts",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 162,
+          "app_id": "1013961111",
+          "app_name": "Blink Home Monitor",
+          "category": "utilities"
+        },
+        {
+          "active_index": 165,
+          "app_id": "1287282214",
+          "app_name": "Call of Duty\u00ae: Mobile",
+          "category": "games"
+        },
+        {
+          "active_index": 183,
+          "app_id": "625334537",
+          "app_name": "Geometry Dash",
+          "category": "games"
+        },
+        {
+          "active_index": 191,
+          "app_id": "288419283",
+          "app_name": "RadarScope",
+          "category": "weather"
+        },
+        {
+          "active_index": 192,
+          "app_id": "6502453075",
+          "app_name": "Balatro",
+          "category": "games"
+        }
+      ],
+      "category_counts": {
+        "business": 1,
+        "entertainment": 4,
+        "finance": 1,
+        "food_and_drink": 1,
+        "games": 6,
+        "health_and_fitness": 1,
+        "lifestyle": 1,
+        "music": 1,
+        "photo_and_video": 1,
+        "productivity": 1,
+        "shopping": 2,
+        "social_networking": 2,
+        "travel": 1,
+        "utilities": 1,
+        "weather": 1
+      },
+      "description": "Operating-model randomized target group 05"
+    },
+    "om_group_06": {
+      "app_count": 25,
+      "app_ids": [
+        "427916203",
+        "711923939",
+        "6746049430",
+        "680595680",
+        "878577184",
+        "535886823",
+        "545519333",
+        "1089294040",
+        "429047995",
+        "447188370",
+        "444553167",
+        "392796698",
+        "836215269",
+        "1437843273",
+        "1621328561",
+        "6751056652",
+        "1252497129",
+        "336353151",
+        "6503284107",
+        "664575829",
+        "284862083",
+        "1668000334",
+        "479516143",
+        "824305459",
+        "916366645"
+      ],
+      "apps": [
+        {
+          "active_index": 9,
+          "app_id": "427916203",
+          "app_name": "Expedia",
+          "category": "travel"
+        },
+        {
+          "active_index": 12,
+          "app_id": "711923939",
+          "app_name": "Cash App",
+          "category": "finance"
+        },
+        {
+          "active_index": 23,
+          "app_id": "6746049430",
+          "app_name": "FOX One: Live News, Sports, TV",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 30,
+          "app_id": "680595680",
+          "app_name": "Telemundo: Series y TV en vivo",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 45,
+          "app_id": "878577184",
+          "app_name": "SHEIN - Shopping Online",
+          "category": "shopping"
+        },
+        {
+          "active_index": 51,
+          "app_id": "535886823",
+          "app_name": "Google Chrome",
+          "category": "utilities"
+        },
+        {
+          "active_index": 57,
+          "app_id": "545519333",
+          "app_name": "Amazon Prime Video",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 59,
+          "app_id": "1089294040",
+          "app_name": "Capital One Shopping: Save Now",
+          "category": "shopping"
+        },
+        {
+          "active_index": 62,
+          "app_id": "429047995",
+          "app_name": "Pinterest",
+          "category": "lifestyle"
+        },
+        {
+          "active_index": 79,
+          "app_id": "447188370",
+          "app_name": "Snapchat",
+          "category": "photo_and_video"
+        },
+        {
+          "active_index": 92,
+          "app_id": "444553167",
+          "app_name": "ADP Mobile Solutions",
+          "category": "business"
+        },
+        {
+          "active_index": 96,
+          "app_id": "392796698",
+          "app_name": "GroupMe",
+          "category": "social_networking"
+        },
+        {
+          "active_index": 98,
+          "app_id": "836215269",
+          "app_name": "Chime\u00ae \u2013 Mobile Banking",
+          "category": "finance"
+        },
+        {
+          "active_index": 101,
+          "app_id": "1437843273",
+          "app_name": "PrizePicks - Sports Picks",
+          "category": "sports"
+        },
+        {
+          "active_index": 103,
+          "app_id": "1621328561",
+          "app_name": "MONOPOLY GO!",
+          "category": "games"
+        },
+        {
+          "active_index": 125,
+          "app_id": "6751056652",
+          "app_name": "Pixel Flow!",
+          "category": "games"
+        },
+        {
+          "active_index": 126,
+          "app_id": "1252497129",
+          "app_name": "PictureThis - Plant Identifier",
+          "category": "education"
+        },
+        {
+          "active_index": 145,
+          "app_id": "336353151",
+          "app_name": "SoundCloud: The Music You Love",
+          "category": "music"
+        },
+        {
+          "active_index": 148,
+          "app_id": "6503284107",
+          "app_name": "All in Hole: Black Hole Games",
+          "category": "games"
+        },
+        {
+          "active_index": 152,
+          "app_id": "664575829",
+          "app_name": "Fishdom",
+          "category": "games"
+        },
+        {
+          "active_index": 155,
+          "app_id": "284862083",
+          "app_name": "NYTimes: US and Global News",
+          "category": "news"
+        },
+        {
+          "active_index": 167,
+          "app_id": "1668000334",
+          "app_name": "Perplexity - AI Search & Chat",
+          "category": "productivity"
+        },
+        {
+          "active_index": 182,
+          "app_id": "479516143",
+          "app_name": "Minecraft: Play with Friends!",
+          "category": "games"
+        },
+        {
+          "active_index": 194,
+          "app_id": "824305459",
+          "app_name": "Papa's Freezeria To Go!",
+          "category": "games"
+        },
+        {
+          "active_index": 197,
+          "app_id": "916366645",
+          "app_name": "Procreate Pocket",
+          "category": "graphics_and_design"
+        }
+      ],
+      "category_counts": {
+        "business": 1,
+        "education": 1,
+        "entertainment": 3,
+        "finance": 2,
+        "games": 6,
+        "graphics_and_design": 1,
+        "lifestyle": 1,
+        "music": 1,
+        "news": 1,
+        "photo_and_video": 1,
+        "productivity": 1,
+        "shopping": 2,
+        "social_networking": 1,
+        "sports": 1,
+        "travel": 1,
+        "utilities": 1
+      },
+      "description": "Operating-model randomized target group 06"
+    },
+    "om_group_07": {
+      "app_count": 25,
+      "app_ids": [
+        "1058959277",
+        "367003839",
+        "351727428",
+        "6448311069",
+        "6473753684",
+        "6446901002",
+        "1488269261",
+        "585027354",
+        "6741796873",
+        "284882215",
+        "6736407724",
+        "544007664",
+        "436672029",
+        "1375031369",
+        "1666653815",
+        "1623318294",
+        "1094591345",
+        "6443467666",
+        "1243005112",
+        "1531467766",
+        "6499209744",
+        "6475757306",
+        "550221096",
+        "887914690",
+        "1477966166"
+      ],
+      "apps": [
+        {
+          "active_index": 6,
+          "app_id": "1058959277",
+          "app_name": "Uber Eats",
+          "category": "food_delivery"
+        },
+        {
+          "active_index": 8,
+          "app_id": "367003839",
+          "app_name": "Booking.com",
+          "category": "travel"
+        },
+        {
+          "active_index": 11,
+          "app_id": "351727428",
+          "app_name": "Venmo",
+          "category": "finance"
+        },
+        {
+          "active_index": 17,
+          "app_id": "6448311069",
+          "app_name": "ChatGPT",
+          "category": "ai_tools"
+        },
+        {
+          "active_index": 24,
+          "app_id": "6473753684",
+          "app_name": "Claude by Anthropic",
+          "category": "productivity"
+        },
+        {
+          "active_index": 25,
+          "app_id": "6446901002",
+          "app_name": "Threads",
+          "category": "social_networking"
+        },
+        {
+          "active_index": 32,
+          "app_id": "1488269261",
+          "app_name": "Whatnot: Shop, Sell, Connect",
+          "category": "shopping"
+        },
+        {
+          "active_index": 41,
+          "app_id": "585027354",
+          "app_name": "Google Maps",
+          "category": "navigation"
+        },
+        {
+          "active_index": 52,
+          "app_id": "6741796873",
+          "app_name": "TikTok Pro - Events",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 54,
+          "app_id": "284882215",
+          "app_name": "Facebook",
+          "category": "social_networking"
+        },
+        {
+          "active_index": 63,
+          "app_id": "6736407724",
+          "app_name": "WeatherWise.app",
+          "category": "weather"
+        },
+        {
+          "active_index": 64,
+          "app_id": "544007664",
+          "app_name": "YouTube",
+          "category": "photo_and_video"
+        },
+        {
+          "active_index": 81,
+          "app_id": "436672029",
+          "app_name": "AliExpress - Shopping App",
+          "category": "shopping"
+        },
+        {
+          "active_index": 84,
+          "app_id": "1375031369",
+          "app_name": "DraftKings: Sports & Casino",
+          "category": "sports"
+        },
+        {
+          "active_index": 106,
+          "app_id": "1666653815",
+          "app_name": "HBO Max: Stream Movies & TV",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 107,
+          "app_id": "1623318294",
+          "app_name": "Gossip Harbor\u00ae: Merge & Story",
+          "category": "games"
+        },
+        {
+          "active_index": 120,
+          "app_id": "1094591345",
+          "app_name": "Pok\u00e9mon GO",
+          "category": "games"
+        },
+        {
+          "active_index": 132,
+          "app_id": "6443467666",
+          "app_name": "Love and Deepspace",
+          "category": "games"
+        },
+        {
+          "active_index": 140,
+          "app_id": "1243005112",
+          "app_name": "Lightning Link Casino Slots",
+          "category": "games"
+        },
+        {
+          "active_index": 149,
+          "app_id": "1531467766",
+          "app_name": "ViX: TV, Sports and News",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 150,
+          "app_id": "6499209744",
+          "app_name": "Magic Sort!",
+          "category": "games"
+        },
+        {
+          "active_index": 151,
+          "app_id": "6475757306",
+          "app_name": "Disney Solitaire",
+          "category": "games"
+        },
+        {
+          "active_index": 169,
+          "app_id": "550221096",
+          "app_name": "STARZ",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 175,
+          "app_id": "887914690",
+          "app_name": "Feeld: Dating for the Curious",
+          "category": "lifestyle"
+        },
+        {
+          "active_index": 195,
+          "app_id": "1477966166",
+          "app_name": "MONOPOLY: The Board Game",
+          "category": "games"
+        }
+      ],
+      "category_counts": {
+        "ai_tools": 1,
+        "entertainment": 4,
+        "finance": 1,
+        "food_delivery": 1,
+        "games": 7,
+        "lifestyle": 1,
+        "navigation": 1,
+        "photo_and_video": 1,
+        "productivity": 1,
+        "shopping": 2,
+        "social_networking": 2,
+        "sports": 1,
+        "travel": 1,
+        "weather": 1
+      },
+      "description": "Operating-model randomized target group 07"
+    },
+    "om_group_08": {
+      "app_count": 25,
+      "app_ids": [
+        "529379082",
+        "835599320",
+        "1508186374",
+        "6767364919",
+        "310633997",
+        "422689480",
+        "6751921248",
+        "546505307",
+        "1193350206",
+        "282614216",
+        "460177396",
+        "513135722",
+        "547702041",
+        "638689075",
+        "1358222641",
+        "376510438",
+        "406889139",
+        "529479190",
+        "575980917",
+        "1502936453",
+        "1476380919",
+        "6670430706",
+        "623592465",
+        "1596736236",
+        "404990064"
+      ],
+      "apps": [
+        {
+          "active_index": 4,
+          "app_id": "529379082",
+          "app_name": "Lyft",
+          "category": "travel"
+        },
+        {
+          "active_index": 15,
+          "app_id": "835599320",
+          "app_name": "TikTok",
+          "category": "social"
+        },
+        {
+          "active_index": 20,
+          "app_id": "1508186374",
+          "app_name": "Peacock TV: Stream TV & Movies",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 28,
+          "app_id": "6767364919",
+          "app_name": "Trump Accounts: Official App",
+          "category": "finance"
+        },
+        {
+          "active_index": 34,
+          "app_id": "310633997",
+          "app_name": "WhatsApp Messenger",
+          "category": "social_networking"
+        },
+        {
+          "active_index": 44,
+          "app_id": "422689480",
+          "app_name": "Gmail - Email by Google",
+          "category": "productivity"
+        },
+        {
+          "active_index": 72,
+          "app_id": "6751921248",
+          "app_name": "Rips by Triumph",
+          "category": "shopping"
+        },
+        {
+          "active_index": 80,
+          "app_id": "546505307",
+          "app_name": "Zoom Workplace",
+          "category": "business"
+        },
+        {
+          "active_index": 83,
+          "app_id": "1193350206",
+          "app_name": "YouTube TV",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 87,
+          "app_id": "282614216",
+          "app_name": "eBay online shopping & selling",
+          "category": "shopping"
+        },
+        {
+          "active_index": 95,
+          "app_id": "460177396",
+          "app_name": "Twitch: Live Streaming",
+          "category": "photo_and_video"
+        },
+        {
+          "active_index": 100,
+          "app_id": "513135722",
+          "app_name": "MLB Ballpark",
+          "category": "sports"
+        },
+        {
+          "active_index": 113,
+          "app_id": "547702041",
+          "app_name": "Tinder Dating App: Date & Chat",
+          "category": "lifestyle"
+        },
+        {
+          "active_index": 115,
+          "app_id": "638689075",
+          "app_name": "Township",
+          "category": "games"
+        },
+        {
+          "active_index": 118,
+          "app_id": "1358222641",
+          "app_name": "DRAGON BALL LEGENDS",
+          "category": "games"
+        },
+        {
+          "active_index": 121,
+          "app_id": "376510438",
+          "app_name": "Hulu: Stream TV shows & movies",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 138,
+          "app_id": "406889139",
+          "app_name": "Coin Master",
+          "category": "games"
+        },
+        {
+          "active_index": 143,
+          "app_id": "529479190",
+          "app_name": "Clash of Clans",
+          "category": "games"
+        },
+        {
+          "active_index": 144,
+          "app_id": "575980917",
+          "app_name": "Jackpot Party - Casino Slots",
+          "category": "games"
+        },
+        {
+          "active_index": 153,
+          "app_id": "1502936453",
+          "app_name": "LADDER Strength Training Plans",
+          "category": "health_and_fitness"
+        },
+        {
+          "active_index": 176,
+          "app_id": "1476380919",
+          "app_name": "Cleaner Guru: Clean Up Storage",
+          "category": "utilities"
+        },
+        {
+          "active_index": 179,
+          "app_id": "6670430706",
+          "app_name": "DramaWave - Dramas & Reels",
+          "category": "entertainment"
+        },
+        {
+          "active_index": 185,
+          "app_id": "623592465",
+          "app_name": "Heads Up!",
+          "category": "games"
+        },
+        {
+          "active_index": 188,
+          "app_id": "1596736236",
+          "app_name": "Red's First Flight",
+          "category": "games"
+        },
+        {
+          "active_index": 199,
+          "app_id": "404990064",
+          "app_name": "SkyView\u00ae",
+          "category": "education"
+        }
+      ],
+      "category_counts": {
+        "business": 1,
+        "education": 1,
+        "entertainment": 4,
+        "finance": 1,
+        "games": 7,
+        "health_and_fitness": 1,
+        "lifestyle": 1,
+        "photo_and_video": 1,
+        "productivity": 1,
+        "shopping": 2,
+        "social": 1,
+        "social_networking": 1,
+        "sports": 1,
+        "travel": 1,
+        "utilities": 1
+      },
+      "description": "Operating-model randomized target group 08"
+    }
+  },
+  "method": "Active targets are bucketed by category, shuffled with a fixed seed inside each category, then assigned to the smallest eligible group with a category-count tie breaker. This preserves reproducibility while keeping group sizes and category mix balanced.",
+  "schema_version": 1,
+  "seed": "operating-model-v2-randomized-groups",
+  "source_targets": "data/targets/apple_apps.csv"
+}

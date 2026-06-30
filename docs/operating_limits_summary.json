@@ -1,0 +1,3896 @@
+{
+  "aggregate": {
+    "attempt_distribution": [
+      {
+        "attempt_count": "1",
+        "page_count": 3964
+      },
+      {
+        "attempt_count": "2",
+        "page_count": 113
+      },
+      {
+        "attempt_count": "3",
+        "page_count": 15
+      }
+    ],
+    "failed_or_cancelled_run_count": 3,
+    "max_schedule_delay_minutes": 315.47,
+    "median_successful_inserted_per_page": 8.036,
+    "median_successful_pages": 279.5,
+    "median_successful_runtime_minutes": 46.02,
+    "observed_run_count": 13,
+    "successful_baseline_run_count": 9,
+    "successful_capped_scopes": 0,
+    "successful_duplicates_skipped": 31545,
+    "successful_fetch_errors": 4,
+    "successful_http_429_pages": 0,
+    "successful_http_429_rate": 0.0,
+    "successful_pages": 4092,
+    "successful_retried_pages": 128,
+    "successful_review_rows": 81760,
+    "successful_reviews_inserted": 50199,
+    "successful_run_count": 10,
+    "terminal_reason_distribution": [
+      {
+        "page_count": 2093,
+        "terminal_reason": "none"
+      },
+      {
+        "page_count": 1999,
+        "terminal_reason": "caught_up_to_existing_reviews"
+      }
+    ]
+  },
+  "app_activity_segments": {
+    "segments": [
+      {
+        "app_count": 50,
+        "insert_share": 0.7204,
+        "inserted": 36165,
+        "inserted_per_page": 16.567,
+        "page_count": 2183,
+        "page_share": 0.5335,
+        "segment": "high"
+      },
+      {
+        "app_count": 100,
+        "insert_share": 0.2481,
+        "inserted": 12453,
+        "inserted_per_page": 9.11,
+        "page_count": 1367,
+        "page_share": 0.3341,
+        "segment": "normal"
+      },
+      {
+        "app_count": 50,
+        "insert_share": 0.0315,
+        "inserted": 1581,
+        "inserted_per_page": 2.917,
+        "page_count": 542,
+        "page_share": 0.1325,
+        "segment": "low"
+      }
+    ],
+    "top_apps": [
+      {
+        "activity_segment": "high",
+        "app_id": "324684580",
+        "app_name": "Spotify",
+        "category": "entertainment",
+        "inserted": 3339,
+        "observed_runs": 10,
+        "page_count": 266,
+        "review_rows": 5300,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "6448311069",
+        "app_name": "ChatGPT",
+        "category": "ai_tools",
+        "inserted": 2450,
+        "observed_runs": 10,
+        "page_count": 127,
+        "review_rows": 2540,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "544007664",
+        "app_name": "YouTube",
+        "category": "photo_and_video",
+        "inserted": 2185,
+        "observed_runs": 10,
+        "page_count": 117,
+        "review_rows": 2340,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "570060128",
+        "app_name": "Duolingo",
+        "category": "education",
+        "inserted": 2023,
+        "observed_runs": 10,
+        "page_count": 107,
+        "review_rows": 2120,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "632064380",
+        "app_name": "Vinted: Pre-loved marketplace",
+        "category": "shopping",
+        "inserted": 1545,
+        "observed_runs": 10,
+        "page_count": 82,
+        "review_rows": 1640,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "284882215",
+        "app_name": "Facebook",
+        "category": "social_networking",
+        "inserted": 1340,
+        "observed_runs": 10,
+        "page_count": 73,
+        "review_rows": 1460,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "719972451",
+        "app_name": "DoorDash",
+        "category": "food_delivery",
+        "inserted": 1234,
+        "observed_runs": 10,
+        "page_count": 67,
+        "review_rows": 1340,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "835599320",
+        "app_name": "TikTok",
+        "category": "social",
+        "inserted": 1218,
+        "observed_runs": 10,
+        "page_count": 66,
+        "review_rows": 1320,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "389801252",
+        "app_name": "Instagram",
+        "category": "social",
+        "inserted": 1194,
+        "observed_runs": 10,
+        "page_count": 64,
+        "review_rows": 1280,
+        "updated": 1
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "338137227",
+        "app_name": "Walmart",
+        "category": "shopping",
+        "inserted": 1118,
+        "observed_runs": 10,
+        "page_count": 61,
+        "review_rows": 1220,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "6751921248",
+        "app_name": "Rips by Triumph",
+        "category": "shopping",
+        "inserted": 1101,
+        "observed_runs": 10,
+        "page_count": 63,
+        "review_rows": 1260,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "368677368",
+        "app_name": "Uber",
+        "category": "travel",
+        "inserted": 1024,
+        "observed_runs": 10,
+        "page_count": 56,
+        "review_rows": 1120,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "1636235979",
+        "app_name": "ReelShort - Stream Drama & TV",
+        "category": "entertainment",
+        "inserted": 873,
+        "observed_runs": 10,
+        "page_count": 49,
+        "review_rows": 980,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "878577184",
+        "app_name": "SHEIN - Shopping Online",
+        "category": "shopping",
+        "inserted": 816,
+        "observed_runs": 10,
+        "page_count": 47,
+        "review_rows": 940,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "384830320",
+        "app_name": "Life360: Family Safety & GPS",
+        "category": "social_networking",
+        "inserted": 779,
+        "observed_runs": 10,
+        "page_count": 44,
+        "review_rows": 880,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "436672029",
+        "app_name": "AliExpress - Shopping App",
+        "category": "shopping",
+        "inserted": 737,
+        "observed_runs": 10,
+        "page_count": 42,
+        "review_rows": 840,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "333903271",
+        "app_name": "X",
+        "category": "news",
+        "inserted": 633,
+        "observed_runs": 10,
+        "page_count": 36,
+        "review_rows": 720,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "363590051",
+        "app_name": "Netflix",
+        "category": "entertainment",
+        "inserted": 585,
+        "observed_runs": 10,
+        "page_count": 33,
+        "review_rows": 660,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "1673567402",
+        "app_name": "Freecash - Get Paid Real Money",
+        "category": "entertainment",
+        "inserted": 536,
+        "observed_runs": 10,
+        "page_count": 33,
+        "review_rows": 660,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "6475757306",
+        "app_name": "Disney Solitaire",
+        "category": "games",
+        "inserted": 528,
+        "observed_runs": 10,
+        "page_count": 31,
+        "review_rows": 620,
+        "updated": 1
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "6443467666",
+        "app_name": "Love and Deepspace",
+        "category": "games",
+        "inserted": 520,
+        "observed_runs": 10,
+        "page_count": 32,
+        "review_rows": 640,
+        "updated": 3
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "6477489729",
+        "app_name": "Google Gemini",
+        "category": "productivity",
+        "inserted": 507,
+        "observed_runs": 10,
+        "page_count": 30,
+        "review_rows": 600,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "1641486558",
+        "app_name": "Temu: Shop Like a Billionaire",
+        "category": "shopping",
+        "inserted": 487,
+        "observed_runs": 10,
+        "page_count": 30,
+        "review_rows": 600,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "1632713844",
+        "app_name": "Kalshi: Trade the Cup",
+        "category": "finance",
+        "inserted": 459,
+        "observed_runs": 10,
+        "page_count": 28,
+        "review_rows": 560,
+        "updated": 0
+      },
+      {
+        "activity_segment": "high",
+        "app_id": "447188370",
+        "app_name": "Snapchat",
+        "category": "photo_and_video",
+        "inserted": 451,
+        "observed_runs": 10,
+        "page_count": 29,
+        "review_rows": 580,
+        "updated": 0
+      }
+    ]
+  },
+  "database_snapshot": [
+    {
+      "row_count": 2269856,
+      "table_name": "app_store_review_changes",
+      "total_bytes": 1215021056,
+      "total_size": "1159 MB"
+    },
+    {
+      "row_count": 117696,
+      "table_name": "app_store_review_pages",
+      "total_bytes": 88317952,
+      "total_size": "84 MB"
+    },
+    {
+      "row_count": 2269786,
+      "table_name": "app_store_reviews",
+      "total_bytes": 2582814720,
+      "total_size": "2463 MB"
+    },
+    {
+      "row_count": 4432,
+      "table_name": "app_store_runs",
+      "total_bytes": 1490944,
+      "total_size": "1456 kB"
+    }
+  ],
+  "decision_rules": {
+    "capped_run_acceptance": {
+      "max_missed_insert_rate_vs_uncapped_audit": 0.05
+    },
+    "stop_frequency_escalation_if": {
+      "abnormal_runtime_growth": true,
+      "fetch_error_rate_gte": 0.01,
+      "http_429_rate_gte": 0.005,
+      "repeated_non_200_source_errors": true
+    }
+  },
+  "depth_audit_findings": [
+    {
+      "audit_group": "D1_one_page_uncapped_audit",
+      "audit_http_429": 0,
+      "audit_inserted_after_cap": 0,
+      "audit_pages": 0,
+      "audit_run_count": 0,
+      "cap_group": "D1_one_page_cap",
+      "cap_http_429": 0,
+      "cap_inserted": 0,
+      "cap_pages": 0,
+      "cap_run_count": 0,
+      "experiment_id": "D1",
+      "finding": "Pending. The capped run has not been recorded yet.",
+      "missed_insert_rate_vs_uncapped_audit": 0,
+      "threshold": 0.05
+    },
+    {
+      "audit_group": "D2_three_page_uncapped_audit",
+      "audit_http_429": 0,
+      "audit_inserted_after_cap": 0,
+      "audit_pages": 0,
+      "audit_run_count": 0,
+      "cap_group": "D2_three_page_cap",
+      "cap_http_429": 0,
+      "cap_inserted": 0,
+      "cap_pages": 0,
+      "cap_run_count": 0,
+      "experiment_id": "D2",
+      "finding": "Pending. The capped run has not been recorded yet.",
+      "missed_insert_rate_vs_uncapped_audit": 0,
+      "threshold": 0.05
+    }
+  ],
+  "experiment_findings": [
+    {
+      "capped_scopes": 0,
+      "comparison_group": "F1_six_hour_full_scope",
+      "duplicate_skip_rate": 0.4987,
+      "experiment_group": "",
+      "experiment_id": "F1",
+      "fetch_error_rate": 0.0035,
+      "fetch_errors": 1,
+      "finding": "Clean. The six-hour full-scope run passed source-pressure thresholds; its marginal yield was 9.986 inserts/page with 49.9% duplicate skips.",
+      "http_429": 0,
+      "http_429_rate": 0.0,
+      "inserted": 2826,
+      "inserted_per_page": 9.986,
+      "matching_run_count": 1,
+      "median_runtime_minutes": 38.45,
+      "non_200": 1,
+      "page_count": 283,
+      "retried_pages": 11,
+      "review_rows": 5640,
+      "skipped": 2811,
+      "status": "completed",
+      "successful_run_count": 1
+    },
+    {
+      "capped_scopes": 0,
+      "comparison_group": "F2_three_hour_full_scope",
+      "duplicate_skip_rate": 0.9665,
+      "experiment_group": "",
+      "experiment_id": "F2",
+      "fetch_error_rate": 0.0,
+      "fetch_errors": 0,
+      "finding": "Source-clean but not GitHub-clean. The run passed source-pressure checks, but at least one matching job failed after ingestion.",
+      "http_429": 0,
+      "http_429_rate": 0.0,
+      "inserted": 136,
+      "inserted_per_page": 0.67,
+      "matching_run_count": 1,
+      "median_runtime_minutes": 41.35,
+      "non_200": 0,
+      "page_count": 203,
+      "retried_pages": 14,
+      "review_rows": 4060,
+      "skipped": 3924,
+      "status": "completed_source_clean_github_artifact_failure",
+      "successful_run_count": 0
+    },
+    {
+      "capped_scopes": 0,
+      "comparison_group": "D1_one_page_cap",
+      "duplicate_skip_rate": 0,
+      "experiment_group": "om_group_01",
+      "experiment_id": "D1",
+      "fetch_error_rate": 0,
+      "fetch_errors": 0,
+      "finding": "Pending. No matching run has been recorded in the ledger yet.",
+      "http_429": 0,
+      "http_429_rate": 0,
+      "inserted": 0,
+      "inserted_per_page": 0,
+      "matching_run_count": 0,
+      "median_runtime_minutes": 0,
+      "non_200": 0,
+      "page_count": 0,
+      "retried_pages": 0,
+      "review_rows": 0,
+      "skipped": 0,
+      "status": "planned",
+      "successful_run_count": 0
+    },
+    {
+      "capped_scopes": 0,
+      "comparison_group": "D2_three_page_cap",
+      "duplicate_skip_rate": 0,
+      "experiment_group": "om_group_02",
+      "experiment_id": "D2",
+      "fetch_error_rate": 0,
+      "fetch_errors": 0,
+      "finding": "Pending. No matching run has been recorded in the ledger yet.",
+      "http_429": 0,
+      "http_429_rate": 0,
+      "inserted": 0,
+      "inserted_per_page": 0,
+      "matching_run_count": 0,
+      "median_runtime_minutes": 0,
+      "non_200": 0,
+      "page_count": 0,
+      "retried_pages": 0,
+      "review_rows": 0,
+      "skipped": 0,
+      "status": "planned",
+      "successful_run_count": 0
+    }
+  ],
+  "metadata": {
+    "database_url": "postgresql:///app_store_reviews",
+    "generated_at": "2026-06-30T21:36:28+00:00",
+    "grace_minutes": 5,
+    "ledger_path": "docs/experiments/operating_model_run_ledger.json",
+    "source": "apple_app_store_web_catalog_reviews"
+  },
+  "planned_experiments": [
+    {
+      "comparison_group": "F1_six_hour_full_scope",
+      "description": "Manual full-scope uncapped incremental run six hours after the previous clean full-scope run.",
+      "experiment_id": "F1",
+      "inputs": {
+        "limit": "0",
+        "max_pages_per_app_country": "0",
+        "max_parallel": "4",
+        "start_page": "1"
+      },
+      "status": "completed",
+      "success_criteria": "202/202 jobs success, HTTP 429 rate below 0.5%, fetch error rate below 1%, no abnormal runtime growth."
+    },
+    {
+      "comparison_group": "F2_three_hour_full_scope",
+      "description": "Manual full-scope uncapped incremental run three hours after the previous clean full-scope run.",
+      "experiment_id": "F2",
+      "inputs": {
+        "limit": "0",
+        "max_pages_per_app_country": "0",
+        "max_parallel": "4",
+        "start_page": "1"
+      },
+      "status": "completed_source_clean_github_artifact_failure",
+      "success_criteria": "Same as F1, plus enough marginal inserts per page to justify higher frequency."
+    },
+    {
+      "audit_comparison_group": "D1_one_page_uncapped_audit",
+      "audit_missed_insert_threshold": 0.05,
+      "comparison_group": "D1_one_page_cap",
+      "description": "Randomized 25-app group capped at one page per app, followed by an uncapped audit on the same group.",
+      "experiment_group": "om_group_01",
+      "experiment_id": "D1",
+      "inputs": {
+        "experiment_group": "om_group_01",
+        "limit": "0",
+        "max_pages_per_app_country": "1",
+        "max_parallel": "4",
+        "start_page": "1"
+      },
+      "status": "planned",
+      "success_criteria": "Audit inserts after the capped pass are no more than 5% of total capped-plus-audit inserts, with clean source-pressure metrics."
+    },
+    {
+      "audit_comparison_group": "D2_three_page_uncapped_audit",
+      "audit_missed_insert_threshold": 0.05,
+      "comparison_group": "D2_three_page_cap",
+      "description": "Randomized 25-app group capped at three pages per app, followed by an uncapped audit on the same group.",
+      "experiment_group": "om_group_02",
+      "experiment_id": "D2",
+      "inputs": {
+        "experiment_group": "om_group_02",
+        "limit": "0",
+        "max_pages_per_app_country": "3",
+        "max_parallel": "4",
+        "start_page": "1"
+      },
+      "status": "planned",
+      "success_criteria": "Audit inserts after the capped pass are no more than 5% of total capped-plus-audit inserts, with clean source-pressure metrics."
+    }
+  ],
+  "recommendation": {
+    "confidence": "interim",
+    "current_recommendation": "Keep the twice-daily full-scope incremental schedule as the production baseline while remaining controlled tests are completed.",
+    "pending_experiments": [
+      "D1",
+      "D2"
+    ],
+    "stop_thresholds": {
+      "fetch_error_rate": 0.01,
+      "http_429_rate": 0.005,
+      "missed_insert_rate_for_capped_runs": 0.05
+    },
+    "why": [
+      "Recent successful full-scope runs show clean source-pressure metrics.",
+      "There are enough successful baseline observations to compare against experiments.",
+      "High-activity apps account for 72.0% of recent inserts and 53.3% of recent pages."
+    ]
+  },
+  "runs": [
+    {
+      "attempt_counts": [
+        {
+          "attempt_count": 1,
+          "page_count": 1583
+        },
+        {
+          "attempt_count": 2,
+          "page_count": 5
+        }
+      ],
+      "comparison_group": "D3_uncapped_control",
+      "conclusion": "success",
+      "created_at": "2026-06-25T21:03:13Z",
+      "event": "workflow_dispatch",
+      "github_run_id": "28200344910",
+      "head_sha": "484ee48a8fff2c4ad39c05a8ae656856d027ed18",
+      "inputs": {
+        "max_pages_per_app_country": "0",
+        "max_parallel": "4",
+        "overlap_stop": "enabled",
+        "start_page": "1"
+      },
+      "job_cancelled": 0,
+      "job_failure": 0,
+      "job_success": 202,
+      "job_total": 202,
+      "label": "manual full-scope validation",
+      "load_metrics": {
+        "capped_scopes": 0,
+        "duplicates_skipped": 2172,
+        "fetch_errors": 1,
+        "loaded_pages": 1588,
+        "loaded_review_rows": 31740,
+        "reviews_inserted": 29561,
+        "reviews_updated": 7,
+        "run_rows": 200
+      },
+      "long_tail_apps": [
+        {
+          "app_id": "324684580",
+          "app_name": "Spotify",
+          "http_429_pages": 0,
+          "max_page_number": 92,
+          "overlap_rows": 0,
+          "page_count": 92,
+          "retried_pages": 0,
+          "review_rows": 1840,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6448311069",
+          "app_name": "ChatGPT",
+          "http_429_pages": 0,
+          "max_page_number": 74,
+          "overlap_rows": 11,
+          "page_count": 74,
+          "retried_pages": 0,
+          "review_rows": 1480,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "544007664",
+          "app_name": "YouTube",
+          "http_429_pages": 0,
+          "max_page_number": 69,
+          "overlap_rows": 4,
+          "page_count": 69,
+          "retried_pages": 0,
+          "review_rows": 1380,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "570060128",
+          "app_name": "Duolingo",
+          "http_429_pages": 0,
+          "max_page_number": 62,
+          "overlap_rows": 1,
+          "page_count": 62,
+          "retried_pages": 0,
+          "review_rows": 1220,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "284882215",
+          "app_name": "Facebook",
+          "http_429_pages": 0,
+          "max_page_number": 44,
+          "overlap_rows": 11,
+          "page_count": 44,
+          "retried_pages": 0,
+          "review_rows": 880,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6751921248",
+          "app_name": "Rips by Triumph",
+          "http_429_pages": 0,
+          "max_page_number": 38,
+          "overlap_rows": 12,
+          "page_count": 38,
+          "retried_pages": 0,
+          "review_rows": 760,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "389801252",
+          "app_name": "Instagram",
+          "http_429_pages": 0,
+          "max_page_number": 36,
+          "overlap_rows": 3,
+          "page_count": 36,
+          "retried_pages": 0,
+          "review_rows": 720,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "719972451",
+          "app_name": "DoorDash",
+          "http_429_pages": 0,
+          "max_page_number": 35,
+          "overlap_rows": 7,
+          "page_count": 35,
+          "retried_pages": 0,
+          "review_rows": 700,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "835599320",
+          "app_name": "TikTok",
+          "http_429_pages": 0,
+          "max_page_number": 33,
+          "overlap_rows": 6,
+          "page_count": 33,
+          "retried_pages": 0,
+          "review_rows": 660,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "338137227",
+          "app_name": "Walmart",
+          "http_429_pages": 0,
+          "max_page_number": 33,
+          "overlap_rows": 19,
+          "page_count": 33,
+          "retried_pages": 0,
+          "review_rows": 660,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "368677368",
+          "app_name": "Uber",
+          "http_429_pages": 0,
+          "max_page_number": 30,
+          "overlap_rows": 9,
+          "page_count": 30,
+          "retried_pages": 0,
+          "review_rows": 600,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "384830320",
+          "app_name": "Life360: Family Safety & GPS",
+          "http_429_pages": 0,
+          "max_page_number": 29,
+          "overlap_rows": 2,
+          "page_count": 29,
+          "retried_pages": 1,
+          "review_rows": 580,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "878577184",
+          "app_name": "SHEIN - Shopping Online",
+          "http_429_pages": 0,
+          "max_page_number": 28,
+          "overlap_rows": 19,
+          "page_count": 28,
+          "retried_pages": 0,
+          "review_rows": 560,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "1636235979",
+          "app_name": "ReelShort - Stream Drama & TV",
+          "http_429_pages": 0,
+          "max_page_number": 27,
+          "overlap_rows": 18,
+          "page_count": 27,
+          "retried_pages": 0,
+          "review_rows": 540,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "436672029",
+          "app_name": "AliExpress - Shopping App",
+          "http_429_pages": 0,
+          "max_page_number": 21,
+          "overlap_rows": 5,
+          "page_count": 21,
+          "retried_pages": 0,
+          "review_rows": 420,
+          "terminal_reason": "none"
+        }
+      ],
+      "notes": "Early full-scope manual validation after switching daily incremental to matrix mode.",
+      "page_metrics": {
+        "app_count": 200,
+        "duplicate_skip_rate": 0.0684,
+        "error_pages": 1,
+        "first_page_at": "2026-06-25T14:04:02.747507-07:00",
+        "http_200_pages": 1587,
+        "http_429_pages": 0,
+        "http_429_rate": 0.0,
+        "inserted_per_fetched_row": 0.9313,
+        "inserted_per_page": 18.615,
+        "last_page_at": "2026-06-25T15:42:50.592212-07:00",
+        "max_attempt_count": 2,
+        "non_200_rate": 0.0006,
+        "null_status_pages": 0,
+        "ok_pages": 1587,
+        "other_non_200_pages": 1,
+        "page_count": 1588,
+        "page_duplicate_rows": 0,
+        "page_window_minutes": 98.8,
+        "retried_page_rate": 0.0031,
+        "retried_pages": 5,
+        "review_rows": 31740,
+        "terminal_pages": 199,
+        "unique_review_rows": 31740
+      },
+      "runtime_minutes": 99.73,
+      "schedule_delay_minutes": null,
+      "status": "completed",
+      "terminal_reasons": [
+        {
+          "page_count": 1389,
+          "terminal_reason": "none"
+        },
+        {
+          "page_count": 199,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        }
+      ],
+      "updated_at": "2026-06-25T22:42:57Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28200344910"
+    },
+    {
+      "attempt_counts": [
+        {
+          "attempt_count": 1,
+          "page_count": 315
+        },
+        {
+          "attempt_count": 2,
+          "page_count": 7
+        }
+      ],
+      "comparison_group": "D3_uncapped_control",
+      "conclusion": "success",
+      "created_at": "2026-06-26T03:38:10Z",
+      "event": "workflow_dispatch",
+      "github_run_id": "28215541622",
+      "head_sha": "539323ad19b75eff2ccb03e78c919b08788ff26f",
+      "inputs": {
+        "max_pages_per_app_country": "0",
+        "max_parallel": "4",
+        "overlap_stop": "enabled",
+        "start_page": "1"
+      },
+      "job_cancelled": 0,
+      "job_failure": 0,
+      "job_success": 202,
+      "job_total": 202,
+      "label": "manual full-scope validation",
+      "load_metrics": {
+        "capped_scopes": 0,
+        "duplicates_skipped": 4995,
+        "fetch_errors": 1,
+        "loaded_pages": 322,
+        "loaded_review_rows": 6420,
+        "reviews_inserted": 1425,
+        "reviews_updated": 0,
+        "run_rows": 200
+      },
+      "long_tail_apps": [
+        {
+          "app_id": "324684580",
+          "app_name": "Spotify",
+          "http_429_pages": 0,
+          "max_page_number": 103,
+          "overlap_rows": 13,
+          "page_count": 103,
+          "retried_pages": 3,
+          "review_rows": 2040,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6448311069",
+          "app_name": "ChatGPT",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 9,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "570060128",
+          "app_name": "Duolingo",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 11,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "835599320",
+          "app_name": "TikTok",
+          "http_429_pages": 0,
+          "max_page_number": 3,
+          "overlap_rows": 19,
+          "page_count": 3,
+          "retried_pages": 1,
+          "review_rows": 60,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "544007664",
+          "app_name": "YouTube",
+          "http_429_pages": 0,
+          "max_page_number": 3,
+          "overlap_rows": 5,
+          "page_count": 3,
+          "retried_pages": 0,
+          "review_rows": 60,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "436672029",
+          "app_name": "AliExpress - Shopping App",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 11,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "1500855883",
+          "app_name": "CapCut: Photo & Video Editor",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 11,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "719972451",
+          "app_name": "DoorDash",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 6,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "284882215",
+          "app_name": "Facebook",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 12,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "389801252",
+          "app_name": "Instagram",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 5,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6751921248",
+          "app_name": "Rips by Triumph",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 15,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "878577184",
+          "app_name": "SHEIN - Shopping Online",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 20,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "368677368",
+          "app_name": "Uber",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 11,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "632064380",
+          "app_name": "Vinted: Pre-loved marketplace",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 11,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "338137227",
+          "app_name": "Walmart",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 9,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        }
+      ],
+      "notes": "Second full-scope manual validation.",
+      "page_metrics": {
+        "app_count": 200,
+        "duplicate_skip_rate": 0.778,
+        "error_pages": 1,
+        "first_page_at": "2026-06-25T20:39:03.691211-07:00",
+        "http_200_pages": 321,
+        "http_429_pages": 0,
+        "http_429_rate": 0.0,
+        "inserted_per_fetched_row": 0.222,
+        "inserted_per_page": 4.425,
+        "last_page_at": "2026-06-25T21:18:59.913668-07:00",
+        "max_attempt_count": 2,
+        "non_200_rate": 0.0031,
+        "null_status_pages": 0,
+        "ok_pages": 321,
+        "other_non_200_pages": 1,
+        "page_count": 322,
+        "page_duplicate_rows": 0,
+        "page_window_minutes": 39.94,
+        "retried_page_rate": 0.0217,
+        "retried_pages": 7,
+        "review_rows": 6420,
+        "terminal_pages": 200,
+        "unique_review_rows": 6420
+      },
+      "runtime_minutes": 40.97,
+      "schedule_delay_minutes": null,
+      "status": "completed",
+      "terminal_reasons": [
+        {
+          "page_count": 200,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "page_count": 122,
+          "terminal_reason": "none"
+        }
+      ],
+      "updated_at": "2026-06-26T04:19:08Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28215541622"
+    },
+    {
+      "attempt_counts": [
+        {
+          "attempt_count": 1,
+          "page_count": 264
+        },
+        {
+          "attempt_count": 2,
+          "page_count": 10
+        },
+        {
+          "attempt_count": 3,
+          "page_count": 2
+        }
+      ],
+      "comparison_group": "F0_twice_daily_baseline",
+      "conclusion": "success",
+      "created_at": "2026-06-26T17:05:14Z",
+      "event": "schedule",
+      "github_run_id": "28253196497",
+      "head_sha": "539323ad19b75eff2ccb03e78c919b08788ff26f",
+      "inputs": {
+        "max_pages_per_app_country": "0",
+        "max_parallel": "4",
+        "overlap_stop": "enabled",
+        "start_page": "1"
+      },
+      "job_cancelled": 0,
+      "job_failure": 0,
+      "job_success": 202,
+      "job_total": 202,
+      "label": "scheduled full-scope baseline",
+      "load_metrics": {
+        "capped_scopes": 0,
+        "duplicates_skipped": 2830,
+        "fetch_errors": 0,
+        "loaded_pages": 276,
+        "loaded_review_rows": 5520,
+        "reviews_inserted": 2690,
+        "reviews_updated": 0,
+        "run_rows": 200
+      },
+      "long_tail_apps": [
+        {
+          "app_id": "324684580",
+          "app_name": "Spotify",
+          "http_429_pages": 0,
+          "max_page_number": 11,
+          "overlap_rows": 15,
+          "page_count": 11,
+          "retried_pages": 0,
+          "review_rows": 220,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6448311069",
+          "app_name": "ChatGPT",
+          "http_429_pages": 0,
+          "max_page_number": 8,
+          "overlap_rows": 20,
+          "page_count": 8,
+          "retried_pages": 0,
+          "review_rows": 160,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "719972451",
+          "app_name": "DoorDash",
+          "http_429_pages": 0,
+          "max_page_number": 6,
+          "overlap_rows": 19,
+          "page_count": 6,
+          "retried_pages": 0,
+          "review_rows": 120,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "570060128",
+          "app_name": "Duolingo",
+          "http_429_pages": 0,
+          "max_page_number": 6,
+          "overlap_rows": 20,
+          "page_count": 6,
+          "retried_pages": 1,
+          "review_rows": 120,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "632064380",
+          "app_name": "Vinted: Pre-loved marketplace",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 14,
+          "page_count": 5,
+          "retried_pages": 0,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "544007664",
+          "app_name": "YouTube",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 1,
+          "page_count": 5,
+          "retried_pages": 0,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "284882215",
+          "app_name": "Facebook",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 18,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "389801252",
+          "app_name": "Instagram",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 4,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "835599320",
+          "app_name": "TikTok",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 6,
+          "page_count": 4,
+          "retried_pages": 1,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "338137227",
+          "app_name": "Walmart",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 7,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6751921248",
+          "app_name": "Rips by Triumph",
+          "http_429_pages": 0,
+          "max_page_number": 3,
+          "overlap_rows": 4,
+          "page_count": 3,
+          "retried_pages": 0,
+          "review_rows": 60,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "368677368",
+          "app_name": "Uber",
+          "http_429_pages": 0,
+          "max_page_number": 3,
+          "overlap_rows": 10,
+          "page_count": 3,
+          "retried_pages": 0,
+          "review_rows": 60,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "436672029",
+          "app_name": "AliExpress - Shopping App",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 3,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "297606951",
+          "app_name": "Amazon Shopping",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 15,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "1500855883",
+          "app_name": "CapCut: Photo & Video Editor",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 17,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        }
+      ],
+      "notes": "Clean scheduled baseline.",
+      "page_metrics": {
+        "app_count": 200,
+        "duplicate_skip_rate": 0.5127,
+        "error_pages": 0,
+        "first_page_at": "2026-06-26T10:06:04.093132-07:00",
+        "http_200_pages": 276,
+        "http_429_pages": 0,
+        "http_429_rate": 0.0,
+        "inserted_per_fetched_row": 0.4873,
+        "inserted_per_page": 9.746,
+        "last_page_at": "2026-06-26T10:42:38.794211-07:00",
+        "max_attempt_count": 3,
+        "non_200_rate": 0.0,
+        "null_status_pages": 0,
+        "ok_pages": 276,
+        "other_non_200_pages": 0,
+        "page_count": 276,
+        "page_duplicate_rows": 0,
+        "page_window_minutes": 36.58,
+        "retried_page_rate": 0.0435,
+        "retried_pages": 12,
+        "review_rows": 5520,
+        "terminal_pages": 200,
+        "unique_review_rows": 5520
+      },
+      "runtime_minutes": 51.07,
+      "schedule_delay_minutes": 118.23,
+      "status": "completed",
+      "terminal_reasons": [
+        {
+          "page_count": 200,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "page_count": 76,
+          "terminal_reason": "none"
+        }
+      ],
+      "updated_at": "2026-06-26T17:56:18Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28253196497"
+    },
+    {
+      "attempt_counts": [
+        {
+          "attempt_count": 1,
+          "page_count": 377
+        },
+        {
+          "attempt_count": 2,
+          "page_count": 15
+        },
+        {
+          "attempt_count": 3,
+          "page_count": 1
+        }
+      ],
+      "comparison_group": "F0_twice_daily_baseline",
+      "conclusion": "success",
+      "created_at": "2026-06-27T06:34:32Z",
+      "event": "schedule",
+      "github_run_id": "28281339396",
+      "head_sha": "4816339d4e79b8af713d5ba376289fb7374101e1",
+      "inputs": {
+        "max_pages_per_app_country": "0",
+        "max_parallel": "4",
+        "overlap_stop": "enabled",
+        "start_page": "1"
+      },
+      "job_cancelled": 0,
+      "job_failure": 0,
+      "job_success": 202,
+      "job_total": 202,
+      "label": "scheduled full-scope baseline",
+      "load_metrics": {
+        "capped_scopes": 0,
+        "duplicates_skipped": 2593,
+        "fetch_errors": 0,
+        "loaded_pages": 393,
+        "loaded_review_rows": 7860,
+        "reviews_inserted": 5264,
+        "reviews_updated": 3,
+        "run_rows": 200
+      },
+      "long_tail_apps": [
+        {
+          "app_id": "632064380",
+          "app_name": "Vinted: Pre-loved marketplace",
+          "http_429_pages": 0,
+          "max_page_number": 21,
+          "overlap_rows": 6,
+          "page_count": 21,
+          "retried_pages": 0,
+          "review_rows": 420,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "324684580",
+          "app_name": "Spotify",
+          "http_429_pages": 0,
+          "max_page_number": 18,
+          "overlap_rows": 19,
+          "page_count": 18,
+          "retried_pages": 1,
+          "review_rows": 360,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6448311069",
+          "app_name": "ChatGPT",
+          "http_429_pages": 0,
+          "max_page_number": 13,
+          "overlap_rows": 2,
+          "page_count": 13,
+          "retried_pages": 0,
+          "review_rows": 260,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "570060128",
+          "app_name": "Duolingo",
+          "http_429_pages": 0,
+          "max_page_number": 11,
+          "overlap_rows": 7,
+          "page_count": 11,
+          "retried_pages": 0,
+          "review_rows": 220,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "544007664",
+          "app_name": "YouTube",
+          "http_429_pages": 0,
+          "max_page_number": 9,
+          "overlap_rows": 6,
+          "page_count": 9,
+          "retried_pages": 1,
+          "review_rows": 180,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "719972451",
+          "app_name": "DoorDash",
+          "http_429_pages": 0,
+          "max_page_number": 7,
+          "overlap_rows": 17,
+          "page_count": 7,
+          "retried_pages": 0,
+          "review_rows": 140,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "389801252",
+          "app_name": "Instagram",
+          "http_429_pages": 0,
+          "max_page_number": 7,
+          "overlap_rows": 17,
+          "page_count": 7,
+          "retried_pages": 1,
+          "review_rows": 140,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "835599320",
+          "app_name": "TikTok",
+          "http_429_pages": 0,
+          "max_page_number": 7,
+          "overlap_rows": 3,
+          "page_count": 7,
+          "retried_pages": 0,
+          "review_rows": 140,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "368677368",
+          "app_name": "Uber",
+          "http_429_pages": 0,
+          "max_page_number": 7,
+          "overlap_rows": 17,
+          "page_count": 7,
+          "retried_pages": 0,
+          "review_rows": 140,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "338137227",
+          "app_name": "Walmart",
+          "http_429_pages": 0,
+          "max_page_number": 7,
+          "overlap_rows": 16,
+          "page_count": 7,
+          "retried_pages": 0,
+          "review_rows": 140,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "284882215",
+          "app_name": "Facebook",
+          "http_429_pages": 0,
+          "max_page_number": 6,
+          "overlap_rows": 10,
+          "page_count": 6,
+          "retried_pages": 0,
+          "review_rows": 120,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "444553167",
+          "app_name": "ADP Mobile Solutions",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 13,
+          "page_count": 5,
+          "retried_pages": 0,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "436672029",
+          "app_name": "AliExpress - Shopping App",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 17,
+          "page_count": 5,
+          "retried_pages": 0,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6443467666",
+          "app_name": "Love and Deepspace",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 18,
+          "page_count": 5,
+          "retried_pages": 0,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6751921248",
+          "app_name": "Rips by Triumph",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 10,
+          "page_count": 5,
+          "retried_pages": 0,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        }
+      ],
+      "notes": "Delayed evening scheduled baseline.",
+      "page_metrics": {
+        "app_count": 200,
+        "duplicate_skip_rate": 0.3299,
+        "error_pages": 0,
+        "first_page_at": "2026-06-26T23:35:24.617486-07:00",
+        "http_200_pages": 393,
+        "http_429_pages": 0,
+        "http_429_rate": 0.0,
+        "inserted_per_fetched_row": 0.6697,
+        "inserted_per_page": 13.394,
+        "last_page_at": "2026-06-27T00:23:45.207497-07:00",
+        "max_attempt_count": 3,
+        "non_200_rate": 0.0,
+        "null_status_pages": 0,
+        "ok_pages": 393,
+        "other_non_200_pages": 0,
+        "page_count": 393,
+        "page_duplicate_rows": 0,
+        "page_window_minutes": 48.34,
+        "retried_page_rate": 0.0407,
+        "retried_pages": 16,
+        "review_rows": 7860,
+        "terminal_pages": 200,
+        "unique_review_rows": 7860
+      },
+      "runtime_minutes": 54.33,
+      "schedule_delay_minutes": 207.53,
+      "status": "completed",
+      "terminal_reasons": [
+        {
+          "page_count": 200,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "page_count": 193,
+          "terminal_reason": "none"
+        }
+      ],
+      "updated_at": "2026-06-27T07:28:52Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28281339396"
+    },
+    {
+      "attempt_counts": [
+        {
+          "attempt_count": 1,
+          "page_count": 215
+        },
+        {
+          "attempt_count": 2,
+          "page_count": 11
+        },
+        {
+          "attempt_count": 3,
+          "page_count": 1
+        }
+      ],
+      "comparison_group": "F0_twice_daily_baseline",
+      "conclusion": "success",
+      "created_at": "2026-06-27T16:16:18Z",
+      "event": "schedule",
+      "github_run_id": "28294714167",
+      "head_sha": "4816339d4e79b8af713d5ba376289fb7374101e1",
+      "inputs": {
+        "max_pages_per_app_country": "0",
+        "max_parallel": "4",
+        "overlap_stop": "enabled",
+        "start_page": "1"
+      },
+      "job_cancelled": 0,
+      "job_failure": 0,
+      "job_success": 202,
+      "job_total": 202,
+      "label": "scheduled full-scope baseline",
+      "load_metrics": {
+        "capped_scopes": 0,
+        "duplicates_skipped": 3221,
+        "fetch_errors": 0,
+        "loaded_pages": 227,
+        "loaded_review_rows": 4540,
+        "reviews_inserted": 1319,
+        "reviews_updated": 0,
+        "run_rows": 200
+      },
+      "long_tail_apps": [
+        {
+          "app_id": "324684580",
+          "app_name": "Spotify",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 19,
+          "page_count": 5,
+          "retried_pages": 1,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "632064380",
+          "app_name": "Vinted: Pre-loved marketplace",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 5,
+          "page_count": 5,
+          "retried_pages": 0,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6448311069",
+          "app_name": "ChatGPT",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 14,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "570060128",
+          "app_name": "Duolingo",
+          "http_429_pages": 0,
+          "max_page_number": 3,
+          "overlap_rows": 1,
+          "page_count": 3,
+          "retried_pages": 0,
+          "review_rows": 60,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "284882215",
+          "app_name": "Facebook",
+          "http_429_pages": 0,
+          "max_page_number": 3,
+          "overlap_rows": 15,
+          "page_count": 3,
+          "retried_pages": 0,
+          "review_rows": 60,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6443467666",
+          "app_name": "Love and Deepspace",
+          "http_429_pages": 0,
+          "max_page_number": 3,
+          "overlap_rows": 9,
+          "page_count": 3,
+          "retried_pages": 0,
+          "review_rows": 60,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "544007664",
+          "app_name": "YouTube",
+          "http_429_pages": 0,
+          "max_page_number": 3,
+          "overlap_rows": 15,
+          "page_count": 3,
+          "retried_pages": 0,
+          "review_rows": 60,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "444553167",
+          "app_name": "ADP Mobile Solutions",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 18,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "719972451",
+          "app_name": "DoorDash",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 19,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "389801252",
+          "app_name": "Instagram",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 7,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "1636235979",
+          "app_name": "ReelShort - Stream Drama & TV",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 20,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6751921248",
+          "app_name": "Rips by Triumph",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 12,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "835599320",
+          "app_name": "TikTok",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 6,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "368677368",
+          "app_name": "Uber",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 15,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "333903271",
+          "app_name": "X",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 14,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        }
+      ],
+      "notes": "Delayed morning scheduled baseline.",
+      "page_metrics": {
+        "app_count": 200,
+        "duplicate_skip_rate": 0.7095,
+        "error_pages": 0,
+        "first_page_at": "2026-06-27T09:17:08.860589-07:00",
+        "http_200_pages": 227,
+        "http_429_pages": 0,
+        "http_429_rate": 0.0,
+        "inserted_per_fetched_row": 0.2905,
+        "inserted_per_page": 5.811,
+        "last_page_at": "2026-06-27T09:52:59.302932-07:00",
+        "max_attempt_count": 3,
+        "non_200_rate": 0.0,
+        "null_status_pages": 0,
+        "ok_pages": 227,
+        "other_non_200_pages": 0,
+        "page_count": 227,
+        "page_duplicate_rows": 0,
+        "page_window_minutes": 35.84,
+        "retried_page_rate": 0.0529,
+        "retried_pages": 12,
+        "review_rows": 4540,
+        "terminal_pages": 200,
+        "unique_review_rows": 4540
+      },
+      "runtime_minutes": 40.7,
+      "schedule_delay_minutes": 69.3,
+      "status": "completed",
+      "terminal_reasons": [
+        {
+          "page_count": 200,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "page_count": 27,
+          "terminal_reason": "none"
+        }
+      ],
+      "updated_at": "2026-06-27T16:57:00Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28294714167"
+    },
+    {
+      "attempt_counts": [
+        {
+          "attempt_count": 1,
+          "page_count": 338
+        },
+        {
+          "attempt_count": 2,
+          "page_count": 1
+        }
+      ],
+      "comparison_group": "manual_fallback_full_scope",
+      "conclusion": "success",
+      "created_at": "2026-06-28T06:08:15Z",
+      "event": "workflow_dispatch",
+      "github_run_id": "28313382547",
+      "head_sha": "4816339d4e79b8af713d5ba376289fb7374101e1",
+      "inputs": {
+        "max_pages_per_app_country": "0",
+        "max_parallel": "4",
+        "overlap_stop": "enabled",
+        "start_page": "1"
+      },
+      "job_cancelled": 0,
+      "job_failure": 0,
+      "job_success": 202,
+      "job_total": 202,
+      "label": "manual fallback after delayed schedule",
+      "load_metrics": {
+        "capped_scopes": 0,
+        "duplicates_skipped": 2771,
+        "fetch_errors": 1,
+        "loaded_pages": 339,
+        "loaded_review_rows": 6760,
+        "reviews_inserted": 3986,
+        "reviews_updated": 3,
+        "run_rows": 200
+      },
+      "long_tail_apps": [
+        {
+          "app_id": "632064380",
+          "app_name": "Vinted: Pre-loved marketplace",
+          "http_429_pages": 0,
+          "max_page_number": 16,
+          "overlap_rows": 13,
+          "page_count": 16,
+          "retried_pages": 0,
+          "review_rows": 320,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "324684580",
+          "app_name": "Spotify",
+          "http_429_pages": 0,
+          "max_page_number": 14,
+          "overlap_rows": 10,
+          "page_count": 14,
+          "retried_pages": 0,
+          "review_rows": 280,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "544007664",
+          "app_name": "YouTube",
+          "http_429_pages": 0,
+          "max_page_number": 11,
+          "overlap_rows": 13,
+          "page_count": 11,
+          "retried_pages": 0,
+          "review_rows": 220,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6448311069",
+          "app_name": "ChatGPT",
+          "http_429_pages": 0,
+          "max_page_number": 9,
+          "overlap_rows": 16,
+          "page_count": 9,
+          "retried_pages": 0,
+          "review_rows": 180,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "719972451",
+          "app_name": "DoorDash",
+          "http_429_pages": 0,
+          "max_page_number": 6,
+          "overlap_rows": 5,
+          "page_count": 6,
+          "retried_pages": 0,
+          "review_rows": 120,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "570060128",
+          "app_name": "Duolingo",
+          "http_429_pages": 0,
+          "max_page_number": 6,
+          "overlap_rows": 11,
+          "page_count": 6,
+          "retried_pages": 0,
+          "review_rows": 120,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6443467666",
+          "app_name": "Love and Deepspace",
+          "http_429_pages": 0,
+          "max_page_number": 6,
+          "overlap_rows": 20,
+          "page_count": 6,
+          "retried_pages": 0,
+          "review_rows": 120,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "835599320",
+          "app_name": "TikTok",
+          "http_429_pages": 0,
+          "max_page_number": 6,
+          "overlap_rows": 14,
+          "page_count": 6,
+          "retried_pages": 0,
+          "review_rows": 120,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "389801252",
+          "app_name": "Instagram",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 17,
+          "page_count": 5,
+          "retried_pages": 0,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "338137227",
+          "app_name": "Walmart",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 5,
+          "page_count": 5,
+          "retried_pages": 0,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "436672029",
+          "app_name": "AliExpress - Shopping App",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 13,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "284882215",
+          "app_name": "Facebook",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 8,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "1636235979",
+          "app_name": "ReelShort - Stream Drama & TV",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 11,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6751921248",
+          "app_name": "Rips by Triumph",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 9,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "368677368",
+          "app_name": "Uber",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 4,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        }
+      ],
+      "notes": "Manual coverage run after the expected evening schedule did not appear on time.",
+      "page_metrics": {
+        "app_count": 200,
+        "duplicate_skip_rate": 0.4099,
+        "error_pages": 1,
+        "first_page_at": "2026-06-27T23:09:06.539176-07:00",
+        "http_200_pages": 338,
+        "http_429_pages": 0,
+        "http_429_rate": 0.0,
+        "inserted_per_fetched_row": 0.5896,
+        "inserted_per_page": 11.758,
+        "last_page_at": "2026-06-27T23:34:05.984758-07:00",
+        "max_attempt_count": 2,
+        "non_200_rate": 0.0029,
+        "null_status_pages": 0,
+        "ok_pages": 338,
+        "other_non_200_pages": 1,
+        "page_count": 339,
+        "page_duplicate_rows": 0,
+        "page_window_minutes": 24.99,
+        "retried_page_rate": 0.0029,
+        "retried_pages": 1,
+        "review_rows": 6760,
+        "terminal_pages": 200,
+        "unique_review_rows": 6760
+      },
+      "runtime_minutes": 25.93,
+      "schedule_delay_minutes": null,
+      "status": "completed",
+      "terminal_reasons": [
+        {
+          "page_count": 200,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "page_count": 139,
+          "terminal_reason": "none"
+        }
+      ],
+      "updated_at": "2026-06-28T06:34:11Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28313382547"
+    },
+    {
+      "attempt_counts": [
+        {
+          "attempt_count": 1,
+          "page_count": 186
+        },
+        {
+          "attempt_count": 2,
+          "page_count": 20
+        },
+        {
+          "attempt_count": 3,
+          "page_count": 8
+        }
+      ],
+      "comparison_group": "F0_twice_daily_baseline",
+      "conclusion": "success",
+      "created_at": "2026-06-28T07:07:53Z",
+      "event": "schedule",
+      "github_run_id": "28314674192",
+      "head_sha": "4816339d4e79b8af713d5ba376289fb7374101e1",
+      "inputs": {
+        "max_pages_per_app_country": "0",
+        "max_parallel": "4",
+        "overlap_stop": "enabled",
+        "start_page": "1"
+      },
+      "job_cancelled": 0,
+      "job_failure": 0,
+      "job_success": 202,
+      "job_total": 202,
+      "label": "late scheduled full-scope baseline",
+      "load_metrics": {
+        "capped_scopes": 0,
+        "duplicates_skipped": 3660,
+        "fetch_errors": 0,
+        "loaded_pages": 214,
+        "loaded_review_rows": 4280,
+        "reviews_inserted": 620,
+        "reviews_updated": 0,
+        "run_rows": 200
+      },
+      "long_tail_apps": [
+        {
+          "app_id": "324684580",
+          "app_name": "Spotify",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 18,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "632064380",
+          "app_name": "Vinted: Pre-loved marketplace",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 15,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "544007664",
+          "app_name": "YouTube",
+          "http_429_pages": 0,
+          "max_page_number": 3,
+          "overlap_rows": 17,
+          "page_count": 3,
+          "retried_pages": 0,
+          "review_rows": 60,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6448311069",
+          "app_name": "ChatGPT",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 6,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "719972451",
+          "app_name": "DoorDash",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 7,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "570060128",
+          "app_name": "Duolingo",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 6,
+          "page_count": 2,
+          "retried_pages": 1,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "284882215",
+          "app_name": "Facebook",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 19,
+          "page_count": 2,
+          "retried_pages": 1,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6751921248",
+          "app_name": "Rips by Triumph",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 19,
+          "page_count": 2,
+          "retried_pages": 1,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "835599320",
+          "app_name": "TikTok",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 17,
+          "page_count": 2,
+          "retried_pages": 1,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "469337564",
+          "app_name": "Acrobat Reader: PDF Editor",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "444553167",
+          "app_name": "ADP Mobile Solutions",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 16,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "401626263",
+          "app_name": "Airbnb",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "436672029",
+          "app_name": "AliExpress - Shopping App",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "6503284107",
+          "app_name": "All in Hole: Black Hole Games",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "405075943",
+          "app_name": "AllTrails: Hike, Bike & Run",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        }
+      ],
+      "notes": "GitHub emitted the missed evening schedule late, shortly after the manual fallback.",
+      "page_metrics": {
+        "app_count": 200,
+        "duplicate_skip_rate": 0.8551,
+        "error_pages": 0,
+        "first_page_at": "2026-06-28T00:08:40.226187-07:00",
+        "http_200_pages": 214,
+        "http_429_pages": 0,
+        "http_429_rate": 0.0,
+        "inserted_per_fetched_row": 0.1449,
+        "inserted_per_page": 2.897,
+        "last_page_at": "2026-06-28T01:16:16.954428-07:00",
+        "max_attempt_count": 3,
+        "non_200_rate": 0.0,
+        "null_status_pages": 0,
+        "ok_pages": 214,
+        "other_non_200_pages": 0,
+        "page_count": 214,
+        "page_duplicate_rows": 0,
+        "page_window_minutes": 67.61,
+        "retried_page_rate": 0.1308,
+        "retried_pages": 28,
+        "review_rows": 4280,
+        "terminal_pages": 200,
+        "unique_review_rows": 4280
+      },
+      "runtime_minutes": 76.87,
+      "schedule_delay_minutes": 240.88,
+      "status": "completed",
+      "terminal_reasons": [
+        {
+          "page_count": 200,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "page_count": 14,
+          "terminal_reason": "none"
+        }
+      ],
+      "updated_at": "2026-06-28T08:24:45Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28314674192"
+    },
+    {
+      "attempt_counts": [
+        {
+          "attempt_count": 1,
+          "page_count": 217
+        },
+        {
+          "attempt_count": 2,
+          "page_count": 12
+        },
+        {
+          "attempt_count": 3,
+          "page_count": 1
+        }
+      ],
+      "comparison_group": "F0_twice_daily_baseline",
+      "conclusion": "success",
+      "created_at": "2026-06-28T16:21:17Z",
+      "event": "schedule",
+      "github_run_id": "28328447489",
+      "head_sha": "4816339d4e79b8af713d5ba376289fb7374101e1",
+      "inputs": {
+        "max_pages_per_app_country": "0",
+        "max_parallel": "4",
+        "overlap_stop": "enabled",
+        "start_page": "1"
+      },
+      "job_cancelled": 0,
+      "job_failure": 0,
+      "job_success": 202,
+      "job_total": 202,
+      "label": "late scheduled full-scope baseline",
+      "load_metrics": {
+        "capped_scopes": 0,
+        "duplicates_skipped": 3145,
+        "fetch_errors": 0,
+        "loaded_pages": 230,
+        "loaded_review_rows": 4600,
+        "reviews_inserted": 1455,
+        "reviews_updated": 0,
+        "run_rows": 200
+      },
+      "long_tail_apps": [
+        {
+          "app_id": "324684580",
+          "app_name": "Spotify",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 16,
+          "page_count": 5,
+          "retried_pages": 1,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "632064380",
+          "app_name": "Vinted: Pre-loved marketplace",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 7,
+          "page_count": 5,
+          "retried_pages": 0,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "544007664",
+          "app_name": "YouTube",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 19,
+          "page_count": 5,
+          "retried_pages": 0,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6448311069",
+          "app_name": "ChatGPT",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 8,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "570060128",
+          "app_name": "Duolingo",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 20,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "284882215",
+          "app_name": "Facebook",
+          "http_429_pages": 0,
+          "max_page_number": 3,
+          "overlap_rows": 18,
+          "page_count": 3,
+          "retried_pages": 0,
+          "review_rows": 60,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6443467666",
+          "app_name": "Love and Deepspace",
+          "http_429_pages": 0,
+          "max_page_number": 3,
+          "overlap_rows": 15,
+          "page_count": 3,
+          "retried_pages": 1,
+          "review_rows": 60,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "835599320",
+          "app_name": "TikTok",
+          "http_429_pages": 0,
+          "max_page_number": 3,
+          "overlap_rows": 9,
+          "page_count": 3,
+          "retried_pages": 0,
+          "review_rows": 60,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "719972451",
+          "app_name": "DoorDash",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 12,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "389801252",
+          "app_name": "Instagram",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 9,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "1636235979",
+          "app_name": "ReelShort - Stream Drama & TV",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 2,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6751921248",
+          "app_name": "Rips by Triumph",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 11,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "368677368",
+          "app_name": "Uber",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 7,
+          "page_count": 2,
+          "retried_pages": 1,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "338137227",
+          "app_name": "Walmart",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 7,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "469337564",
+          "app_name": "Acrobat Reader: PDF Editor",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 19,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        }
+      ],
+      "notes": "Delayed morning scheduled baseline.",
+      "page_metrics": {
+        "app_count": 200,
+        "duplicate_skip_rate": 0.6837,
+        "error_pages": 0,
+        "first_page_at": "2026-06-28T09:22:00.839585-07:00",
+        "http_200_pages": 230,
+        "http_429_pages": 0,
+        "http_429_rate": 0.0,
+        "inserted_per_fetched_row": 0.3163,
+        "inserted_per_page": 6.326,
+        "last_page_at": "2026-06-28T09:58:00.290893-07:00",
+        "max_attempt_count": 3,
+        "non_200_rate": 0.0,
+        "null_status_pages": 0,
+        "ok_pages": 230,
+        "other_non_200_pages": 0,
+        "page_count": 230,
+        "page_duplicate_rows": 0,
+        "page_window_minutes": 35.99,
+        "retried_page_rate": 0.0565,
+        "retried_pages": 13,
+        "review_rows": 4600,
+        "terminal_pages": 200,
+        "unique_review_rows": 4600
+      },
+      "runtime_minutes": 40.82,
+      "schedule_delay_minutes": 74.28,
+      "status": "completed",
+      "terminal_reasons": [
+        {
+          "page_count": 200,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "page_count": 30,
+          "terminal_reason": "none"
+        }
+      ],
+      "updated_at": "2026-06-28T17:02:06Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28328447489"
+    },
+    {
+      "attempt_counts": [
+        {
+          "attempt_count": 1,
+          "page_count": 297
+        },
+        {
+          "attempt_count": 2,
+          "page_count": 37
+        },
+        {
+          "attempt_count": 3,
+          "page_count": 3
+        }
+      ],
+      "comparison_group": "F0_failure_observation",
+      "conclusion": "failure",
+      "created_at": "2026-06-29T08:22:28Z",
+      "event": "schedule",
+      "github_run_id": "28358536459",
+      "head_sha": "4816339d4e79b8af713d5ba376289fb7374101e1",
+      "inputs": {
+        "max_pages_per_app_country": "0",
+        "max_parallel": "4",
+        "overlap_stop": "enabled",
+        "start_page": "1"
+      },
+      "job_cancelled": 0,
+      "job_failure": 1,
+      "job_success": 201,
+      "job_total": 202,
+      "label": "scheduled run with one failed app job",
+      "load_metrics": {
+        "capped_scopes": 0,
+        "duplicates_skipped": 2673,
+        "fetch_errors": 1,
+        "loaded_pages": 337,
+        "loaded_review_rows": 6720,
+        "reviews_inserted": 4046,
+        "reviews_updated": 1,
+        "run_rows": 200
+      },
+      "long_tail_apps": [
+        {
+          "app_id": "324684580",
+          "app_name": "Spotify",
+          "http_429_pages": 0,
+          "max_page_number": 14,
+          "overlap_rows": 1,
+          "page_count": 14,
+          "retried_pages": 2,
+          "review_rows": 280,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "632064380",
+          "app_name": "Vinted: Pre-loved marketplace",
+          "http_429_pages": 0,
+          "max_page_number": 11,
+          "overlap_rows": 20,
+          "page_count": 11,
+          "retried_pages": 2,
+          "review_rows": 200,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "544007664",
+          "app_name": "YouTube",
+          "http_429_pages": 0,
+          "max_page_number": 10,
+          "overlap_rows": 15,
+          "page_count": 10,
+          "retried_pages": 0,
+          "review_rows": 200,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6448311069",
+          "app_name": "ChatGPT",
+          "http_429_pages": 0,
+          "max_page_number": 9,
+          "overlap_rows": 3,
+          "page_count": 9,
+          "retried_pages": 1,
+          "review_rows": 180,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "570060128",
+          "app_name": "Duolingo",
+          "http_429_pages": 0,
+          "max_page_number": 9,
+          "overlap_rows": 11,
+          "page_count": 9,
+          "retried_pages": 1,
+          "review_rows": 180,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6443467666",
+          "app_name": "Love and Deepspace",
+          "http_429_pages": 0,
+          "max_page_number": 8,
+          "overlap_rows": 6,
+          "page_count": 8,
+          "retried_pages": 0,
+          "review_rows": 160,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "719972451",
+          "app_name": "DoorDash",
+          "http_429_pages": 0,
+          "max_page_number": 7,
+          "overlap_rows": 1,
+          "page_count": 7,
+          "retried_pages": 0,
+          "review_rows": 140,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "389801252",
+          "app_name": "Instagram",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 18,
+          "page_count": 5,
+          "retried_pages": 0,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "1636235979",
+          "app_name": "ReelShort - Stream Drama & TV",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 17,
+          "page_count": 5,
+          "retried_pages": 0,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "835599320",
+          "app_name": "TikTok",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 13,
+          "page_count": 5,
+          "retried_pages": 1,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "338137227",
+          "app_name": "Walmart",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 3,
+          "page_count": 5,
+          "retried_pages": 1,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "436672029",
+          "app_name": "AliExpress - Shopping App",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 8,
+          "page_count": 4,
+          "retried_pages": 1,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6475757306",
+          "app_name": "Disney Solitaire",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 20,
+          "page_count": 4,
+          "retried_pages": 1,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "284882215",
+          "app_name": "Facebook",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 1,
+          "page_count": 4,
+          "retried_pages": 1,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6751921248",
+          "app_name": "Rips by Triumph",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 6,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        }
+      ],
+      "notes": "Kept in ledger as a failure observation. Do not include in clean baseline recommendation.",
+      "page_metrics": {
+        "app_count": 200,
+        "duplicate_skip_rate": 0.3978,
+        "error_pages": 1,
+        "first_page_at": "2026-06-29T01:23:17.611745-07:00",
+        "http_200_pages": 336,
+        "http_429_pages": 0,
+        "http_429_rate": 0.0,
+        "inserted_per_fetched_row": 0.6021,
+        "inserted_per_page": 12.006,
+        "last_page_at": "2026-06-29T02:46:59.637992-07:00",
+        "max_attempt_count": 3,
+        "non_200_rate": 0.003,
+        "null_status_pages": 0,
+        "ok_pages": 336,
+        "other_non_200_pages": 1,
+        "page_count": 337,
+        "page_duplicate_rows": 0,
+        "page_window_minutes": 83.7,
+        "retried_page_rate": 0.1187,
+        "retried_pages": 40,
+        "review_rows": 6720,
+        "terminal_pages": 200,
+        "unique_review_rows": 6720
+      },
+      "runtime_minutes": 87.88,
+      "schedule_delay_minutes": 315.47,
+      "status": "completed",
+      "terminal_reasons": [
+        {
+          "page_count": 200,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "page_count": 137,
+          "terminal_reason": "none"
+        }
+      ],
+      "updated_at": "2026-06-29T09:50:21Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28358536459"
+    },
+    {
+      "attempt_counts": [
+        {
+          "attempt_count": 1,
+          "page_count": 197
+        },
+        {
+          "attempt_count": 2,
+          "page_count": 22
+        },
+        {
+          "attempt_count": 3,
+          "page_count": 1
+        }
+      ],
+      "comparison_group": "F0_twice_daily_baseline",
+      "conclusion": "success",
+      "created_at": "2026-06-29T17:46:02Z",
+      "event": "schedule",
+      "github_run_id": "28391589916",
+      "head_sha": "4816339d4e79b8af713d5ba376289fb7374101e1",
+      "inputs": {
+        "max_pages_per_app_country": "0",
+        "max_parallel": "4",
+        "overlap_stop": "enabled",
+        "start_page": "1"
+      },
+      "job_cancelled": 0,
+      "job_failure": 0,
+      "job_success": 202,
+      "job_total": 202,
+      "label": "scheduled full-scope baseline",
+      "load_metrics": {
+        "capped_scopes": 0,
+        "duplicates_skipped": 3347,
+        "fetch_errors": 0,
+        "loaded_pages": 220,
+        "loaded_review_rows": 4400,
+        "reviews_inserted": 1053,
+        "reviews_updated": 0,
+        "run_rows": 200
+      },
+      "long_tail_apps": [
+        {
+          "app_id": "570060128",
+          "app_name": "Duolingo",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 12,
+          "page_count": 4,
+          "retried_pages": 1,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "324684580",
+          "app_name": "Spotify",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 15,
+          "page_count": 4,
+          "retried_pages": 1,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "544007664",
+          "app_name": "YouTube",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 17,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6448311069",
+          "app_name": "ChatGPT",
+          "http_429_pages": 0,
+          "max_page_number": 3,
+          "overlap_rows": 3,
+          "page_count": 3,
+          "retried_pages": 0,
+          "review_rows": 60,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6443467666",
+          "app_name": "Love and Deepspace",
+          "http_429_pages": 0,
+          "max_page_number": 3,
+          "overlap_rows": 16,
+          "page_count": 3,
+          "retried_pages": 0,
+          "review_rows": 60,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "632064380",
+          "app_name": "Vinted: Pre-loved marketplace",
+          "http_429_pages": 0,
+          "max_page_number": 3,
+          "overlap_rows": 10,
+          "page_count": 3,
+          "retried_pages": 1,
+          "review_rows": 60,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "284882215",
+          "app_name": "Facebook",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 6,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "389801252",
+          "app_name": "Instagram",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 7,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "835599320",
+          "app_name": "TikTok",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 3,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "368677368",
+          "app_name": "Uber",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 1,
+          "page_count": 2,
+          "retried_pages": 1,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "333903271",
+          "app_name": "X",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 12,
+          "page_count": 2,
+          "retried_pages": 1,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "469337564",
+          "app_name": "Acrobat Reader: PDF Editor",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 19,
+          "page_count": 1,
+          "retried_pages": 1,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "444553167",
+          "app_name": "ADP Mobile Solutions",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "401626263",
+          "app_name": "Airbnb",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 19,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "436672029",
+          "app_name": "AliExpress - Shopping App",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 13,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        }
+      ],
+      "notes": "Most recent successful scheduled baseline at ledger creation.",
+      "page_metrics": {
+        "app_count": 200,
+        "duplicate_skip_rate": 0.7607,
+        "error_pages": 0,
+        "first_page_at": "2026-06-29T10:46:47.199736-07:00",
+        "http_200_pages": 220,
+        "http_429_pages": 0,
+        "http_429_rate": 0.0,
+        "inserted_per_fetched_row": 0.2393,
+        "inserted_per_page": 4.786,
+        "last_page_at": "2026-06-29T11:35:27.700146-07:00",
+        "max_attempt_count": 3,
+        "non_200_rate": 0.0,
+        "null_status_pages": 0,
+        "ok_pages": 220,
+        "other_non_200_pages": 0,
+        "page_count": 220,
+        "page_duplicate_rows": 0,
+        "page_window_minutes": 48.68,
+        "retried_page_rate": 0.1045,
+        "retried_pages": 23,
+        "review_rows": 4400,
+        "terminal_pages": 200,
+        "unique_review_rows": 4400
+      },
+      "runtime_minutes": 54.35,
+      "schedule_delay_minutes": 159.03,
+      "status": "completed",
+      "terminal_reasons": [
+        {
+          "page_count": 200,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "page_count": 20,
+          "terminal_reason": "none"
+        }
+      ],
+      "updated_at": "2026-06-29T18:40:23Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28391589916"
+    },
+    {
+      "attempt_counts": [
+        {
+          "attempt_count": 1,
+          "page_count": 272
+        },
+        {
+          "attempt_count": 2,
+          "page_count": 10
+        },
+        {
+          "attempt_count": 3,
+          "page_count": 1
+        }
+      ],
+      "comparison_group": "F1_six_hour_full_scope",
+      "conclusion": "success",
+      "created_at": "2026-06-30T03:02:33Z",
+      "event": "workflow_dispatch",
+      "github_run_id": "28417322081",
+      "head_sha": "4816339d4e79b8af713d5ba376289fb7374101e1",
+      "inputs": {
+        "limit": "0",
+        "max_pages_per_app_country": "0",
+        "max_parallel": "4",
+        "overlap_stop": "enabled",
+        "pressure_ramp_mode": "fixed",
+        "request_delay_jitter_seconds": "5",
+        "request_delay_seconds": "10",
+        "review_limit": "20",
+        "start_page": "1",
+        "target_offset": "0",
+        "web_429_backoff_multiplier": "1.5",
+        "web_429_circuit_breaker_max_rate": "0.5",
+        "web_429_circuit_breaker_min_pages": "4",
+        "web_429_cooldown_minutes": "0",
+        "web_429_retries": "2",
+        "web_429_retry_jitter_seconds": "60",
+        "web_429_retry_seconds": "300",
+        "web_scope_time_budget_seconds": "3600",
+        "web_time_budget_seconds": "3600"
+      },
+      "job_cancelled": 0,
+      "job_failure": 0,
+      "job_success": 202,
+      "job_total": 202,
+      "label": "F1 six-hour full-scope experiment",
+      "load_metrics": {
+        "capped_scopes": 0,
+        "duplicates_skipped": 2811,
+        "fetch_errors": 1,
+        "loaded_pages": 283,
+        "loaded_review_rows": 5640,
+        "reviews_inserted": 2826,
+        "reviews_updated": 3,
+        "run_rows": 200
+      },
+      "long_tail_apps": [
+        {
+          "app_id": "324684580",
+          "app_name": "Spotify",
+          "http_429_pages": 0,
+          "max_page_number": 10,
+          "overlap_rows": 16,
+          "page_count": 10,
+          "retried_pages": 0,
+          "review_rows": 200,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6448311069",
+          "app_name": "ChatGPT",
+          "http_429_pages": 0,
+          "max_page_number": 6,
+          "overlap_rows": 1,
+          "page_count": 6,
+          "retried_pages": 1,
+          "review_rows": 120,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "570060128",
+          "app_name": "Duolingo",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 8,
+          "page_count": 5,
+          "retried_pages": 0,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6443467666",
+          "app_name": "Love and Deepspace",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 7,
+          "page_count": 5,
+          "retried_pages": 1,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "1636235979",
+          "app_name": "ReelShort - Stream Drama & TV",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 8,
+          "page_count": 5,
+          "retried_pages": 0,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "338137227",
+          "app_name": "Walmart",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 16,
+          "page_count": 5,
+          "retried_pages": 1,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "544007664",
+          "app_name": "YouTube",
+          "http_429_pages": 0,
+          "max_page_number": 5,
+          "overlap_rows": 15,
+          "page_count": 5,
+          "retried_pages": 0,
+          "review_rows": 100,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "436672029",
+          "app_name": "AliExpress - Shopping App",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 12,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6475757306",
+          "app_name": "Disney Solitaire",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 9,
+          "page_count": 4,
+          "retried_pages": 1,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "719972451",
+          "app_name": "DoorDash",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 11,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6751921248",
+          "app_name": "Rips by Triumph",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 18,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "835599320",
+          "app_name": "TikTok",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 19,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "632064380",
+          "app_name": "Vinted: Pre-loved marketplace",
+          "http_429_pages": 0,
+          "max_page_number": 4,
+          "overlap_rows": 12,
+          "page_count": 4,
+          "retried_pages": 0,
+          "review_rows": 80,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "284882215",
+          "app_name": "Facebook",
+          "http_429_pages": 0,
+          "max_page_number": 3,
+          "overlap_rows": 3,
+          "page_count": 3,
+          "retried_pages": 0,
+          "review_rows": 60,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "389801252",
+          "app_name": "Instagram",
+          "http_429_pages": 0,
+          "max_page_number": 3,
+          "overlap_rows": 8,
+          "page_count": 3,
+          "retried_pages": 0,
+          "review_rows": 60,
+          "terminal_reason": "none"
+        }
+      ],
+      "notes": "Manual F1 run launched more than six hours after the previous clean full-scope run. It completed 202/202 jobs successfully with 283 pages, 5,640 fetched rows, 2,826 inserted reviews, 3 updated reviews, 2,811 skipped duplicates, 0 HTTP 429s, 1 HTTP 404, 11 retried pages, 1 fetch error tied to the 404, and 0 capped scopes.",
+      "page_metrics": {
+        "app_count": 200,
+        "duplicate_skip_rate": 0.4984,
+        "error_pages": 1,
+        "first_page_at": "2026-06-29T20:03:26.338011-07:00",
+        "http_200_pages": 282,
+        "http_429_pages": 0,
+        "http_429_rate": 0.0,
+        "inserted_per_fetched_row": 0.5011,
+        "inserted_per_page": 9.986,
+        "last_page_at": "2026-06-29T20:38:09.470756-07:00",
+        "max_attempt_count": 3,
+        "non_200_rate": 0.0035,
+        "null_status_pages": 0,
+        "ok_pages": 282,
+        "other_non_200_pages": 1,
+        "page_count": 283,
+        "page_duplicate_rows": 0,
+        "page_window_minutes": 34.72,
+        "retried_page_rate": 0.0389,
+        "retried_pages": 11,
+        "review_rows": 5640,
+        "terminal_pages": 200,
+        "unique_review_rows": 5640
+      },
+      "runtime_minutes": 38.45,
+      "schedule_delay_minutes": null,
+      "status": "completed",
+      "terminal_reasons": [
+        {
+          "page_count": 200,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "page_count": 83,
+          "terminal_reason": "none"
+        }
+      ],
+      "updated_at": "2026-06-30T03:41:00Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28417322081"
+    },
+    {
+      "attempt_counts": [
+        {
+          "attempt_count": 1,
+          "page_count": 189
+        },
+        {
+          "attempt_count": 2,
+          "page_count": 12
+        },
+        {
+          "attempt_count": 3,
+          "page_count": 2
+        }
+      ],
+      "comparison_group": "F2_three_hour_full_scope",
+      "conclusion": "failure",
+      "created_at": "2026-06-30T20:26:32Z",
+      "event": "workflow_dispatch",
+      "github_run_id": "28473639075",
+      "head_sha": "4816339d4e79b8af713d5ba376289fb7374101e1",
+      "inputs": {
+        "limit": "0",
+        "max_pages_per_app_country": "0",
+        "max_parallel": "4",
+        "overlap_stop": "enabled",
+        "pressure_ramp_mode": "fixed",
+        "request_delay_jitter_seconds": "5",
+        "request_delay_seconds": "10",
+        "review_limit": "20",
+        "start_page": "1",
+        "target_offset": "0",
+        "web_429_backoff_multiplier": "1.5",
+        "web_429_circuit_breaker_max_rate": "0.5",
+        "web_429_circuit_breaker_min_pages": "4",
+        "web_429_cooldown_minutes": "0",
+        "web_429_retries": "2",
+        "web_429_retry_jitter_seconds": "60",
+        "web_429_retry_seconds": "300",
+        "web_scope_time_budget_seconds": "3600",
+        "web_time_budget_seconds": "3600"
+      },
+      "job_cancelled": 0,
+      "job_failure": 1,
+      "job_success": 201,
+      "job_total": 202,
+      "label": "F2 three-hour full-scope experiment",
+      "load_metrics": {
+        "capped_scopes": 0,
+        "duplicates_skipped": 3924,
+        "fetch_errors": 0,
+        "loaded_pages": 203,
+        "loaded_review_rows": 4060,
+        "reviews_inserted": 136,
+        "reviews_updated": 0,
+        "run_rows": 200
+      },
+      "long_tail_apps": [
+        {
+          "app_id": "570060128",
+          "app_name": "Duolingo",
+          "http_429_pages": 0,
+          "max_page_number": 3,
+          "overlap_rows": 3,
+          "page_count": 3,
+          "retried_pages": 0,
+          "review_rows": 60,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "389801252",
+          "app_name": "Instagram",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 19,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "469337564",
+          "app_name": "Acrobat Reader: PDF Editor",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "444553167",
+          "app_name": "ADP Mobile Solutions",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "401626263",
+          "app_name": "Airbnb",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "436672029",
+          "app_name": "AliExpress - Shopping App",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "6503284107",
+          "app_name": "All in Hole: Black Hole Games",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "405075943",
+          "app_name": "AllTrails: Hike, Bike & Run",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "510855668",
+          "app_name": "Amazon Music: Songs & Podcasts",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "545519333",
+          "app_name": "Amazon Prime Video",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "297606951",
+          "app_name": "Amazon Shopping",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "382698565",
+          "app_name": "American Airlines",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "373493387",
+          "app_name": "AnkiMobile Flashcards",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "379693831",
+          "app_name": "Audible: Audiobooks & Podcasts",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "6740349587",
+          "app_name": "Backyard Baseball '01",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        }
+      ],
+      "notes": "Manual F2 run launched more than three hours after F1. Source ingestion was clean across all 200 apps: 203 pages, 4,060 fetched rows, 136 inserted reviews, 0 updated reviews, 3,924 skipped duplicates, 0 HTTP 429s, 0 non-200 responses, 14 retried pages, 0 fetch errors, and 0 capped scopes. GitHub marked the run failed because daily 58 Telegram Messenger completed ingestion successfully but actions/upload-artifact failed during FinalizeArtifact with ETIMEDOUT.",
+      "page_metrics": {
+        "app_count": 200,
+        "duplicate_skip_rate": 0.9665,
+        "error_pages": 0,
+        "first_page_at": "2026-06-30T13:27:20.697217-07:00",
+        "http_200_pages": 203,
+        "http_429_pages": 0,
+        "http_429_rate": 0.0,
+        "inserted_per_fetched_row": 0.0335,
+        "inserted_per_page": 0.67,
+        "last_page_at": "2026-06-30T14:07:47.541589-07:00",
+        "max_attempt_count": 3,
+        "non_200_rate": 0.0,
+        "null_status_pages": 0,
+        "ok_pages": 203,
+        "other_non_200_pages": 0,
+        "page_count": 203,
+        "page_duplicate_rows": 0,
+        "page_window_minutes": 40.45,
+        "retried_page_rate": 0.069,
+        "retried_pages": 14,
+        "review_rows": 4060,
+        "terminal_pages": 200,
+        "unique_review_rows": 4060
+      },
+      "runtime_minutes": 41.35,
+      "schedule_delay_minutes": null,
+      "status": "completed",
+      "terminal_reasons": [
+        {
+          "page_count": 200,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "page_count": 3,
+          "terminal_reason": "none"
+        }
+      ],
+      "updated_at": "2026-06-30T21:07:53Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28473639075"
+    },
+    {
+      "attempt_counts": [
+        {
+          "attempt_count": 1,
+          "page_count": 16
+        }
+      ],
+      "comparison_group": "abandoned_invalid_full_scope_d1_attempt",
+      "conclusion": "cancelled",
+      "created_at": "2026-06-30T21:24:09Z",
+      "event": "workflow_dispatch",
+      "github_run_id": "28476830652",
+      "head_sha": "4816339d4e79b8af713d5ba376289fb7374101e1",
+      "inputs": {
+        "experiment_group": "",
+        "limit": "0",
+        "max_pages_per_app_country": "1",
+        "max_parallel": "4",
+        "overlap_stop": "enabled",
+        "pressure_ramp_mode": "fixed",
+        "request_delay_jitter_seconds": "5",
+        "request_delay_seconds": "10",
+        "review_limit": "20",
+        "start_page": "1",
+        "target_offset": "0",
+        "web_429_backoff_multiplier": "1.5",
+        "web_429_circuit_breaker_max_rate": "0.5",
+        "web_429_circuit_breaker_min_pages": "4",
+        "web_429_cooldown_minutes": "0",
+        "web_429_retries": "2",
+        "web_429_retry_jitter_seconds": "60",
+        "web_429_retry_seconds": "300",
+        "web_scope_time_budget_seconds": "3600",
+        "web_time_budget_seconds": "3600"
+      },
+      "job_cancelled": 184,
+      "job_failure": 0,
+      "job_success": 18,
+      "job_total": 202,
+      "label": "abandoned full-scope D1 attempt",
+      "load_metrics": {
+        "capped_scopes": 4,
+        "duplicates_skipped": 166,
+        "fetch_errors": 0,
+        "loaded_pages": 16,
+        "loaded_review_rows": 320,
+        "reviews_inserted": 154,
+        "reviews_updated": 0,
+        "run_rows": 16
+      },
+      "long_tail_apps": [
+        {
+          "app_id": "401626263",
+          "app_name": "Airbnb",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 19,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "297606951",
+          "app_name": "Amazon Shopping",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 15,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "367003839",
+          "app_name": "Booking.com",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 17,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "711923939",
+          "app_name": "Cash App",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 16,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "719972451",
+          "app_name": "DoorDash",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 0,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "page_cap"
+        },
+        {
+          "app_id": "427916203",
+          "app_name": "Expedia",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 17,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "529379082",
+          "app_name": "Lyft",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 10,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "363590051",
+          "app_name": "Netflix",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 10,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "283646709",
+          "app_name": "PayPal",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 19,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "324684580",
+          "app_name": "Spotify",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 0,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "page_cap"
+        },
+        {
+          "app_id": "297430070",
+          "app_name": "Target",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 19,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "835599320",
+          "app_name": "TikTok",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 3,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "368677368",
+          "app_name": "Uber",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 0,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "page_cap"
+        },
+        {
+          "app_id": "1058959277",
+          "app_name": "Uber Eats",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 7,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "351727428",
+          "app_name": "Venmo",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 14,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        }
+      ],
+      "notes": "Cancelled after the experiment design was corrected from full-scope 200-app strategy tests to randomized 25-app groups. Postgres saw only 16 pages across 16 apps, 320 fetched rows, 0 HTTP 429s, and 0 non-200 responses. This run is excluded from D1 evidence.",
+      "page_metrics": {
+        "app_count": 16,
+        "duplicate_skip_rate": 0.5188,
+        "error_pages": 0,
+        "first_page_at": "2026-06-30T14:25:04.920154-07:00",
+        "http_200_pages": 16,
+        "http_429_pages": 0,
+        "http_429_rate": 0.0,
+        "inserted_per_fetched_row": 0.4813,
+        "inserted_per_page": 9.625,
+        "last_page_at": "2026-06-30T14:26:24.086671-07:00",
+        "max_attempt_count": 1,
+        "non_200_rate": 0.0,
+        "null_status_pages": 0,
+        "ok_pages": 16,
+        "other_non_200_pages": 0,
+        "page_count": 16,
+        "page_duplicate_rows": 0,
+        "page_window_minutes": 1.32,
+        "retried_page_rate": 0.0,
+        "retried_pages": 0,
+        "review_rows": 320,
+        "terminal_pages": 16,
+        "unique_review_rows": 320
+      },
+      "runtime_minutes": 2.57,
+      "schedule_delay_minutes": null,
+      "status": "completed",
+      "terminal_reasons": [
+        {
+          "page_count": 12,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "page_count": 4,
+          "terminal_reason": "page_cap"
+        }
+      ],
+      "updated_at": "2026-06-30T21:26:43Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28476830652"
+    }
+  ]
+}

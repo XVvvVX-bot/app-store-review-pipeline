@@ -16,6 +16,12 @@ from app_store_review_pipeline.config import (
 )
 from app_store_review_pipeline.eda import DEFAULT_EDA_HTML, DEFAULT_EDA_JSON, DEFAULT_EDA_MARKDOWN, generate_eda_report
 from app_store_review_pipeline.files import write_json, write_jsonl
+from app_store_review_pipeline.operating import (
+    DEFAULT_OPERATING_JSON,
+    DEFAULT_OPERATING_LEDGER,
+    DEFAULT_OPERATING_MARKDOWN,
+    generate_operating_report,
+)
 from app_store_review_pipeline.postgres_database import (
     initialize_postgres,
     load_pipeline_run_postgres,
@@ -134,6 +140,18 @@ def build_parser() -> argparse.ArgumentParser:
     eda.add_argument("--json-output", type=Path, default=DEFAULT_EDA_JSON)
     eda.add_argument("--html-output", type=Path, default=DEFAULT_EDA_HTML)
     eda.set_defaults(func=command_eda_report)
+
+    operating = subparsers.add_parser(
+        "operating-report",
+        help="Generate the daily incremental operating-limits report from Postgres and a GitHub run ledger.",
+    )
+    operating.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
+    operating.add_argument("--source", default=WEB_CATALOG_SOURCE)
+    operating.add_argument("--ledger", type=Path, default=DEFAULT_OPERATING_LEDGER)
+    operating.add_argument("--markdown-output", type=Path, default=DEFAULT_OPERATING_MARKDOWN)
+    operating.add_argument("--json-output", type=Path, default=DEFAULT_OPERATING_JSON)
+    operating.add_argument("--grace-minutes", type=int, default=5)
+    operating.set_defaults(func=command_operating_report)
 
     daily_web_catalog = subparsers.add_parser(
         "daily-web-catalog",
@@ -430,6 +448,19 @@ def command_eda_report(args: argparse.Namespace) -> int:
         markdown_path=args.markdown_output,
         json_path=args.json_output,
         html_path=args.html_output,
+    )
+    print(json.dumps(report, indent=2, sort_keys=True))
+    return 0
+
+
+def command_operating_report(args: argparse.Namespace) -> int:
+    report = generate_operating_report(
+        args.database_url,
+        source=args.source,
+        ledger_path=args.ledger,
+        markdown_path=args.markdown_output,
+        json_path=args.json_output,
+        grace_minutes=args.grace_minutes,
     )
     print(json.dumps(report, indent=2, sort_keys=True))
     return 0

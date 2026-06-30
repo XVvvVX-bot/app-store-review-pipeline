@@ -16,6 +16,11 @@ on:
         required: false
         default: "0"
         type: string
+      experiment_group:
+        description: "Optional operating-model experiment group from docs/experiments/operating_model_target_groups.json"
+        required: false
+        default: ""
+        type: string
       max_parallel:
         description: "Maximum app-level daily jobs to run in parallel. True parallelism requires multiple self-hosted runner instances."
         required: false
@@ -145,36 +150,29 @@ jobs:
         env:
           INPUT_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '0' }}
           INPUT_TARGET_OFFSET: ${{ github.event_name == 'workflow_dispatch' && inputs.target_offset || '0' }}
+          INPUT_EXPERIMENT_GROUP: ${{ github.event_name == 'workflow_dispatch' && inputs.experiment_group || '' }}
           INPUT_MAX_PARALLEL: ${{ github.event_name == 'workflow_dispatch' && inputs.max_parallel || '4' }}
         run: |
           set -euo pipefail
           echo "run_started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import csv
           import json
           import os
+          from pathlib import Path
+
+          from app_store_review_pipeline.experiment_groups import build_daily_matrix_rows
 
           limit = max(0, int(os.environ["INPUT_LIMIT"]))
           offset_raw = os.environ["INPUT_TARGET_OFFSET"].strip().lower()
           start_offset = 0 if offset_raw == "auto" else max(0, int(offset_raw))
+          experiment_group = os.environ["INPUT_EXPERIMENT_GROUP"].strip()
           max_parallel = max(1, int(os.environ["INPUT_MAX_PARALLEL"]))
-          rows = []
-          with open("data/targets/apple_apps.csv", newline="", encoding="utf-8") as handle:
-              active_index = 0
-              for row in csv.DictReader(handle):
-                  if str(row.get("active", "")).strip().lower() != "true":
-                      continue
-                  if active_index >= start_offset:
-                      rows.append(
-                          {
-                              "target_offset": active_index,
-                              "app_id": row["apple_app_id"],
-                              "app_name": row["app_name"],
-                          }
-                      )
-                  active_index += 1
-          if limit:
-              rows = rows[:limit]
+          rows = build_daily_matrix_rows(
+              Path("data/targets/apple_apps.csv"),
+              limit=limit,
+              target_offset=start_offset,
+              experiment_group=experiment_group,
+          )
           matrix = {"include": rows}
           print(f"matrix={json.dumps(matrix, separators=(',', ':'))}")
           print(f"selected_count={len(rows)}")

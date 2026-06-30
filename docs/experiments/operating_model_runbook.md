@@ -1,0 +1,224 @@
+# Operating Model Experiment Runbook
+
+This runbook records the controlled procedure for validating the App Store review daily incremental operating model. It is intentionally operational: the final evidence and recommendation live in `docs/operating_limits.md`, while this file explains how each experiment should be run and verified.
+
+## Guardrails
+
+- Use `workflow_dispatch` only for controlled experiments.
+- Do not start F2 until at least three hours after the previous clean full-scope run completed.
+- Do not start a new experiment if an `App Store Review Pipeline` run is active.
+- Stop frequency escalation if any run has failed jobs, HTTP 429 rate >= 0.5%, repeated source non-200 errors, fetch error rate >= 1%, or abnormal runtime growth.
+- Keep the twice-daily schedule unchanged while experiments run.
+- Record every experimental run in `docs/experiments/operating_model_run_ledger.json`.
+- Use randomized 25-app experiment groups for strategy comparisons instead of running every strategy on all 200 apps. The group manifest is `docs/experiments/operating_model_target_groups.json`.
+- Run a capped depth pass and its uncapped audit on the same group. Run different strategy families on different groups so one experiment does not consume the next experiment's incremental signal.
+
+## Preflight Checks
+
+```bash
+gh run list \
+  --repo XVvvVX-bot/app-store-review-pipeline \
+  --workflow app-store-daily-pipeline.yml \
+  --limit 30 \
+  --json databaseId,event,status,conclusion,createdAt,updatedAt,url \
+  --jq '.[] | select(.status!="completed")'
+```
+
+```bash
+gh api repos/XVvvVX-bot/app-store-review-pipeline/actions/runners \
+  --jq '.runners[] | select(.labels[].name == "app-store-review-pipeline") | [.name,.status,.busy] | @tsv'
+```
+
+```sql
+select
+  max(fetched_at::timestamptz) as last_page_at,
+  count(*) filter (where fetched_at::timestamptz >= now() - interval '12 hours') as pages_12h,
+  count(*) filter (where status_code = 429 and fetched_at::timestamptz >= now() - interval '12 hours') as http_429_12h,
+  count(*) filter (
+    where status_code is not null
+      and status_code <> 200
+      and fetched_at::timestamptz >= now() - interval '12 hours'
+  ) as non_200_12h
+from app_store_review_pages
+where source = 'apple_app_store_web_catalog_reviews';
+```
+
+## F2: Three-Hour Full-Scope Frequency Test
+
+Purpose: test whether a full-scope run three hours after a clean run remains reliable and produces enough marginal inserts to justify higher frequency.
+
+```bash
+gh workflow run app-store-daily-pipeline.yml \
+  --repo XVvvVX-bot/app-store-review-pipeline \
+  --ref main \
+  -f limit=0 \
+  -f target_offset=0 \
+  -f max_parallel=4 \
+  -f max_pages_per_app_country=0 \
+  -f pressure_ramp_mode=fixed \
+  -f start_page=1 \
+  -f review_limit=20 \
+  -f request_delay_seconds=10 \
+  -f request_delay_jitter_seconds=5 \
+  -f web_429_retries=2 \
+  -f web_429_retry_seconds=300 \
+  -f web_429_backoff_multiplier=1.5 \
+  -f web_429_retry_jitter_seconds=60 \
+  -f web_time_budget_seconds=3600 \
+  -f web_scope_time_budget_seconds=3600 \
+  -f web_429_cooldown_minutes=0 \
+  -f web_429_circuit_breaker_lookback_minutes=720 \
+  -f web_429_circuit_breaker_min_pages=4 \
+  -f web_429_circuit_breaker_max_rate=0.5
+```
+
+Ledger fields:
+
+- `label`: `F2 three-hour full-scope experiment`
+- `comparison_group`: `F2_three_hour_full_scope`
+- `event`: `workflow_dispatch`
+- `inputs`: same as command above, with `overlap_stop` set to `enabled`
+
+## Randomized Experiment Groups
+
+The controlled depth/scope tests use fixed randomized groups from `docs/experiments/operating_model_target_groups.json`.
+
+- `om_group_01`: D1 one-page cap and D1 uncapped audit.
+- `om_group_02`: D2 three-page cap and D2 uncapped audit.
+- `om_group_03` through `om_group_08`: reserved for follow-up frequency, hybrid, or replication tests.
+
+The manifest is generated from active targets using a fixed seed. Apps are bucketed by category, shuffled inside each category, then assigned to the smallest eligible group with a category-count tie breaker. This keeps all eight groups at 25 apps while preserving reproducibility and a reasonably balanced category mix.
+
+## D1: One-Page Cap With Uncapped Audit
+
+Purpose: test whether a one-page cap misses too many rows compared with a follow-up uncapped audit on the same randomized 25-app group.
+
+Run the capped pass:
+
+```bash
+gh workflow run app-store-daily-pipeline.yml \
+  --repo XVvvVX-bot/app-store-review-pipeline \
+  --ref main \
+  -f limit=0 \
+  -f target_offset=0 \
+  -f experiment_group=om_group_01 \
+  -f max_parallel=4 \
+  -f max_pages_per_app_country=1 \
+  -f pressure_ramp_mode=fixed \
+  -f start_page=1 \
+  -f review_limit=20 \
+  -f request_delay_seconds=10 \
+  -f request_delay_jitter_seconds=5 \
+  -f web_429_retries=2 \
+  -f web_429_retry_seconds=300 \
+  -f web_429_backoff_multiplier=1.5 \
+  -f web_429_retry_jitter_seconds=60 \
+  -f web_time_budget_seconds=3600 \
+  -f web_scope_time_budget_seconds=3600 \
+  -f web_429_cooldown_minutes=0 \
+  -f web_429_circuit_breaker_lookback_minutes=720 \
+  -f web_429_circuit_breaker_min_pages=4 \
+  -f web_429_circuit_breaker_max_rate=0.5
+```
+
+Ledger fields for capped pass:
+
+- `label`: `D1 one-page cap experiment`
+- `comparison_group`: `D1_one_page_cap`
+- `experiment_group`: `om_group_01`
+
+Then run the uncapped audit with the same settings except:
+
+- `max_pages_per_app_country=0`
+- `comparison_group`: `D1_one_page_uncapped_audit`
+- `label`: `D1 one-page uncapped audit`
+- `experiment_group`: `om_group_01`
+
+The operating report accepts D1 only if the audit-captured insert share is <= 5%:
+
+```text
+audit_inserted_after_cap / (cap_inserted + audit_inserted_after_cap)
+```
+
+## D2: Three-Page Cap With Uncapped Audit
+
+Purpose: test whether a three-page cap is a better shallow refresh candidate than one page on a separate randomized 25-app group.
+
+Run the capped pass with the same D1 command except:
+
+- `max_pages_per_app_country=3`
+- `experiment_group=om_group_02`
+- `comparison_group`: `D2_three_page_cap`
+- `label`: `D2 three-page cap experiment`
+
+Then run the uncapped audit with:
+
+- `max_pages_per_app_country=0`
+- `comparison_group`: `D2_three_page_uncapped_audit`
+- `label`: `D2 three-page uncapped audit`
+- `experiment_group`: `om_group_02`
+
+The same 5% missed-insert threshold applies.
+
+## Post-Run SQL Cross-Checks
+
+Replace `RUN_CREATED_AT` and `RUN_UPDATED_AT` with the GitHub run timestamps.
+
+```sql
+with w as (
+  select
+    timestamptz 'RUN_CREATED_AT' as start_at,
+    timestamptz 'RUN_UPDATED_AT' + interval '5 minutes' as end_at
+)
+select
+  count(*) as pages,
+  count(distinct app_id) as apps,
+  coalesce(sum(review_count), 0) as review_rows,
+  count(*) filter (where status_code = 429) as http_429,
+  count(*) filter (where status_code is not null and status_code <> 200) as non_200,
+  count(*) filter (where attempt_count > 1) as retried_pages
+from app_store_review_pages, w
+where source = 'apple_app_store_web_catalog_reviews'
+  and fetched_at::timestamptz >= w.start_at
+  and fetched_at::timestamptz <= w.end_at;
+```
+
+```sql
+with w as (
+  select
+    timestamptz 'RUN_CREATED_AT' as start_at,
+    timestamptz 'RUN_UPDATED_AT' + interval '5 minutes' as end_at
+)
+select
+  count(*) as run_rows,
+  coalesce(sum(reviews_inserted), 0) as inserted,
+  coalesce(sum(reviews_updated), 0) as updated,
+  coalesce(sum(duplicates_skipped), 0) as skipped,
+  coalesce(sum(fetch_errors), 0) as fetch_errors,
+  coalesce(sum(capped_scopes), 0) as capped_scopes
+from app_store_runs, w
+where source = 'apple_app_store_web_catalog_reviews'
+  and loaded_at::timestamptz >= w.start_at
+  and loaded_at::timestamptz <= w.end_at;
+```
+
+## Regenerate Evidence
+
+After updating the ledger:
+
+```bash
+.venv/bin/python app_store_pipeline.py operating-report \
+  --database-url postgresql:///app_store_reviews \
+  --ledger docs/experiments/operating_model_run_ledger.json \
+  --markdown-output docs/operating_limits.md \
+  --json-output docs/operating_limits_summary.json
+```
+
+Validate:
+
+```bash
+.venv/bin/python -m pytest -q
+git diff --check
+.venv/bin/python -m json.tool docs/experiments/operating_model_run_ledger.json >/tmp/operating_model_run_ledger.validated.json
+.venv/bin/python -m json.tool docs/operating_limits_summary.json >/tmp/operating_limits_summary.validated.json
+```
