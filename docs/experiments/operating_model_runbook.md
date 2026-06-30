@@ -13,6 +13,7 @@ This runbook records the controlled procedure for validating the App Store revie
 - Record every experimental run in `docs/experiments/operating_model_run_ledger.json`.
 - Use randomized 25-app experiment groups for strategy comparisons instead of running every strategy on all 200 apps. The group manifest is `docs/experiments/operating_model_target_groups.json`.
 - Run a capped depth pass and its uncapped audit on the same group. Run different strategy families on different groups so one experiment does not consume the next experiment's incremental signal.
+- For grouped frequency tests, do not allow any full-scope scheduled or manual run between the seed/control pass and the treatment pass. A full-scope run would refresh the same apps first and consume the very incremental-review signal the treatment is supposed to measure.
 - Treat Postgres as the ingestion source of truth. Raw artifacts are best-effort diagnostics; an `upload-artifact` timeout after complete Postgres writes is a GitHub artifact issue, not an Apple source-ingestion failure.
 
 ## Preflight Checks
@@ -65,6 +66,10 @@ Use a same-group pair for each frequency test:
 2. Wait the intended gap for that group.
 3. Run the same grouped uncapped treatment pass.
 4. Compare treatment inserted rows per page, duplicate rate, runtime, and source-pressure metrics.
+
+Schedule isolation matters for these tests. The treatment run is only interpretable if no full-scope scheduled or manual run touched the same app group after the seed. If a full-scope run lands in the middle, mark the pair as contaminated, keep it as operational evidence only, and restart that frequency test on a fresh randomized group or after the next scheduled baseline.
+
+When possible, choose seed times so the treatment finishes before the next twice-daily schedule. For example, a three-hour grouped test can fit between afternoon manual work and the 20:07 PDT scheduled baseline; a six-hour grouped test should normally start shortly after a scheduled baseline, not shortly before one.
 
 Planned grouped frequency tests:
 
