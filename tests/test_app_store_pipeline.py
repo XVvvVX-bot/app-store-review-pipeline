@@ -30,6 +30,7 @@ from app_store_review_pipeline.cli import (
     command_check_web_429_cooldown,
     command_select_web_catalog_pressure,
     command_daily_web_catalog,
+    command_operating_ledger_upsert_run,
     command_operating_report,
     select_target_window,
     summarize_fetch_cli,
@@ -768,6 +769,56 @@ def test_command_operating_report_passes_paths(tmp_path, monkeypatch):
     assert observed["markdown_path"] == tmp_path / "operating.md"
     assert observed["json_path"] == tmp_path / "operating.json"
     assert observed["grace_minutes"] == 7
+
+
+def test_command_operating_ledger_upsert_run_writes_github_metadata(tmp_path):
+    run_json = tmp_path / "run.json"
+    run_json.write_text(
+        json.dumps(
+            {
+                "databaseId": 123,
+                "event": "workflow_dispatch",
+                "status": "completed",
+                "conclusion": "success",
+                "createdAt": "2026-06-30T18:00:00Z",
+                "updatedAt": "2026-06-30T18:05:00Z",
+                "url": "https://github.com/example/repo/actions/runs/123",
+                "headSha": "abc123",
+                "jobs": [
+                    {"conclusion": "success"},
+                    {"conclusion": "failure"},
+                    {"conclusion": "cancelled"},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    ledger = tmp_path / "ledger.json"
+    args = argparse.Namespace(
+        ledger=ledger,
+        repo="example/repo",
+        github_run_id="123",
+        label="D1 one-page cap experiment",
+        comparison_group="D1_one_page_cap",
+        experiment_group="om_group_01",
+        status=None,
+        notes="fixture",
+        input=["max_pages_per_app_country=1", "experiment_group=om_group_01"],
+        run_json=run_json,
+    )
+
+    assert command_operating_ledger_upsert_run(args) == 0
+    payload = json.loads(ledger.read_text(encoding="utf-8"))
+    entry = payload["runs"][0]
+
+    assert entry["github_run_id"] == "123"
+    assert entry["comparison_group"] == "D1_one_page_cap"
+    assert entry["experiment_group"] == "om_group_01"
+    assert entry["job_total"] == 3
+    assert entry["job_success"] == 1
+    assert entry["job_failure"] == 1
+    assert entry["job_cancelled"] == 1
+    assert entry["inputs"]["max_pages_per_app_country"] == "1"
 
 
 def test_web_catalog_pressure_starts_at_base_without_state(monkeypatch):

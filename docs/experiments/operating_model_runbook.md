@@ -130,12 +130,45 @@ Ledger fields for capped pass:
 - `comparison_group`: `D1_one_page_cap`
 - `experiment_group`: `om_group_01`
 
+After the capped pass finishes, record it in the ledger with the GitHub run id:
+
+```bash
+.venv/bin/python app_store_pipeline.py operating-ledger-upsert-run \
+  --github-run-id RUN_ID \
+  --label "D1 one-page cap experiment" \
+  --comparison-group D1_one_page_cap \
+  --experiment-group om_group_01 \
+  --input limit=0 \
+  --input target_offset=0 \
+  --input experiment_group=om_group_01 \
+  --input max_parallel=4 \
+  --input max_pages_per_app_country=1 \
+  --input pressure_ramp_mode=fixed \
+  --input start_page=1 \
+  --input review_limit=20 \
+  --input request_delay_seconds=10 \
+  --input request_delay_jitter_seconds=5 \
+  --input web_429_retries=2 \
+  --input web_429_retry_seconds=300 \
+  --input web_429_backoff_multiplier=1.5 \
+  --input web_429_retry_jitter_seconds=60 \
+  --input web_time_budget_seconds=3600 \
+  --input web_scope_time_budget_seconds=3600 \
+  --input web_429_cooldown_minutes=0 \
+  --input web_429_circuit_breaker_min_pages=4 \
+  --input web_429_circuit_breaker_max_rate=0.5 \
+  --input overlap_stop=enabled \
+  --notes "D1 capped pass on om_group_01."
+```
+
 Then run the uncapped audit with the same settings except:
 
 - `max_pages_per_app_country=0`
 - `comparison_group`: `D1_one_page_uncapped_audit`
 - `label`: `D1 one-page uncapped audit`
 - `experiment_group`: `om_group_01`
+
+Record the audit with the same command shape, replacing the label, comparison group, run id, and `max_pages_per_app_country=0`.
 
 The operating report accepts D1 only if the audit-captured insert share is <= 5%:
 

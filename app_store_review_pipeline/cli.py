@@ -20,7 +20,10 @@ from app_store_review_pipeline.operating import (
     DEFAULT_OPERATING_JSON,
     DEFAULT_OPERATING_LEDGER,
     DEFAULT_OPERATING_MARKDOWN,
+    build_operating_ledger_run_entry,
+    fetch_github_run_payload,
     generate_operating_report,
+    upsert_operating_ledger_run,
 )
 from app_store_review_pipeline.postgres_database import (
     initialize_postgres,
@@ -152,6 +155,22 @@ def build_parser() -> argparse.ArgumentParser:
     operating.add_argument("--json-output", type=Path, default=DEFAULT_OPERATING_JSON)
     operating.add_argument("--grace-minutes", type=int, default=5)
     operating.set_defaults(func=command_operating_report)
+
+    ledger_run = subparsers.add_parser(
+        "operating-ledger-upsert-run",
+        help="Insert or update one GitHub Actions run in the operating-model experiment ledger.",
+    )
+    ledger_run.add_argument("--ledger", type=Path, default=DEFAULT_OPERATING_LEDGER)
+    ledger_run.add_argument("--repo", default="XVvvVX-bot/app-store-review-pipeline")
+    ledger_run.add_argument("--github-run-id", required=True)
+    ledger_run.add_argument("--label", required=True)
+    ledger_run.add_argument("--comparison-group", required=True)
+    ledger_run.add_argument("--experiment-group", default="")
+    ledger_run.add_argument("--status")
+    ledger_run.add_argument("--notes", default="")
+    ledger_run.add_argument("--input", action="append", default=[], help="Run input as key=value. May be repeated.")
+    ledger_run.add_argument("--run-json", type=Path, help="Optional gh run view JSON payload for offline/test use.")
+    ledger_run.set_defaults(func=command_operating_ledger_upsert_run)
 
     daily_web_catalog = subparsers.add_parser(
         "daily-web-catalog",
@@ -463,6 +482,39 @@ def command_operating_report(args: argparse.Namespace) -> int:
         grace_minutes=args.grace_minutes,
     )
     print(json.dumps(report, indent=2, sort_keys=True))
+    return 0
+
+
+def parse_key_value_pairs(values: list[str]) -> dict[str, str]:
+    output = {}
+    for value in values:
+        if "=" not in value:
+            raise ValueError(f"Expected key=value input, got {value!r}")
+        key, raw = value.split("=", 1)
+        key = key.strip()
+        if not key:
+            raise ValueError(f"Expected non-empty key in {value!r}")
+        output[key] = raw
+    return output
+
+
+def command_operating_ledger_upsert_run(args: argparse.Namespace) -> int:
+    run_payload = (
+        json.loads(args.run_json.read_text(encoding="utf-8"))
+        if args.run_json
+        else fetch_github_run_payload(args.github_run_id, repo=args.repo)
+    )
+    entry = build_operating_ledger_run_entry(
+        run_payload,
+        label=args.label,
+        comparison_group=args.comparison_group,
+        experiment_group=args.experiment_group,
+        status=args.status,
+        inputs=parse_key_value_pairs(args.input),
+        notes=args.notes,
+    )
+    result = upsert_operating_ledger_run(args.ledger, entry)
+    print(json.dumps(result, indent=2, sort_keys=True))
     return 0
 
 

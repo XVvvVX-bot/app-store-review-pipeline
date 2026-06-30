@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -62,6 +63,76 @@ def load_operating_ledger(path: Path) -> dict[str, Any]:
     payload.setdefault("runs", [])
     payload.setdefault("planned_experiments", [])
     return payload
+
+
+def write_operating_ledger(path: Path, ledger: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(convert_json(ledger), indent=2, sort_keys=False) + "\n", encoding="utf-8")
+
+
+def fetch_github_run_payload(run_id: str, *, repo: str) -> dict[str, Any]:
+    command = [
+        "gh",
+        "run",
+        "view",
+        str(run_id),
+        "--repo",
+        repo,
+        "--json",
+        "databaseId,event,status,conclusion,headSha,createdAt,updatedAt,url,jobs,displayTitle",
+    ]
+    completed = subprocess.run(command, check=True, capture_output=True, text=True)
+    return json.loads(completed.stdout)
+
+
+def build_operating_ledger_run_entry(
+    run_payload: dict[str, Any],
+    *,
+    label: str,
+    comparison_group: str,
+    inputs: dict[str, str] | None = None,
+    notes: str = "",
+    status: str | None = None,
+    experiment_group: str = "",
+) -> dict[str, Any]:
+    jobs = run_payload.get("jobs") or []
+    return {
+        "github_run_id": str(run_payload.get("databaseId") or ""),
+        "label": label,
+        "comparison_group": comparison_group,
+        "event": run_payload.get("event") or "",
+        "status": status or run_payload.get("status") or "",
+        "conclusion": run_payload.get("conclusion") or "",
+        "created_at": run_payload.get("createdAt") or run_payload.get("created_at") or "",
+        "updated_at": run_payload.get("updatedAt") or run_payload.get("updated_at") or "",
+        "url": run_payload.get("url") or "",
+        "head_sha": run_payload.get("headSha") or run_payload.get("head_sha") or "",
+        "job_total": len(jobs),
+        "job_success": sum(1 for job in jobs if job.get("conclusion") == "success"),
+        "job_failure": sum(1 for job in jobs if job.get("conclusion") == "failure"),
+        "job_cancelled": sum(1 for job in jobs if job.get("conclusion") == "cancelled"),
+        "inputs": inputs or {},
+        "notes": notes,
+        **({"experiment_group": experiment_group} if experiment_group else {}),
+    }
+
+
+def upsert_operating_ledger_run(path: Path, entry: dict[str, Any]) -> dict[str, Any]:
+    ledger = load_operating_ledger(path)
+    run_id = str(entry.get("github_run_id") or "")
+    replaced = False
+    updated_runs = []
+    for existing in ledger.get("runs", []):
+        if str(existing.get("github_run_id") or "") == run_id:
+            updated_runs.append(entry)
+            replaced = True
+        else:
+            updated_runs.append(existing)
+    if not replaced:
+        updated_runs.append(entry)
+    ledger["runs"] = updated_runs
+    write_operating_ledger(path, ledger)
+    return {"ledger_path": str(path), "github_run_id": run_id, "action": "updated" if replaced else "inserted"}
 
 
 def load_experiment_group_summary(ledger: dict[str, Any]) -> list[dict[str, Any]]:
