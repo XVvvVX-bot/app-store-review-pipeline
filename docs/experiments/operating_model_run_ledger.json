@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-06-30T23:10:00Z",
+  "updated_at": "2026-06-30T23:16:00Z",
   "description": "Controlled ledger for Apple App Store daily incremental operating-model validation. Observed runs are joined to Postgres by GitHub workflow created_at/updated_at windows.",
   "default_inputs": {
     "limit": "0",
@@ -518,6 +518,43 @@
       },
       "notes": "Grouped three-page cap run for om_group_02: 29 pages, 580 rows, 188 inserts, 0 HTTP 429, 0 non-200; Spotify and Duolingo hit page cap.",
       "experiment_group": "om_group_02"
+    },
+    {
+      "github_run_id": "28481871844",
+      "label": "FG2 three-hour grouped seed/control",
+      "comparison_group": "FG2_three_hour_grouped_frequency",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-06-30T23:11:44Z",
+      "updated_at": "2026-06-30T23:14:50Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28481871844",
+      "head_sha": "dd875da2d7a61e2b23d1eb30ad54afdd04e602f5",
+      "job_total": 27,
+      "job_success": 27,
+      "job_failure": 0,
+      "job_cancelled": 0,
+      "inputs": {
+        "limit": "0",
+        "target_offset": "0",
+        "experiment_group": "om_group_04",
+        "max_parallel": "4",
+        "max_pages_per_app_country": "0",
+        "pressure_ramp_mode": "fixed",
+        "start_page": "1",
+        "review_limit": "20",
+        "request_delay_seconds": "10",
+        "request_delay_jitter_seconds": "5",
+        "web_429_retries": "2",
+        "web_429_retry_seconds": "300",
+        "web_429_backoff_multiplier": "1.5",
+        "web_429_retry_jitter_seconds": "60",
+        "web_time_budget_seconds": "3600",
+        "web_scope_time_budget_seconds": "3600",
+        "web_429_cooldown_minutes": "0"
+      },
+      "notes": "FG2 seed/control for om_group_04 before the three-hour treatment: 27 pages, 540 rows, 107 inserts, 0 HTTP 429, 0 non-200, 0 retries.",
+      "experiment_group": "om_group_04"
     }
   ],
   "planned_experiments": [
@@ -564,9 +601,9 @@
     },
     {
       "experiment_id": "FG2",
-      "status": "planned",
+      "status": "seed_completed",
       "comparison_group": "FG2_three_hour_grouped_frequency",
-      "description": "Randomized 25-app group uncapped incremental treatment run three hours after a clean same-group seed/control pass.",
+      "description": "Seed/control run completed for randomized 25-app group. Treatment run should execute three hours after the seed to measure marginal inserts.",
       "success_criteria": "Clean source-pressure metrics, no abnormal runtime growth, and enough marginal inserted rows per page to justify a three-hour grouped refresh.",
       "inputs": {
         "limit": "0",
