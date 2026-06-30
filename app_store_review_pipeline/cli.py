@@ -184,6 +184,16 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Fetch to page cap even after already-known web catalog review IDs are seen.",
     )
+    daily_web_catalog.add_argument(
+        "--assume-postgres-schema",
+        action="store_true",
+        help="Skip schema initialization because an upstream preflight already initialized Postgres.",
+    )
+    daily_web_catalog.add_argument(
+        "--skip-target-sync",
+        action="store_true",
+        help="Skip syncing repository targets because an upstream preflight already synced them.",
+    )
     daily_web_catalog.set_defaults(func=command_daily_web_catalog)
 
     return parser
@@ -531,17 +541,41 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
     reports_dir = args.reports_root / run_id
     raw_dir.mkdir(parents=True, exist_ok=True)
     reports_dir.mkdir(parents=True, exist_ok=True)
-    target_sync_summary = sync_targets_postgres(args.database_url, args.targets, run_id)
+    initialize_schema = not bool(getattr(args, "assume_postgres_schema", False))
+    if bool(getattr(args, "skip_target_sync", False)):
+        target_sync_summary = {
+            "run_id": run_id,
+            "targets_path": str(args.targets),
+            "skipped": True,
+            "reason": "upstream_preflight",
+        }
+    else:
+        target_sync_summary = sync_targets_postgres(
+            args.database_url,
+            args.targets,
+            run_id,
+            initialize_schema=initialize_schema,
+        )
     targets = select_target_window(active_targets(load_targets(args.targets)), limit=args.limit, offset=args.target_offset)
     scopes = [(target.apple_app_id, country, args.sort_by) for target in targets for country in target.countries]
     use_overlap_stop = not getattr(args, "disable_overlap_stop", False)
     known_ids = (
-        trusted_existing_review_ids_by_scope(args.database_url, scopes, source=WEB_CATALOG_SOURCE)
+        trusted_existing_review_ids_by_scope(
+            args.database_url,
+            scopes,
+            source=WEB_CATALOG_SOURCE,
+            initialize_schema=initialize_schema,
+        )
         if use_overlap_stop
         else {}
     )
     target_review_counts = (
-        review_counts_by_scope(args.database_url, scopes, source=SOURCE)
+        review_counts_by_scope(
+            args.database_url,
+            scopes,
+            source=SOURCE,
+            initialize_schema=initialize_schema,
+        )
         if getattr(args, "stop_at_rss_parity", False)
         else {}
     )
@@ -571,7 +605,12 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
     write_jsonl(raw_dir / "review_pages.jsonl", fetch_report["page_reports"])
     write_jsonl(raw_dir / "reviews.jsonl", fetch_report["reviews"])
     write_json(raw_dir / "fetch_report.json", fetch_report)
-    load_summary = load_pipeline_run_postgres(args.database_url, raw_dir, args.targets)
+    load_summary = load_pipeline_run_postgres(
+        args.database_url,
+        raw_dir,
+        args.targets,
+        initialize_schema=initialize_schema,
+    )
     completed_at = utc_timestamp()
     sync_summary = update_sync_states_postgres(
         args.database_url,
@@ -582,8 +621,9 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         started_at=started_at,
         completed_at=completed_at,
         source=WEB_CATALOG_SOURCE,
+        initialize_schema=initialize_schema,
     )
-    validation_report = validate_postgres(args.database_url, run_id)
+    validation_report = validate_postgres(args.database_url, run_id, initialize_schema=initialize_schema)
     validation_path = reports_dir / "validation_report.json"
     write_json(validation_path, validation_report)
     report = {

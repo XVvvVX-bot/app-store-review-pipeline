@@ -236,6 +236,40 @@ def test_load_pipeline_run_postgres_retries_retryable_write_conflicts(monkeypatc
     assert calls == ["initialize", ("load_once", "run-1"), ("sleep", 2.0), ("load_once", "run-1")]
 
 
+def test_update_sync_states_postgres_retries_retryable_write_conflicts(monkeypatch):
+    calls = []
+    monkeypatch.setattr(postgres_database, "initialize_postgres", lambda database_url: calls.append("initialize"))
+    monkeypatch.setattr(postgres_database.time, "sleep", lambda seconds: calls.append(("sleep", seconds)))
+
+    def fake_update_once(*args, **kwargs):
+        calls.append(("update_once", kwargs["run_id"]))
+        if sum(1 for call in calls if call == ("update_once", "run-1")) == 1:
+            raise postgres_database.psycopg.errors.DeadlockDetected("deadlock detected")
+        return {"scope_count": 1, "scopes": []}
+
+    monkeypatch.setattr(postgres_database, "_update_sync_states_postgres_once", fake_update_once)
+
+    summary = postgres_database.update_sync_states_postgres(
+        "postgresql:///fixture",
+        [
+            {
+                "app_id": "123",
+                "country": "us",
+                "sort_by": "recent",
+                "terminal_reason": "caught_up_to_existing_reviews",
+            }
+        ],
+        [],
+        run_id="run-1",
+        sort_by="recent",
+        started_at="2026-06-30T00:00:00Z",
+        completed_at="2026-06-30T00:01:00Z",
+    )
+
+    assert summary == {"scope_count": 1, "scopes": []}
+    assert calls == ["initialize", ("update_once", "run-1"), ("sleep", 1.0), ("update_once", "run-1")]
+
+
 def test_retryable_postgres_write_error_classifies_transient_conflicts():
     assert postgres_database.retryable_postgres_write_error(
         postgres_database.psycopg.errors.DeadlockDetected("deadlock detected")
@@ -1912,6 +1946,89 @@ def test_daily_web_catalog_passes_start_page_to_fetcher(tmp_path, monkeypatch):
     assert observed["start_page"] == 51
     assert observed["time_budget_seconds"] == 120.0
     assert observed["scope_time_budget_seconds"] == 30.0
+
+
+def test_daily_web_catalog_can_skip_matrix_postgres_init_and_target_sync(tmp_path, monkeypatch):
+    targets_path = tmp_path / "targets.csv"
+    write_targets(targets_path)
+    observed = {}
+
+    def fake_fetch_web_catalog_targets(*args, **kwargs):
+        return {
+            "page_reports": [],
+            "reviews": [],
+            "review_count": 0,
+            "unique_review_count": 0,
+            "fetch_errors": 0,
+            "capped_scopes": [],
+            "sparse_empty_pages": 0,
+        }
+
+    def fail_sync_targets(*args, **kwargs):
+        pytest.fail("daily matrix job should not sync targets when preflight already synced them")
+
+    def fake_trusted_ids(*args, **kwargs):
+        observed["trusted_initialize_schema"] = kwargs["initialize_schema"]
+        return {}
+
+    def fake_review_counts(*args, **kwargs):
+        observed["counts_initialize_schema"] = kwargs["initialize_schema"]
+        return {}
+
+    def fake_load(*args, **kwargs):
+        observed["load_initialize_schema"] = kwargs["initialize_schema"]
+        return {}
+
+    def fake_sync_states(*args, **kwargs):
+        observed["sync_initialize_schema"] = kwargs["initialize_schema"]
+        return {}
+
+    def fake_validate(*args, **kwargs):
+        observed["validate_initialize_schema"] = kwargs["initialize_schema"]
+        return {}
+
+    monkeypatch.setattr("app_store_review_pipeline.cli.fetch_web_catalog_targets", fake_fetch_web_catalog_targets)
+    monkeypatch.setattr("app_store_review_pipeline.cli.sync_targets_postgres", fail_sync_targets)
+    monkeypatch.setattr("app_store_review_pipeline.cli.trusted_existing_review_ids_by_scope", fake_trusted_ids)
+    monkeypatch.setattr("app_store_review_pipeline.cli.review_counts_by_scope", fake_review_counts)
+    monkeypatch.setattr("app_store_review_pipeline.cli.load_pipeline_run_postgres", fake_load)
+    monkeypatch.setattr("app_store_review_pipeline.cli.update_sync_states_postgres", fake_sync_states)
+    monkeypatch.setattr("app_store_review_pipeline.cli.validate_postgres", fake_validate)
+
+    args = argparse.Namespace(
+        raw_root=tmp_path / "raw",
+        reports_root=tmp_path / "reports",
+        targets=targets_path,
+        database_url="postgresql:///app_store_reviews",
+        limit=1,
+        target_offset=0,
+        sort_by="recent",
+        max_pages_per_app_country=1,
+        start_page=1,
+        review_limit=20,
+        timeout_seconds=1.0,
+        request_delay_seconds=0.0,
+        web_429_retries=0,
+        web_429_retry_seconds=0.0,
+        web_429_backoff_multiplier=1.0,
+        web_soft_retries=2,
+        web_soft_retry_seconds=5.0,
+        web_time_budget_seconds=120.0,
+        web_scope_time_budget_seconds=30.0,
+        disable_overlap_stop=False,
+        stop_at_rss_parity=True,
+        assume_postgres_schema=True,
+        skip_target_sync=True,
+    )
+
+    assert command_daily_web_catalog(args) == 0
+    assert observed == {
+        "trusted_initialize_schema": False,
+        "counts_initialize_schema": False,
+        "load_initialize_schema": False,
+        "sync_initialize_schema": False,
+        "validate_initialize_schema": False,
+    }
 
 
 def test_daily_web_catalog_can_pass_rss_parity_targets_to_fetcher(tmp_path, monkeypatch):

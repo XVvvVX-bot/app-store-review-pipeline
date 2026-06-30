@@ -212,6 +212,15 @@ jobs:
           database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
           .venv/bin/python app_store_pipeline.py init-postgres --database-url "$database_url"
 
+      - name: Sync targets to Postgres
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          .venv/bin/python app_store_pipeline.py sync-targets \
+            --database-url "$database_url"
+
       - name: Check web catalog 429 cooldown
         env:
           DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
@@ -289,13 +298,20 @@ jobs:
       - name: Install dependencies
         run: .venv/bin/python -m pip install -r requirements.txt
 
-      - name: Check local Postgres
+      - name: Check local Postgres connection
         env:
           DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
         run: |
           set -euo pipefail
           database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
-          .venv/bin/python app_store_pipeline.py init-postgres --database-url "$database_url"
+          DATABASE_URL="$database_url" .venv/bin/python - <<'PY'
+          import os
+
+          import psycopg
+
+          with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
+              connection.execute("SELECT 1").fetchone()
+          PY
 
       - name: Select web catalog pressure
         env:
@@ -354,6 +370,8 @@ jobs:
             --web-429-retry-jitter-seconds "$INPUT_WEB_429_RETRY_JITTER_SECONDS" \
             --web-time-budget-seconds "$INPUT_WEB_TIME_BUDGET_SECONDS" \
             --web-scope-time-budget-seconds "$INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS" \
+            --assume-postgres-schema \
+            --skip-target-sync \
             $overlap_flag
 
       - name: Check current-run web catalog 429 circuit breaker

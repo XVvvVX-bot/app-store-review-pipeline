@@ -210,6 +210,8 @@ POSTGRES_SCHEMA_MAX_ATTEMPTS = 5
 POSTGRES_SCHEMA_RETRY_SECONDS = 0.5
 POSTGRES_LOAD_MAX_ATTEMPTS = 4
 POSTGRES_LOAD_RETRY_SECONDS = 2.0
+POSTGRES_SYNC_STATE_MAX_ATTEMPTS = 4
+POSTGRES_SYNC_STATE_RETRY_SECONDS = 1.0
 POSTGRES_RETRYABLE_WRITE_ERRORS = (
     psycopg.errors.DeadlockDetected,
     psycopg.errors.SerializationFailure,
@@ -1167,12 +1169,14 @@ def existing_review_ids_by_scope(
     scopes: Iterable[tuple[str, str, str]],
     *,
     source: str = SOURCE,
+    initialize_schema: bool = True,
 ) -> dict[tuple[str, str, str], set[str]]:
     scope_list = [(str(app_id), country.lower(), sort_by) for app_id, country, sort_by in scopes]
     results = {scope: set() for scope in scope_list}
     if not scope_list:
         return results
-    initialize_postgres(database_url)
+    if initialize_schema:
+        initialize_postgres(database_url)
     with connect_postgres(database_url) as connection:
         for app_id, country, sort_by in scope_list:
             rows = connection.execute(
@@ -1192,12 +1196,14 @@ def trusted_existing_review_ids_by_scope(
     scopes: Iterable[tuple[str, str, str]],
     *,
     source: str = SOURCE,
+    initialize_schema: bool = True,
 ) -> dict[tuple[str, str, str], set[str]]:
     scope_list = [(str(app_id), country.lower(), sort_by) for app_id, country, sort_by in scopes]
     results = {scope: set() for scope in scope_list}
     if not scope_list:
         return results
-    initialize_postgres(database_url)
+    if initialize_schema:
+        initialize_postgres(database_url)
     with connect_postgres(database_url) as connection:
         for app_id, country, sort_by in scope_list:
             rows = connection.execute(
@@ -1290,12 +1296,14 @@ def review_counts_by_scope(
     scopes: Iterable[tuple[str, str, str]],
     *,
     source: str = SOURCE,
+    initialize_schema: bool = True,
 ) -> dict[tuple[str, str, str], int]:
     scope_list = [(str(app_id), country.lower(), sort_by) for app_id, country, sort_by in scopes]
     results: dict[tuple[str, str, str], int] = {}
     if not scope_list:
         return results
-    initialize_postgres(database_url)
+    if initialize_schema:
+        initialize_postgres(database_url)
     with connect_postgres(database_url) as connection:
         for app_id, country, sort_by in scope_list:
             row = connection.execute(
@@ -1312,12 +1320,19 @@ def review_counts_by_scope(
     return results
 
 
-def sync_targets_postgres(database_url: str, targets_path: Path, run_id: str) -> dict:
+def sync_targets_postgres(
+    database_url: str,
+    targets_path: Path,
+    run_id: str,
+    *,
+    initialize_schema: bool = True,
+) -> dict:
     targets = load_targets(targets_path)
     target_ids = {str(target.apple_app_id) for target in targets}
     active_target_count = sum(1 for target in targets if target.active)
 
-    initialize_postgres(database_url)
+    if initialize_schema:
+        initialize_postgres(database_url)
     with connect_postgres(database_url) as connection:
         upsert_targets(connection, targets, run_id)
         if target_ids:
@@ -1397,7 +1412,13 @@ def sync_targets_postgres(database_url: str, targets_path: Path, run_id: str) ->
     }
 
 
-def load_pipeline_run_postgres(database_url: str, raw_dir: Path, targets_path: Path) -> dict:
+def load_pipeline_run_postgres(
+    database_url: str,
+    raw_dir: Path,
+    targets_path: Path,
+    *,
+    initialize_schema: bool = True,
+) -> dict:
     run_id = raw_dir.name
     page_rows = read_jsonl(raw_dir / "review_pages.jsonl")
     review_rows = read_jsonl(raw_dir / "reviews.jsonl")
@@ -1406,7 +1427,8 @@ def load_pipeline_run_postgres(database_url: str, raw_dir: Path, targets_path: P
     platform = infer_field_value(page_rows, review_rows, "platform", PLATFORM)
     source = infer_field_value(page_rows, review_rows, "source", SOURCE)
 
-    initialize_postgres(database_url)
+    if initialize_schema:
+        initialize_postgres(database_url)
     for attempt in range(1, POSTGRES_LOAD_MAX_ATTEMPTS + 1):
         try:
             return _load_pipeline_run_postgres_once(
@@ -1768,6 +1790,7 @@ def update_sync_states_postgres(
     started_at: str,
     completed_at: str,
     source: str = SOURCE,
+    initialize_schema: bool = True,
 ) -> dict:
     grouped_pages: dict[tuple[str, str, str], list[dict]] = {}
     grouped_reviews: dict[tuple[str, str, str], list[dict]] = {}
@@ -1778,7 +1801,38 @@ def update_sync_states_postgres(
         key = (row.get("app_id"), row.get("country"), sort_by)
         grouped_reviews.setdefault(key, []).append(row)
 
-    initialize_postgres(database_url)
+    if initialize_schema:
+        initialize_postgres(database_url)
+    for attempt in range(1, POSTGRES_SYNC_STATE_MAX_ATTEMPTS + 1):
+        try:
+            return _update_sync_states_postgres_once(
+                database_url,
+                grouped_pages,
+                grouped_reviews,
+                run_id=run_id,
+                sort_by=sort_by,
+                started_at=started_at,
+                completed_at=completed_at,
+                source=source,
+            )
+        except POSTGRES_RETRYABLE_WRITE_ERRORS:
+            if attempt >= POSTGRES_SYNC_STATE_MAX_ATTEMPTS:
+                raise
+            time.sleep(POSTGRES_SYNC_STATE_RETRY_SECONDS * attempt)
+    raise RuntimeError("Postgres sync-state retry loop exited unexpectedly")
+
+
+def _update_sync_states_postgres_once(
+    database_url: str,
+    grouped_pages: dict[tuple[str, str, str], list[dict]],
+    grouped_reviews: dict[tuple[str, str, str], list[dict]],
+    *,
+    run_id: str,
+    sort_by: str,
+    started_at: str,
+    completed_at: str,
+    source: str = SOURCE,
+) -> dict:
     summaries = []
     with connect_postgres(database_url) as connection:
         for key, pages in grouped_pages.items():
@@ -1888,8 +1942,9 @@ def update_sync_states_postgres(
     return {"scope_count": len(summaries), "scopes": summaries}
 
 
-def validate_postgres(database_url: str, run_id: str | None = None) -> dict:
-    initialize_postgres(database_url)
+def validate_postgres(database_url: str, run_id: str | None = None, *, initialize_schema: bool = True) -> dict:
+    if initialize_schema:
+        initialize_postgres(database_url)
     where_reviews = "WHERE last_seen_run_id = %s" if run_id else ""
     where_pages = "WHERE run_id = %s" if run_id else ""
     params = (run_id,) if run_id else ()
