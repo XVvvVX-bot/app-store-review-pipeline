@@ -3,7 +3,7 @@
     "attempt_distribution": [
       {
         "attempt_count": "1",
-        "page_count": 3964
+        "page_count": 4015
       },
       {
         "attempt_count": "2",
@@ -14,37 +14,41 @@
         "page_count": 15
       }
     ],
-    "failed_or_cancelled_run_count": 3,
+    "failed_or_cancelled_run_count": 4,
     "max_schedule_delay_minutes": 315.47,
-    "median_successful_inserted_per_page": 8.036,
-    "median_successful_pages": 279.5,
-    "median_successful_runtime_minutes": 46.02,
-    "observed_run_count": 13,
-    "source_pressure_clean_duplicates_skipped": 38142,
+    "median_successful_inserted_per_page": 6.069,
+    "median_successful_pages": 253.0,
+    "median_successful_runtime_minutes": 40.895,
+    "observed_run_count": 16,
+    "source_pressure_clean_duplicates_skipped": 39551,
     "source_pressure_clean_http_429_rate": 0.0,
-    "source_pressure_clean_pages": 4632,
-    "source_pressure_clean_review_rows": 92540,
-    "source_pressure_clean_reviews_inserted": 54381,
-    "source_pressure_clean_run_count": 12,
+    "source_pressure_clean_pages": 4708,
+    "source_pressure_clean_review_rows": 94060,
+    "source_pressure_clean_reviews_inserted": 54492,
+    "source_pressure_clean_run_count": 15,
     "successful_baseline_run_count": 9,
-    "successful_capped_scopes": 0,
-    "successful_duplicates_skipped": 31545,
+    "successful_capped_scopes": 1,
+    "successful_duplicates_skipped": 32553,
     "successful_fetch_errors": 4,
     "successful_http_429_pages": 0,
     "successful_http_429_rate": 0.0,
-    "successful_pages": 4092,
+    "successful_pages": 4143,
     "successful_retried_pages": 128,
-    "successful_review_rows": 81760,
-    "successful_reviews_inserted": 50199,
-    "successful_run_count": 10,
+    "successful_review_rows": 82780,
+    "successful_reviews_inserted": 50211,
+    "successful_run_count": 12,
     "terminal_reason_distribution": [
       {
-        "page_count": 2093,
+        "page_count": 2094,
         "terminal_reason": "none"
       },
       {
-        "page_count": 1999,
+        "page_count": 2048,
         "terminal_reason": "caught_up_to_existing_reviews"
+      },
+      {
+        "page_count": 1,
+        "terminal_reason": "page_cap"
       }
     ]
   },
@@ -52,29 +56,29 @@
     "segments": [
       {
         "app_count": 50,
-        "insert_share": 0.7204,
-        "inserted": 36165,
-        "inserted_per_page": 16.567,
-        "page_count": 2183,
-        "page_share": 0.5335,
+        "insert_share": 0.7205,
+        "inserted": 36177,
+        "inserted_per_page": 16.489,
+        "page_count": 2194,
+        "page_share": 0.5296,
         "segment": "high"
       },
       {
         "app_count": 100,
-        "insert_share": 0.2481,
+        "insert_share": 0.248,
         "inserted": 12453,
-        "inserted_per_page": 9.11,
-        "page_count": 1367,
-        "page_share": 0.3341,
+        "inserted_per_page": 8.914,
+        "page_count": 1397,
+        "page_share": 0.3372,
         "segment": "normal"
       },
       {
         "app_count": 50,
         "insert_share": 0.0315,
         "inserted": 1581,
-        "inserted_per_page": 2.917,
-        "page_count": 542,
-        "page_share": 0.1325,
+        "inserted_per_page": 2.864,
+        "page_count": 552,
+        "page_share": 0.1332,
         "segment": "low"
       }
     ],
@@ -128,10 +132,10 @@
         "app_id": "632064380",
         "app_name": "Vinted: Pre-loved marketplace",
         "category": "shopping",
-        "inserted": 1545,
-        "observed_runs": 10,
-        "page_count": 82,
-        "review_rows": 1640,
+        "inserted": 1557,
+        "observed_runs": 12,
+        "page_count": 85,
+        "review_rows": 1700,
         "updated": 0
       },
       {
@@ -239,9 +243,9 @@
         "app_name": "Life360: Family Safety & GPS",
         "category": "social_networking",
         "inserted": 779,
-        "observed_runs": 10,
-        "page_count": 44,
-        "review_rows": 880,
+        "observed_runs": 12,
+        "page_count": 46,
+        "review_rows": 920,
         "updated": 0
       },
       {
@@ -272,9 +276,9 @@
         "app_name": "Netflix",
         "category": "entertainment",
         "inserted": 585,
-        "observed_runs": 10,
-        "page_count": 33,
-        "review_rows": 660,
+        "observed_runs": 12,
+        "page_count": 35,
+        "review_rows": 700,
         "updated": 0
       },
       {
@@ -358,28 +362,28 @@
   },
   "database_snapshot": [
     {
-      "row_count": 2269856,
+      "row_count": 2269967,
       "table_name": "app_store_review_changes",
-      "total_bytes": 1215021056,
+      "total_bytes": 1215062016,
       "total_size": "1159 MB"
     },
     {
-      "row_count": 117697,
+      "row_count": 117773,
       "table_name": "app_store_review_pages",
-      "total_bytes": 88317952,
+      "total_bytes": 88375296,
       "total_size": "84 MB"
     },
     {
-      "row_count": 2269786,
+      "row_count": 2269897,
       "table_name": "app_store_reviews",
-      "total_bytes": 2582822912,
-      "total_size": "2463 MB"
+      "total_bytes": 2583396352,
+      "total_size": "2464 MB"
     },
     {
-      "row_count": 4433,
+      "row_count": 4508,
       "table_name": "app_store_runs",
-      "total_bytes": 1490944,
-      "total_size": "1456 kB"
+      "total_bytes": 1515520,
+      "total_size": "1480 kB"
     }
   ],
   "decision_rules": {
@@ -401,17 +405,17 @@
     {
       "audit_group": "D1_one_page_uncapped_audit",
       "audit_http_429": 0,
-      "audit_inserted_after_cap": 0,
-      "audit_pages": 0,
-      "audit_run_count": 0,
+      "audit_inserted_after_cap": 12,
+      "audit_pages": 26,
+      "audit_run_count": 1,
       "cap_group": "D1_one_page_cap",
       "cap_http_429": 0,
       "cap_inserted": 0,
-      "cap_pages": 0,
-      "cap_run_count": 0,
+      "cap_pages": 25,
+      "cap_run_count": 1,
       "experiment_id": "D1",
-      "finding": "Pending. The capped run has not been recorded yet.",
-      "missed_insert_rate_vs_uncapped_audit": 0,
+      "finding": "Rejected. The cap missed more than the configured audit threshold.",
+      "missed_insert_rate_vs_uncapped_audit": 1.0,
       "threshold": 0.05
     },
     {
@@ -529,28 +533,28 @@
       "successful_run_count": 0
     },
     {
-      "capped_scopes": 0,
+      "capped_scopes": 1,
       "comparison_group": "D1_one_page_cap",
-      "duplicate_skip_rate": 0,
+      "duplicate_skip_rate": 1.0,
       "experiment_group": "om_group_01",
       "experiment_id": "D1",
-      "fetch_error_rate": 0,
+      "fetch_error_rate": 0.0,
       "fetch_errors": 0,
-      "finding": "Pending. No matching run has been recorded in the ledger yet.",
+      "finding": "Source-pressure clean, but rejected by the paired audit or strategy-specific decision rule.",
       "http_429": 0,
-      "http_429_rate": 0,
+      "http_429_rate": 0.0,
       "inserted": 0,
-      "inserted_per_page": 0,
-      "matching_run_count": 0,
-      "median_runtime_minutes": 0,
+      "inserted_per_page": 0.0,
+      "matching_run_count": 1,
+      "median_runtime_minutes": 2.78,
       "non_200": 0,
-      "page_count": 0,
+      "page_count": 25,
       "retried_pages": 0,
-      "review_rows": 0,
-      "skipped": 0,
-      "source_pressure_clean_run_count": 0,
-      "status": "planned",
-      "successful_run_count": 0
+      "review_rows": 500,
+      "skipped": 500,
+      "source_pressure_clean_run_count": 1,
+      "status": "completed_rejected",
+      "successful_run_count": 1
     },
     {
       "capped_scopes": 0,
@@ -637,7 +641,7 @@
   ],
   "metadata": {
     "database_url": "postgresql:///app_store_reviews",
-    "generated_at": "2026-06-30T22:23:04+00:00",
+    "generated_at": "2026-06-30T22:54:21+00:00",
     "grace_minutes": 5,
     "ledger_path": "docs/experiments/operating_model_run_ledger.json",
     "source": "apple_app_store_web_catalog_reviews"
@@ -703,7 +707,7 @@
       "audit_comparison_group": "D1_one_page_uncapped_audit",
       "audit_missed_insert_threshold": 0.05,
       "comparison_group": "D1_one_page_cap",
-      "description": "Randomized 25-app group capped at one page per app, followed by an uncapped audit on the same group.",
+      "description": "Completed randomized 25-app group capped at one page per app, followed by an uncapped audit on the same group. Rejected because the audit found missed inserts beyond the threshold.",
       "experiment_group": "om_group_01",
       "experiment_id": "D1",
       "inputs": {
@@ -713,7 +717,7 @@
         "max_parallel": "4",
         "start_page": "1"
       },
-      "status": "planned",
+      "status": "completed_rejected",
       "success_criteria": "Audit inserts after the capped pass are no more than 5% of total capped-plus-audit inserts, with clean source-pressure metrics."
     },
     {
@@ -740,7 +744,6 @@
     "pending_experiments": [
       "FG1",
       "FG2",
-      "D1",
       "D2"
     ],
     "stop_thresholds": {
@@ -751,7 +754,7 @@
     "why": [
       "Recent successful full-scope runs show clean source-pressure metrics.",
       "There are enough successful baseline observations to compare against experiments.",
-      "High-activity apps account for 72.0% of recent inserts and 53.3% of recent pages."
+      "High-activity apps account for 72.0% of recent inserts and 53.0% of recent pages."
     ]
   },
   "runs": [
@@ -960,6 +963,8 @@
           "terminal_reason": "none"
         }
       ],
+      "metric_window_end": "2026-06-25T22:47:57Z",
+      "metric_window_start": "2026-06-25T21:03:13Z",
       "notes": "Early full-scope manual validation after switching daily incremental to matrix mode.",
       "page_metrics": {
         "app_count": 200,
@@ -1207,6 +1212,8 @@
           "terminal_reason": "none"
         }
       ],
+      "metric_window_end": "2026-06-26T04:24:08Z",
+      "metric_window_start": "2026-06-26T03:38:10Z",
       "notes": "Second full-scope manual validation.",
       "page_metrics": {
         "app_count": 200,
@@ -1458,6 +1465,8 @@
           "terminal_reason": "none"
         }
       ],
+      "metric_window_end": "2026-06-26T18:01:18Z",
+      "metric_window_start": "2026-06-26T17:05:14Z",
       "notes": "Clean scheduled baseline.",
       "page_metrics": {
         "app_count": 200,
@@ -1709,6 +1718,8 @@
           "terminal_reason": "none"
         }
       ],
+      "metric_window_end": "2026-06-27T07:33:52Z",
+      "metric_window_start": "2026-06-27T06:34:32Z",
       "notes": "Delayed evening scheduled baseline.",
       "page_metrics": {
         "app_count": 200,
@@ -1960,6 +1971,8 @@
           "terminal_reason": "none"
         }
       ],
+      "metric_window_end": "2026-06-27T17:02:00Z",
+      "metric_window_start": "2026-06-27T16:16:18Z",
       "notes": "Delayed morning scheduled baseline.",
       "page_metrics": {
         "app_count": 200,
@@ -2207,6 +2220,8 @@
           "terminal_reason": "none"
         }
       ],
+      "metric_window_end": "2026-06-28T06:39:11Z",
+      "metric_window_start": "2026-06-28T06:08:15Z",
       "notes": "Manual coverage run after the expected evening schedule did not appear on time.",
       "page_metrics": {
         "app_count": 200,
@@ -2458,6 +2473,8 @@
           "terminal_reason": "caught_up_to_existing_reviews"
         }
       ],
+      "metric_window_end": "2026-06-28T08:29:45Z",
+      "metric_window_start": "2026-06-28T07:07:53Z",
       "notes": "GitHub emitted the missed evening schedule late, shortly after the manual fallback.",
       "page_metrics": {
         "app_count": 200,
@@ -2709,6 +2726,8 @@
           "terminal_reason": "caught_up_to_existing_reviews"
         }
       ],
+      "metric_window_end": "2026-06-28T17:07:06Z",
+      "metric_window_start": "2026-06-28T16:21:17Z",
       "notes": "Delayed morning scheduled baseline.",
       "page_metrics": {
         "app_count": 200,
@@ -2960,6 +2979,8 @@
           "terminal_reason": "none"
         }
       ],
+      "metric_window_end": "2026-06-29T09:55:21Z",
+      "metric_window_start": "2026-06-29T08:22:28Z",
       "notes": "Kept in ledger as a failure observation. Do not include in clean baseline recommendation.",
       "page_metrics": {
         "app_count": 200,
@@ -3211,6 +3232,8 @@
           "terminal_reason": "caught_up_to_existing_reviews"
         }
       ],
+      "metric_window_end": "2026-06-29T18:45:23Z",
+      "metric_window_start": "2026-06-29T17:46:02Z",
       "notes": "Most recent successful scheduled baseline at ledger creation.",
       "page_metrics": {
         "app_count": 200,
@@ -3477,6 +3500,8 @@
           "terminal_reason": "none"
         }
       ],
+      "metric_window_end": "2026-06-30T03:46:00Z",
+      "metric_window_start": "2026-06-30T03:02:33Z",
       "notes": "Manual F1 run launched more than six hours after the previous clean full-scope run. It completed 202/202 jobs successfully with 283 pages, 5,640 fetched rows, 2,826 inserted reviews, 3 updated reviews, 2,811 skipped duplicates, 0 HTTP 429s, 1 HTTP 404, 11 retried pages, 1 fetch error tied to the 404, and 0 capped scopes.",
       "page_metrics": {
         "app_count": 200,
@@ -3743,6 +3768,8 @@
           "terminal_reason": "caught_up_to_existing_reviews"
         }
       ],
+      "metric_window_end": "2026-06-30T21:12:53Z",
+      "metric_window_start": "2026-06-30T20:26:32Z",
       "notes": "Manual F2 run launched more than three hours after F1. Source ingestion was clean across all 200 apps: 203 pages, 4,060 fetched rows, 136 inserted reviews, 0 updated reviews, 3,924 skipped duplicates, 0 HTTP 429s, 0 non-200 responses, 14 retried pages, 0 fetch errors, and 0 capped scopes. GitHub marked the run failed because daily 58 Telegram Messenger completed ingestion successfully but actions/upload-artifact failed during FinalizeArtifact with ETIMEDOUT.",
       "page_metrics": {
         "app_count": 200,
@@ -4002,6 +4029,8 @@
           "terminal_reason": "caught_up_to_existing_reviews"
         }
       ],
+      "metric_window_end": "2026-06-30T21:31:43Z",
+      "metric_window_start": "2026-06-30T21:24:09Z",
       "notes": "Cancelled after the experiment design was corrected from full-scope 200-app strategy tests to randomized 25-app groups. Postgres saw only 16 pages across 16 apps, 320 fetched rows, 0 HTTP 429s, and 0 non-200 responses. This run is excluded from D1 evidence.",
       "page_metrics": {
         "app_count": 16,
@@ -4043,6 +4072,747 @@
       ],
       "updated_at": "2026-06-30T21:26:43Z",
       "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28476830652"
+    },
+    {
+      "attempt_counts": [
+        {
+          "attempt_count": 1,
+          "page_count": 25
+        }
+      ],
+      "comparison_group": "D1_one_page_cap_infra_failure",
+      "conclusion": "failure",
+      "created_at": "2026-06-30T22:26:45Z",
+      "event": "workflow_dispatch",
+      "experiment_group": "om_group_01",
+      "github_run_id": "28479893917",
+      "head_sha": "2b9658ce1c7d7fc904e799dc583771a1eca5b634",
+      "inputs": {
+        "experiment_group": "om_group_01",
+        "limit": "0",
+        "max_pages_per_app_country": "1",
+        "max_parallel": "4",
+        "start_page": "1"
+      },
+      "job_cancelled": 0,
+      "job_failure": 1,
+      "job_success": 26,
+      "job_total": 27,
+      "label": "D1 one-page grouped cap deadlock observation",
+      "load_metrics": {
+        "capped_scopes": 1,
+        "duplicates_skipped": 401,
+        "fetch_errors": 0,
+        "loaded_pages": 25,
+        "loaded_review_rows": 500,
+        "reviews_inserted": 99,
+        "reviews_updated": 0,
+        "run_rows": 25
+      },
+      "long_tail_apps": [
+        {
+          "app_id": "6752672568",
+          "app_name": "Block Out! - Color Sort Puzzle",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 16,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "407558537",
+          "app_name": "Capital One Mobile",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 16,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1510944943",
+          "app_name": "Cleanup: Phone Storage Cleaner",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 15,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "518684914",
+          "app_name": "Depop - Buy & Sell Clothes",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 13,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1094930513",
+          "app_name": "EA SPORTS FC Soccer Mobile 26",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 9,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1098157959",
+          "app_name": "Evony",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1180884341",
+          "app_name": "FaceApp: Perfect Face Editor",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 18,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1038369065",
+          "app_name": "Flo Cycle & Period Tracker",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 18,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "905401434",
+          "app_name": "Fubo: Watch Live TV & Sports",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 17,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1308415878",
+          "app_name": "GameChanger",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "507874739",
+          "app_name": "Google Drive",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1096918571",
+          "app_name": "Google Meet",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "309735670",
+          "app_name": "Indeed Job Search",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 17,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "384830320",
+          "app_name": "Life360: Family Safety & GPS",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 9,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "382952264",
+          "app_name": "MyChart",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 12,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        }
+      ],
+      "metric_window_end": "2026-06-30T22:34:29Z",
+      "metric_window_start": "2026-06-30T22:26:45Z",
+      "notes": "Invalid D1 attempt before matrix Postgres init fix. Source fetch was clean, but workflow failed from a Postgres sync-state deadlock; excluded from D1 cap decision evidence.",
+      "page_metrics": {
+        "app_count": 25,
+        "duplicate_skip_rate": 0.802,
+        "error_pages": 0,
+        "first_page_at": "2026-06-30T15:27:31.456678-07:00",
+        "http_200_pages": 25,
+        "http_429_pages": 0,
+        "http_429_rate": 0.0,
+        "inserted_per_fetched_row": 0.198,
+        "inserted_per_page": 3.96,
+        "last_page_at": "2026-06-30T15:29:22.277857-07:00",
+        "max_attempt_count": 1,
+        "non_200_rate": 0.0,
+        "null_status_pages": 0,
+        "ok_pages": 25,
+        "other_non_200_pages": 0,
+        "page_count": 25,
+        "page_duplicate_rows": 0,
+        "page_window_minutes": 1.85,
+        "retried_page_rate": 0.0,
+        "retried_pages": 0,
+        "review_rows": 500,
+        "terminal_pages": 25,
+        "unique_review_rows": 500
+      },
+      "runtime_minutes": 2.73,
+      "schedule_delay_minutes": null,
+      "status": "observed",
+      "terminal_reasons": [
+        {
+          "page_count": 24,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "page_count": 1,
+          "terminal_reason": "page_cap"
+        }
+      ],
+      "updated_at": "2026-06-30T22:29:29Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28479893917"
+    },
+    {
+      "attempt_counts": [
+        {
+          "attempt_count": 1,
+          "page_count": 26
+        }
+      ],
+      "comparison_group": "D1_one_page_uncapped_audit",
+      "conclusion": "success",
+      "created_at": "2026-06-30T22:43:05Z",
+      "event": "workflow_dispatch",
+      "experiment_group": "om_group_01",
+      "github_run_id": "28480629280",
+      "head_sha": "f5fa19c543c4eda2637e4c8e69c120142a502a58",
+      "inputs": {
+        "experiment_group": "om_group_01",
+        "limit": "0",
+        "max_pages_per_app_country": "0",
+        "max_parallel": "4",
+        "start_page": "1"
+      },
+      "job_cancelled": 0,
+      "job_failure": 0,
+      "job_success": 27,
+      "job_total": 27,
+      "label": "D1 one-page grouped uncapped audit",
+      "load_metrics": {
+        "capped_scopes": 0,
+        "duplicates_skipped": 508,
+        "fetch_errors": 0,
+        "loaded_pages": 26,
+        "loaded_review_rows": 520,
+        "reviews_inserted": 12,
+        "reviews_updated": 0,
+        "run_rows": 25
+      },
+      "long_tail_apps": [
+        {
+          "app_id": "632064380",
+          "app_name": "Vinted: Pre-loved marketplace",
+          "http_429_pages": 0,
+          "max_page_number": 2,
+          "overlap_rows": 8,
+          "page_count": 2,
+          "retried_pages": 0,
+          "review_rows": 40,
+          "terminal_reason": "none"
+        },
+        {
+          "app_id": "6752672568",
+          "app_name": "Block Out! - Color Sort Puzzle",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "407558537",
+          "app_name": "Capital One Mobile",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1510944943",
+          "app_name": "Cleanup: Phone Storage Cleaner",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "518684914",
+          "app_name": "Depop - Buy & Sell Clothes",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1094930513",
+          "app_name": "EA SPORTS FC Soccer Mobile 26",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1098157959",
+          "app_name": "Evony",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1180884341",
+          "app_name": "FaceApp: Perfect Face Editor",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1038369065",
+          "app_name": "Flo Cycle & Period Tracker",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "905401434",
+          "app_name": "Fubo: Watch Live TV & Sports",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1308415878",
+          "app_name": "GameChanger",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "507874739",
+          "app_name": "Google Drive",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1096918571",
+          "app_name": "Google Meet",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "309735670",
+          "app_name": "Indeed Job Search",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "384830320",
+          "app_name": "Life360: Family Safety & GPS",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        }
+      ],
+      "metric_window_end": "2026-06-30T22:51:04Z",
+      "metric_window_start": "2026-06-30T22:43:05Z",
+      "notes": "Uncapped audit after D1 one-page cap for om_group_01: 26 pages, 520 rows, 12 inserts, 0 HTTP 429, 0 non-200; only Vinted needed page 2.",
+      "page_metrics": {
+        "app_count": 25,
+        "duplicate_skip_rate": 0.9769,
+        "error_pages": 0,
+        "first_page_at": "2026-06-30T15:43:50.702970-07:00",
+        "http_200_pages": 26,
+        "http_429_pages": 0,
+        "http_429_rate": 0.0,
+        "inserted_per_fetched_row": 0.0231,
+        "inserted_per_page": 0.462,
+        "last_page_at": "2026-06-30T15:45:58.088959-07:00",
+        "max_attempt_count": 1,
+        "non_200_rate": 0.0,
+        "null_status_pages": 0,
+        "ok_pages": 26,
+        "other_non_200_pages": 0,
+        "page_count": 26,
+        "page_duplicate_rows": 0,
+        "page_window_minutes": 2.12,
+        "retried_page_rate": 0.0,
+        "retried_pages": 0,
+        "review_rows": 520,
+        "terminal_pages": 25,
+        "unique_review_rows": 520
+      },
+      "runtime_minutes": 2.98,
+      "schedule_delay_minutes": null,
+      "status": "completed",
+      "terminal_reasons": [
+        {
+          "page_count": 25,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "page_count": 1,
+          "terminal_reason": "none"
+        }
+      ],
+      "updated_at": "2026-06-30T22:46:04Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28480629280"
+    },
+    {
+      "attempt_counts": [
+        {
+          "attempt_count": 1,
+          "page_count": 25
+        }
+      ],
+      "comparison_group": "D1_one_page_cap",
+      "conclusion": "success",
+      "created_at": "2026-06-30T22:39:16Z",
+      "event": "workflow_dispatch",
+      "experiment_group": "om_group_01",
+      "github_run_id": "28480461263",
+      "head_sha": "f5fa19c543c4eda2637e4c8e69c120142a502a58",
+      "inputs": {
+        "experiment_group": "om_group_01",
+        "limit": "0",
+        "max_pages_per_app_country": "1",
+        "max_parallel": "4",
+        "start_page": "1"
+      },
+      "job_cancelled": 0,
+      "job_failure": 0,
+      "job_success": 27,
+      "job_total": 27,
+      "label": "D1 one-page grouped cap",
+      "load_metrics": {
+        "capped_scopes": 1,
+        "duplicates_skipped": 500,
+        "fetch_errors": 0,
+        "loaded_pages": 25,
+        "loaded_review_rows": 500,
+        "reviews_inserted": 0,
+        "reviews_updated": 0,
+        "run_rows": 25
+      },
+      "long_tail_apps": [
+        {
+          "app_id": "6752672568",
+          "app_name": "Block Out! - Color Sort Puzzle",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "407558537",
+          "app_name": "Capital One Mobile",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1510944943",
+          "app_name": "Cleanup: Phone Storage Cleaner",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "518684914",
+          "app_name": "Depop - Buy & Sell Clothes",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1094930513",
+          "app_name": "EA SPORTS FC Soccer Mobile 26",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1098157959",
+          "app_name": "Evony",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1180884341",
+          "app_name": "FaceApp: Perfect Face Editor",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1038369065",
+          "app_name": "Flo Cycle & Period Tracker",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "905401434",
+          "app_name": "Fubo: Watch Live TV & Sports",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1308415878",
+          "app_name": "GameChanger",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "507874739",
+          "app_name": "Google Drive",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1096918571",
+          "app_name": "Google Meet",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "309735670",
+          "app_name": "Indeed Job Search",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "384830320",
+          "app_name": "Life360: Family Safety & GPS",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "382952264",
+          "app_name": "MyChart",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        }
+      ],
+      "metric_window_end": "2026-06-30T22:43:04.999999Z",
+      "metric_window_start": "2026-06-30T22:39:16Z",
+      "notes": "Post-deadlock-fix grouped one-page cap run for om_group_01: 25 pages, 500 rows, 0 inserts, 0 HTTP 429, 0 non-200.",
+      "page_metrics": {
+        "app_count": 25,
+        "duplicate_skip_rate": 1.0,
+        "error_pages": 0,
+        "first_page_at": "2026-06-30T15:40:04.104586-07:00",
+        "http_200_pages": 25,
+        "http_429_pages": 0,
+        "http_429_rate": 0.0,
+        "inserted_per_fetched_row": 0.0,
+        "inserted_per_page": 0.0,
+        "last_page_at": "2026-06-30T15:41:58.087206-07:00",
+        "max_attempt_count": 1,
+        "non_200_rate": 0.0,
+        "null_status_pages": 0,
+        "ok_pages": 25,
+        "other_non_200_pages": 0,
+        "page_count": 25,
+        "page_duplicate_rows": 0,
+        "page_window_minutes": 1.9,
+        "retried_page_rate": 0.0,
+        "retried_pages": 0,
+        "review_rows": 500,
+        "terminal_pages": 25,
+        "unique_review_rows": 500
+      },
+      "runtime_minutes": 2.78,
+      "schedule_delay_minutes": null,
+      "status": "completed",
+      "terminal_reasons": [
+        {
+          "page_count": 24,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "page_count": 1,
+          "terminal_reason": "page_cap"
+        }
+      ],
+      "updated_at": "2026-06-30T22:42:03Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28480461263"
     }
   ]
 }

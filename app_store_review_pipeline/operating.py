@@ -188,8 +188,7 @@ def is_source_pressure_clean_run(run: dict[str, Any]) -> bool:
     http_429_rate = float(page_metrics.get("http_429_rate") or 0)
     fetch_errors = int(load_metrics.get("fetch_errors") or 0)
     fetch_error_rate = round(fetch_errors / page_count, 4) if page_count else 0
-    capped_scopes = int(load_metrics.get("capped_scopes") or 0)
-    return http_429_rate < 0.005 and fetch_error_rate < 0.01 and capped_scopes == 0
+    return http_429_rate < 0.005 and fetch_error_rate < 0.01
 
 
 def build_operating_summary(
@@ -204,9 +203,15 @@ def build_operating_summary(
     grace_minutes = max(0, int(grace_minutes))
     with connect_postgres(database_url) as connection:
         database_snapshot = fetch_database_snapshot(connection)
+        run_windows = build_metric_windows(ledger.get("runs", []), grace_minutes=grace_minutes)
         runs = [
-            enrich_run_from_postgres(connection, run, source=source, grace_minutes=grace_minutes)
-            for run in ledger.get("runs", [])
+            enrich_run_from_postgres(
+                connection,
+                run,
+                source=source,
+                metric_window=run_windows.get(index),
+            )
+            for index, run in enumerate(ledger.get("runs", []))
         ]
         app_segments = build_app_activity_segments(connection, runs, source=source, grace_minutes=grace_minutes)
 
@@ -396,6 +401,8 @@ def describe_experiment_finding(
         return "Not clean. HTTP 429 rate crossed the conservative stop threshold."
     if fetch_error_rate >= 0.01:
         return "Not clean. Fetch error rate crossed the conservative stop threshold."
+    if "rejected" in str(status):
+        return "Source-pressure clean, but rejected by the paired audit or strategy-specific decision rule."
     if is_experiment_status_done(status):
         if experiment_id == "F1":
             return (
@@ -407,14 +414,57 @@ def describe_experiment_finding(
     return "In progress or pending completion. Existing matching runs are clean, but the experiment is not marked complete."
 
 
-def enrich_run_from_postgres(connection: Any, run: dict[str, Any], *, source: str, grace_minutes: int) -> dict[str, Any]:
+def build_metric_windows(
+    runs: list[dict[str, Any]],
+    *,
+    grace_minutes: int,
+) -> dict[int, dict[str, datetime]]:
+    parsed_runs: list[tuple[int, datetime, datetime]] = []
+    for index, run in enumerate(runs):
+        created_at = parse_utc(run.get("created_at"))
+        updated_at = parse_utc(run.get("updated_at")) or created_at
+        if created_at is not None and updated_at is not None:
+            parsed_runs.append((index, created_at, updated_at))
+
+    sorted_runs = sorted(parsed_runs, key=lambda item: (item[1], item[0]))
+    next_created_by_index: dict[int, datetime] = {}
+    for position, (index, created_at, _updated_at) in enumerate(sorted_runs):
+        for _next_index, next_created_at, _next_updated_at in sorted_runs[position + 1 :]:
+            if next_created_at > created_at:
+                next_created_by_index[index] = next_created_at
+                break
+
+    windows: dict[int, dict[str, datetime]] = {}
+    for index, created_at, updated_at in parsed_runs:
+        window_end = updated_at + timedelta(minutes=max(0, int(grace_minutes)))
+        next_created_at = next_created_by_index.get(index)
+        if next_created_at and next_created_at < window_end:
+            window_end = next_created_at - timedelta(microseconds=1)
+        if window_end < created_at:
+            window_end = created_at
+        windows[index] = {
+            "start": created_at,
+            "end": window_end,
+            "github_updated_at": updated_at,
+        }
+    return windows
+
+
+def enrich_run_from_postgres(
+    connection: Any,
+    run: dict[str, Any],
+    *,
+    source: str,
+    metric_window: dict[str, datetime] | None,
+) -> dict[str, Any]:
     created_at = parse_utc(run.get("created_at"))
     updated_at = parse_utc(run.get("updated_at")) or created_at
     if created_at is None:
         output = dict(run)
         output["metrics_error"] = "missing_created_at"
         return output
-    window_end = updated_at + timedelta(minutes=grace_minutes)
+    window_start = metric_window["start"] if metric_window else created_at
+    window_end = metric_window["end"] if metric_window else updated_at
     page_metrics = fetch_one(
         connection,
         """
@@ -442,7 +492,7 @@ def enrich_run_from_postgres(connection: Any, run: dict[str, Any], *, source: st
             AND fetched_at::timestamptz >= %s
             AND fetched_at::timestamptz <= %s
         """,
-        (source, created_at, window_end),
+        (source, window_start, window_end),
     )
     load_metrics = fetch_one(
         connection,
@@ -461,7 +511,7 @@ def enrich_run_from_postgres(connection: Any, run: dict[str, Any], *, source: st
             AND loaded_at::timestamptz >= %s
             AND loaded_at::timestamptz <= %s
         """,
-        (source, created_at, window_end),
+        (source, window_start, window_end),
     )
     attempt_counts = fetch_all(
         connection,
@@ -474,7 +524,7 @@ def enrich_run_from_postgres(connection: Any, run: dict[str, Any], *, source: st
         GROUP BY attempt_count
         ORDER BY attempt_count
         """,
-        (source, created_at, window_end),
+        (source, window_start, window_end),
     )
     terminal_reasons = fetch_all(
         connection,
@@ -488,7 +538,7 @@ def enrich_run_from_postgres(connection: Any, run: dict[str, Any], *, source: st
         ORDER BY page_count DESC, terminal_reason
         LIMIT 12
         """,
-        (source, created_at, window_end),
+        (source, window_start, window_end),
     )
     long_tail_apps = fetch_all(
         connection,
@@ -511,11 +561,13 @@ def enrich_run_from_postgres(connection: Any, run: dict[str, Any], *, source: st
         ORDER BY page_count DESC, review_rows DESC, app_name
         LIMIT 15
         """,
-        (source, created_at, window_end),
+        (source, window_start, window_end),
     )
     output = dict(run)
     output["created_at"] = created_at.isoformat().replace("+00:00", "Z")
     output["updated_at"] = updated_at.isoformat().replace("+00:00", "Z")
+    output["metric_window_start"] = window_start.isoformat().replace("+00:00", "Z")
+    output["metric_window_end"] = window_end.isoformat().replace("+00:00", "Z")
     output["runtime_minutes"] = round((updated_at - created_at).total_seconds() / 60.0, 2)
     output["schedule_delay_minutes"] = schedule_delay_minutes(created_at) if run.get("event") == "schedule" else None
     output["page_metrics"] = add_run_rates(page_metrics, load_metrics)
@@ -635,8 +687,13 @@ def build_app_activity_segments(
 
     app_rows: dict[str, dict[str, Any]] = {}
     for run in successful_runs:
-        start = parse_utc(run.get("created_at"))
-        end = parse_utc(run.get("updated_at")) + timedelta(minutes=grace_minutes)
+        start = parse_utc(run.get("metric_window_start")) or parse_utc(run.get("created_at"))
+        end = parse_utc(run.get("metric_window_end"))
+        if end is None:
+            updated_at = parse_utc(run.get("updated_at"))
+            end = updated_at + timedelta(minutes=grace_minutes) if updated_at else None
+        if start is None or end is None:
+            continue
         pages_by_app = fetch_all(
             connection,
             """

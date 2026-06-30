@@ -44,6 +44,8 @@ from app_store_review_pipeline.operating import (
     build_aggregate_summary,
     build_depth_audit_findings,
     build_experiment_findings,
+    build_metric_windows,
+    is_source_pressure_clean_run,
     load_operating_ledger,
     schedule_delay_minutes,
 )
@@ -665,6 +667,35 @@ def test_load_operating_ledger_supports_missing_and_legacy_list(tmp_path):
     assert load_operating_ledger(legacy_path)["runs"] == [{"github_run_id": "1"}]
 
 
+def test_operating_metric_windows_do_not_overlap_adjacent_runs():
+    runs = [
+        {
+            "github_run_id": "cap",
+            "created_at": "2026-06-30T22:39:16Z",
+            "updated_at": "2026-06-30T22:42:03Z",
+        },
+        {
+            "github_run_id": "audit",
+            "created_at": "2026-06-30T22:43:05Z",
+            "updated_at": "2026-06-30T22:46:04Z",
+        },
+    ]
+
+    windows = build_metric_windows(runs, grace_minutes=5)
+
+    assert windows[0]["end"] == datetime(2026, 6, 30, 22, 43, 4, 999999, tzinfo=timezone.utc)
+    assert windows[1]["end"] == datetime(2026, 6, 30, 22, 51, 4, tzinfo=timezone.utc)
+
+
+def test_operating_source_pressure_clean_allows_intentional_page_caps():
+    run = {
+        "page_metrics": {"page_count": 25, "http_429_rate": 0},
+        "load_metrics": {"fetch_errors": 0, "capped_scopes": 1},
+    }
+
+    assert is_source_pressure_clean_run(run) is True
+
+
 def test_operating_experiment_findings_summarize_completed_f1():
     runs = [
         {
@@ -772,6 +803,39 @@ def test_operating_depth_audit_rejects_caps_that_miss_too_many_rows():
 
     assert findings[0]["missed_insert_rate_vs_uncapped_audit"] == 0.0909
     assert "Rejected" in findings[0]["finding"]
+
+
+def test_operating_experiment_finding_marks_rejected_strategy():
+    runs = [
+        {
+            "comparison_group": "D1_one_page_cap",
+            "conclusion": "success",
+            "runtime_minutes": 2.78,
+            "page_metrics": {
+                "page_count": 25,
+                "review_rows": 500,
+                "http_429_pages": 0,
+                "http_429_rate": 0,
+            },
+            "load_metrics": {
+                "reviews_inserted": 0,
+                "duplicates_skipped": 500,
+                "fetch_errors": 0,
+                "capped_scopes": 1,
+            },
+        }
+    ]
+    experiments = [
+        {
+            "experiment_id": "D1",
+            "status": "completed_rejected",
+            "comparison_group": "D1_one_page_cap",
+        }
+    ]
+
+    findings = build_experiment_findings(runs, experiments)
+
+    assert "rejected" in findings[0]["finding"]
 
 
 def test_command_operating_report_passes_paths(tmp_path, monkeypatch):

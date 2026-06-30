@@ -369,6 +369,81 @@
         "overlap_stop": "enabled"
       },
       "notes": "Cancelled after the experiment design was corrected from full-scope 200-app strategy tests to randomized 25-app groups. Postgres saw only 16 pages across 16 apps, 320 fetched rows, 0 HTTP 429s, and 0 non-200 responses. This run is excluded from D1 evidence."
+    },
+    {
+      "github_run_id": "28479893917",
+      "label": "D1 one-page grouped cap deadlock observation",
+      "comparison_group": "D1_one_page_cap_infra_failure",
+      "event": "workflow_dispatch",
+      "status": "observed",
+      "conclusion": "failure",
+      "created_at": "2026-06-30T22:26:45Z",
+      "updated_at": "2026-06-30T22:29:29Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28479893917",
+      "head_sha": "2b9658ce1c7d7fc904e799dc583771a1eca5b634",
+      "job_total": 27,
+      "job_success": 26,
+      "job_failure": 1,
+      "job_cancelled": 0,
+      "inputs": {
+        "limit": "0",
+        "max_parallel": "4",
+        "max_pages_per_app_country": "1",
+        "start_page": "1",
+        "experiment_group": "om_group_01"
+      },
+      "notes": "Invalid D1 attempt before matrix Postgres init fix. Source fetch was clean, but workflow failed from a Postgres sync-state deadlock; excluded from D1 cap decision evidence.",
+      "experiment_group": "om_group_01"
+    },
+    {
+      "github_run_id": "28480629280",
+      "label": "D1 one-page grouped uncapped audit",
+      "comparison_group": "D1_one_page_uncapped_audit",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-06-30T22:43:05Z",
+      "updated_at": "2026-06-30T22:46:04Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28480629280",
+      "head_sha": "f5fa19c543c4eda2637e4c8e69c120142a502a58",
+      "job_total": 27,
+      "job_success": 27,
+      "job_failure": 0,
+      "job_cancelled": 0,
+      "inputs": {
+        "limit": "0",
+        "max_parallel": "4",
+        "max_pages_per_app_country": "0",
+        "start_page": "1",
+        "experiment_group": "om_group_01"
+      },
+      "notes": "Uncapped audit after D1 one-page cap for om_group_01: 26 pages, 520 rows, 12 inserts, 0 HTTP 429, 0 non-200; only Vinted needed page 2.",
+      "experiment_group": "om_group_01"
+    },
+    {
+      "github_run_id": "28480461263",
+      "label": "D1 one-page grouped cap",
+      "comparison_group": "D1_one_page_cap",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-06-30T22:39:16Z",
+      "updated_at": "2026-06-30T22:42:03Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28480461263",
+      "head_sha": "f5fa19c543c4eda2637e4c8e69c120142a502a58",
+      "job_total": 27,
+      "job_success": 27,
+      "job_failure": 0,
+      "job_cancelled": 0,
+      "inputs": {
+        "limit": "0",
+        "max_parallel": "4",
+        "max_pages_per_app_country": "1",
+        "start_page": "1",
+        "experiment_group": "om_group_01"
+      },
+      "notes": "Post-deadlock-fix grouped one-page cap run for om_group_01: 25 pages, 500 rows, 0 inserts, 0 HTTP 429, 0 non-200.",
+      "experiment_group": "om_group_01"
     }
   ],
   "planned_experiments": [
@@ -430,11 +505,11 @@
     },
     {
       "experiment_id": "D1",
-      "status": "planned",
+      "status": "completed_rejected",
       "comparison_group": "D1_one_page_cap",
       "audit_comparison_group": "D1_one_page_uncapped_audit",
       "audit_missed_insert_threshold": 0.05,
-      "description": "Randomized 25-app group capped at one page per app, followed by an uncapped audit on the same group.",
+      "description": "Completed randomized 25-app group capped at one page per app, followed by an uncapped audit on the same group. Rejected because the audit found missed inserts beyond the threshold.",
       "success_criteria": "Audit inserts after the capped pass are no more than 5% of total capped-plus-audit inserts, with clean source-pressure metrics.",
       "inputs": {
         "limit": "0",
