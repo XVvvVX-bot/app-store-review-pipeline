@@ -9,7 +9,7 @@ This runbook records the controlled procedure for validating the App Store revie
 - For strategy comparisons, use fixed randomized 25-app groups and wait the intended gap only for that group.
 - Do not start a new experiment if an `App Store Review Pipeline` run is active.
 - Stop frequency escalation if any run has failed jobs, HTTP 429 rate >= 0.5%, repeated source non-200 errors, fetch error rate >= 1%, or abnormal runtime growth.
-- Keep the twice-daily schedule unchanged while experiments run.
+- Keep scheduled cron runs paused while grouped frequency experiments run; use `workflow_dispatch` only.
 - Record every experimental run in `docs/experiments/operating_model_run_ledger.json`.
 - Use randomized 25-app experiment groups for strategy comparisons instead of running every strategy on all 200 apps. The group manifest is `docs/experiments/operating_model_target_groups.json`.
 - Run a capped depth pass and its uncapped audit on the same group. Run different strategy families on different groups so one experiment does not consume the next experiment's incremental signal.
@@ -67,9 +67,9 @@ Use a same-group pair for each frequency test:
 3. Run the same grouped uncapped treatment pass.
 4. Compare treatment inserted rows per page, duplicate rate, runtime, and source-pressure metrics.
 
-Schedule isolation matters for these tests. The treatment run is only interpretable if no full-scope scheduled or manual run touched the same app group after the seed. If a full-scope run lands in the middle, mark the pair as contaminated, keep it as operational evidence only, and restart that frequency test on a fresh randomized group or after the next scheduled baseline.
+Schedule isolation matters for these tests. The treatment run is only interpretable if no full-scope scheduled or manual run touched the same app group after the seed. If a full-scope run lands in the middle, mark the pair as contaminated, keep it as operational evidence only, and restart that frequency test on a fresh randomized group or after a deliberate clean baseline.
 
-When possible, choose seed times so the treatment finishes before the next twice-daily schedule. For example, a three-hour grouped test can fit between afternoon manual work and the 20:07 PDT scheduled baseline; a six-hour grouped test should normally start shortly after a scheduled baseline, not shortly before one.
+During the controlled experiment window, leave the twice-daily cron commented out in `.github/workflows/app-store-daily-pipeline.yml`. Restore it only after grouped frequency tests are complete or after explicitly deciding that a full-scope scheduled baseline is part of the next test.
 
 Planned grouped frequency tests:
 

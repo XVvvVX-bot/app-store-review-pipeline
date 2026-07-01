@@ -8,13 +8,15 @@ The purpose of this mode is to keep the Postgres review dataset fresh across all
 
 The active workflow is `App Store Review Pipeline` in `.github/workflows/app-store-daily-pipeline.yml`.
 
-Current cadence:
+Scheduled cron runs are temporarily paused while controlled grouped operating-model experiments are running, because a full-scope scheduled refresh between a seed/control run and its treatment run would contaminate the experiment. Manual `workflow_dispatch` remains enabled and is the only way this workflow should run during the experiment window.
+
+Production cadence to restore after the experiments:
 
 - 08:07 America/Los_Angeles during PDT
 - 20:07 America/Los_Angeles during PDT
 - GitHub Actions cron: `7 3,15 * * *`
 
-GitHub schedules run in UTC and can start later than the exact cron minute. Treat the cron as the requested cadence, not a strict service-level guarantee.
+GitHub schedules run in UTC and can start later than the exact cron minute. After cron is restored, treat the cron as the requested cadence, not a strict service-level guarantee.
 
 ## Why Daily Incremental Replaced Routine Backfill
 

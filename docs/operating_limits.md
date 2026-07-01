@@ -11,6 +11,8 @@ Keep the twice-daily full-scope incremental schedule as the production baseline 
 
 Evidence status: **interim**. Pending controlled experiments: FG1, FG2.
 
+Experiment isolation note: scheduled cron runs are temporarily paused while grouped frequency seed/treatment tests are running. The twice-daily schedule remains the current production baseline candidate, but only manual `workflow_dispatch` runs should execute until the grouped tests are complete or a deliberate clean baseline is needed.
+
 Rationale:
 - Recent successful full-scope runs show clean source-pressure metrics.
 - There are enough successful baseline observations to compare against experiments.
