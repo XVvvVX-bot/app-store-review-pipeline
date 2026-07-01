@@ -890,6 +890,13 @@ def build_operating_recommendation(
     return {
         "current_recommendation": "Keep the twice-daily full-scope incremental schedule as the production baseline while remaining controlled tests are completed.",
         "confidence": "interim" if pending_experiments else "ready_for_review",
+        "experiment_isolation_note": (
+            "Scheduled cron runs are temporarily paused while grouped seed/treatment tests are running. "
+            "The twice-daily schedule remains the current production baseline candidate, but only manual "
+            "workflow_dispatch runs should execute until the grouped tests are complete or a deliberate clean baseline is needed."
+            if pending_experiments
+            else ""
+        ),
         "why": [
             "Recent successful full-scope runs show clean source-pressure metrics." if source_pressure_clean else "Recent runs include source-pressure signals that need review.",
             "There are enough successful baseline observations to compare against experiments." if enough_success else "More baseline observations are needed before final recommendation.",
@@ -962,6 +969,11 @@ def render_operating_markdown(summary: dict[str, Any]) -> str:
         f"**{recommendation['confidence']}**. Pending controlled experiments: "
         f"{', '.join(recommendation['pending_experiments']) if recommendation['pending_experiments'] else 'none'}.",
         "",
+        *(
+            ["Experiment isolation note: " + recommendation["experiment_isolation_note"], ""]
+            if recommendation.get("experiment_isolation_note")
+            else []
+        ),
         "Rationale:",
         *[f"- {item}" for item in recommendation["why"]],
         "",

@@ -3,7 +3,7 @@
     "attempt_distribution": [
       {
         "attempt_count": "1",
-        "page_count": 4103
+        "page_count": 4128
       },
       {
         "attempt_count": "2",
@@ -16,30 +16,30 @@
     ],
     "failed_or_cancelled_run_count": 4,
     "max_schedule_delay_minutes": 315.47,
-    "median_successful_inserted_per_page": 5.811,
-    "median_successful_pages": 227.0,
-    "median_successful_runtime_minutes": 40.7,
-    "observed_run_count": 19,
-    "source_pressure_clean_duplicates_skipped": 40991,
+    "median_successful_inserted_per_page": 5.298,
+    "median_successful_pages": 223.5,
+    "median_successful_runtime_minutes": 39.575,
+    "observed_run_count": 20,
+    "source_pressure_clean_duplicates_skipped": 41491,
     "source_pressure_clean_http_429_rate": 0.0,
-    "source_pressure_clean_pages": 4796,
-    "source_pressure_clean_review_rows": 95820,
+    "source_pressure_clean_pages": 4821,
+    "source_pressure_clean_review_rows": 96320,
     "source_pressure_clean_reviews_inserted": 54812,
-    "source_pressure_clean_run_count": 18,
+    "source_pressure_clean_run_count": 19,
     "successful_baseline_run_count": 9,
     "successful_capped_scopes": 3,
-    "successful_duplicates_skipped": 33993,
+    "successful_duplicates_skipped": 34493,
     "successful_fetch_errors": 4,
     "successful_http_429_pages": 0,
     "successful_http_429_rate": 0.0,
-    "successful_pages": 4231,
+    "successful_pages": 4256,
     "successful_retried_pages": 128,
-    "successful_review_rows": 84540,
+    "successful_review_rows": 85040,
     "successful_reviews_inserted": 50531,
-    "successful_run_count": 15,
+    "successful_run_count": 16,
     "terminal_reason_distribution": [
       {
-        "page_count": 2121,
+        "page_count": 2146,
         "terminal_reason": "caught_up_to_existing_reviews"
       },
       {
@@ -58,27 +58,27 @@
         "app_count": 50,
         "insert_share": 0.7205,
         "inserted": 36408,
-        "inserted_per_page": 16.341,
-        "page_count": 2228,
-        "page_share": 0.5266,
+        "inserted_per_page": 16.305,
+        "page_count": 2233,
+        "page_share": 0.5247,
         "segment": "high"
       },
       {
         "app_count": 100,
         "insert_share": 0.2481,
         "inserted": 12537,
-        "inserted_per_page": 8.749,
-        "page_count": 1433,
-        "page_share": 0.3387,
+        "inserted_per_page": 8.664,
+        "page_count": 1447,
+        "page_share": 0.34,
         "segment": "normal"
       },
       {
         "app_count": 50,
         "insert_share": 0.0314,
         "inserted": 1586,
-        "inserted_per_page": 2.782,
-        "page_count": 570,
-        "page_share": 0.1347,
+        "inserted_per_page": 2.753,
+        "page_count": 576,
+        "page_share": 0.1353,
         "segment": "low"
       }
     ],
@@ -155,9 +155,9 @@
         "app_name": "DoorDash",
         "category": "food_delivery",
         "inserted": 1243,
-        "observed_runs": 11,
-        "page_count": 69,
-        "review_rows": 1380,
+        "observed_runs": 12,
+        "page_count": 70,
+        "review_rows": 1400,
         "updated": 0
       },
       {
@@ -221,9 +221,9 @@
         "app_name": "ReelShort - Stream Drama & TV",
         "category": "entertainment",
         "inserted": 898,
-        "observed_runs": 11,
-        "page_count": 51,
-        "review_rows": 1020,
+        "observed_runs": 12,
+        "page_count": 52,
+        "review_rows": 1040,
         "updated": 0
       },
       {
@@ -368,22 +368,22 @@
       "total_size": "1159 MB"
     },
     {
-      "row_count": 117861,
+      "row_count": 117886,
       "table_name": "app_store_review_pages",
-      "total_bytes": 88440832,
+      "total_bytes": 88457216,
       "total_size": "84 MB"
     },
     {
       "row_count": 2270217,
       "table_name": "app_store_reviews",
-      "total_bytes": 2584256512,
+      "total_bytes": 2584379392,
       "total_size": "2465 MB"
     },
     {
-      "row_count": 4583,
+      "row_count": 4608,
       "table_name": "app_store_runs",
-      "total_bytes": 1540096,
-      "total_size": "1504 kB"
+      "total_bytes": 1548288,
+      "total_size": "1512 kB"
     }
   ],
   "decision_rules": {
@@ -528,29 +528,29 @@
       "comparison_group": "FG2_three_hour_grouped_frequency",
       "contaminating_run_count": 0,
       "contaminating_run_ids": "",
-      "duplicate_skip_rate": 0.8019,
+      "duplicate_skip_rate": 0.8971,
       "experiment_group": "om_group_04",
       "experiment_id": "FG2",
       "fetch_error_rate": 0.0,
       "fetch_errors": 0,
-      "finding": "Seed clean. Treatment is pending, and no tracked full-scope run has contaminated the pair yet.",
-      "frequency_isolation_status": "pending_treatment",
+      "finding": "Source-pressure clean, but rejected by the paired audit or strategy-specific decision rule.",
+      "frequency_isolation_status": "clean_pair",
       "http_429": 0,
       "http_429_rate": 0.0,
       "inserted": 107,
-      "inserted_per_page": 3.963,
-      "matching_run_count": 1,
-      "median_runtime_minutes": 3.1,
+      "inserted_per_page": 2.058,
+      "matching_run_count": 2,
+      "median_runtime_minutes": 3.135,
       "non_200": 0,
-      "page_count": 27,
+      "page_count": 52,
       "retried_pages": 0,
-      "review_rows": 540,
+      "review_rows": 1040,
       "seed_run_id": "28481871844",
-      "skipped": 433,
-      "source_pressure_clean_run_count": 1,
-      "status": "seed_completed",
-      "successful_run_count": 1,
-      "treatment_run_id": ""
+      "skipped": 933,
+      "source_pressure_clean_run_count": 2,
+      "status": "completed_rejected",
+      "successful_run_count": 2,
+      "treatment_run_id": "28489012173"
     },
     {
       "capped_scopes": 1,
@@ -671,7 +671,7 @@
   ],
   "metadata": {
     "database_url": "postgresql:///app_store_reviews",
-    "generated_at": "2026-06-30T23:29:59+00:00",
+    "generated_at": "2026-07-01T02:25:45+00:00",
     "grace_minutes": 5,
     "ledger_path": "docs/experiments/operating_model_run_ledger.json",
     "source": "apple_app_store_web_catalog_reviews"
@@ -720,7 +720,7 @@
     },
     {
       "comparison_group": "FG2_three_hour_grouped_frequency",
-      "description": "Seed/control run completed for randomized 25-app group. Treatment run should execute three hours after the seed to measure marginal inserts.",
+      "description": "Completed randomized 25-app three-hour seed/treatment pair. Rejected as a recommended cadence because the treatment was operationally clean but produced zero marginal inserts: 25 pages, 500 rows, 0 inserts, and 500 duplicates.",
       "experiment_group": "om_group_04",
       "experiment_id": "FG2",
       "inputs": {
@@ -730,7 +730,7 @@
         "max_parallel": "4",
         "start_page": "1"
       },
-      "status": "seed_completed",
+      "status": "completed_rejected",
       "success_criteria": "Clean source-pressure metrics, no abnormal runtime growth, and enough marginal inserted rows per page to justify a three-hour grouped refresh."
     },
     {
@@ -771,9 +771,9 @@
   "recommendation": {
     "confidence": "interim",
     "current_recommendation": "Keep the twice-daily full-scope incremental schedule as the production baseline while remaining controlled tests are completed.",
+    "experiment_isolation_note": "Scheduled cron runs are temporarily paused while grouped seed/treatment tests are running. The twice-daily schedule remains the current production baseline candidate, but only manual workflow_dispatch runs should execute until the grouped tests are complete or a deliberate clean baseline is needed.",
     "pending_experiments": [
-      "FG1",
-      "FG2"
+      "FG1"
     ],
     "stop_thresholds": {
       "fetch_error_rate": 0.01,
@@ -783,7 +783,7 @@
     "why": [
       "Recent successful full-scope runs show clean source-pressure metrics.",
       "There are enough successful baseline observations to compare against experiments.",
-      "High-activity apps account for 72.0% of recent inserts and 52.7% of recent pages."
+      "High-activity apps account for 72.0% of recent inserts and 52.5% of recent pages."
     ]
   },
   "runs": [
@@ -5623,6 +5623,261 @@
       ],
       "updated_at": "2026-06-30T23:14:50Z",
       "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28481871844"
+    },
+    {
+      "attempt_counts": [
+        {
+          "attempt_count": 1,
+          "page_count": 25
+        }
+      ],
+      "comparison_group": "FG2_three_hour_grouped_frequency",
+      "conclusion": "success",
+      "created_at": "2026-07-01T02:18:55Z",
+      "event": "workflow_dispatch",
+      "experiment_group": "om_group_04",
+      "github_run_id": "28489012173",
+      "head_sha": "6ff5da6dd4c98d73c8439fc5c1ef42a90a738ae3",
+      "inputs": {
+        "experiment_group": "om_group_04",
+        "limit": "0",
+        "max_pages_per_app_country": "0",
+        "max_parallel": "4",
+        "pressure_ramp_mode": "fixed",
+        "request_delay_jitter_seconds": "5",
+        "request_delay_seconds": "10",
+        "review_limit": "20",
+        "start_page": "1",
+        "target_offset": "0",
+        "web_429_backoff_multiplier": "1.5",
+        "web_429_cooldown_minutes": "0",
+        "web_429_retries": "2",
+        "web_429_retry_jitter_seconds": "60",
+        "web_429_retry_seconds": "300",
+        "web_scope_time_budget_seconds": "3600",
+        "web_time_budget_seconds": "3600"
+      },
+      "job_cancelled": 0,
+      "job_failure": 0,
+      "job_success": 27,
+      "job_total": 27,
+      "label": "FG2 three-hour grouped treatment",
+      "load_metrics": {
+        "capped_scopes": 0,
+        "duplicates_skipped": 500,
+        "fetch_errors": 0,
+        "loaded_pages": 25,
+        "loaded_review_rows": 500,
+        "reviews_inserted": 0,
+        "reviews_updated": 0,
+        "run_rows": 25
+      },
+      "long_tail_apps": [
+        {
+          "app_id": "469337564",
+          "app_name": "Acrobat Reader: PDF Editor",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "510855668",
+          "app_name": "Amazon Music: Songs & Podcasts",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "382698565",
+          "app_name": "American Airlines",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "379693831",
+          "app_name": "Audible: Audiobooks & Podcasts",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "6740349587",
+          "app_name": "Backyard Baseball '01",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "1077137248",
+          "app_name": "BIGO LIVE-Live Stream, Go Live",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "930441707",
+          "app_name": "Bumble Dating App: Meet & Date",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "553834731",
+          "app_name": "Candy Crush Saga",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "897446215",
+          "app_name": "Canva: AI Video & Photo Editor",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "298867247",
+          "app_name": "Chase Mobile\u00ae: Bank & Invest",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "6670441558",
+          "app_name": "Dark War:Survival",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "719972451",
+          "app_name": "DoorDash",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "317469184",
+          "app_name": "ESPN: Live Sports & Scores",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "388497605",
+          "app_name": "Google Authenticator",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        },
+        {
+          "app_id": "6448786147",
+          "app_name": "Last War:Survival",
+          "http_429_pages": 0,
+          "max_page_number": 1,
+          "overlap_rows": 20,
+          "page_count": 1,
+          "retried_pages": 0,
+          "review_rows": 20,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        }
+      ],
+      "metric_window_end": "2026-07-01T02:27:05Z",
+      "metric_window_start": "2026-07-01T02:18:55Z",
+      "notes": "FG2 treatment for om_group_04 after a three-hour seed gap: 25 apps, 25 pages, 500 review rows, 0 inserts, 0 updates, 500 duplicates, 0 HTTP 429, 0 non-200, 0 retried pages, 0 fetch errors, runtime 3.2 minutes. Clean but no marginal inserts; three-hour grouped refresh appears too frequent for this sampled group.",
+      "page_metrics": {
+        "app_count": 25,
+        "duplicate_skip_rate": 1.0,
+        "error_pages": 0,
+        "first_page_at": "2026-06-30T19:19:39.969631-07:00",
+        "http_200_pages": 25,
+        "http_429_pages": 0,
+        "http_429_rate": 0.0,
+        "inserted_per_fetched_row": 0.0,
+        "inserted_per_page": 0.0,
+        "last_page_at": "2026-06-30T19:21:58.417162-07:00",
+        "max_attempt_count": 1,
+        "non_200_rate": 0.0,
+        "null_status_pages": 0,
+        "ok_pages": 25,
+        "other_non_200_pages": 0,
+        "page_count": 25,
+        "page_duplicate_rows": 0,
+        "page_window_minutes": 2.31,
+        "retried_page_rate": 0.0,
+        "retried_pages": 0,
+        "review_rows": 500,
+        "terminal_pages": 25,
+        "unique_review_rows": 500
+      },
+      "runtime_minutes": 3.17,
+      "schedule_delay_minutes": null,
+      "status": "completed",
+      "terminal_reasons": [
+        {
+          "page_count": 25,
+          "terminal_reason": "caught_up_to_existing_reviews"
+        }
+      ],
+      "updated_at": "2026-07-01T02:22:05Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28489012173"
     }
   ]
 }

@@ -555,6 +555,43 @@
       },
       "notes": "FG2 seed/control for om_group_04 before the three-hour treatment: 27 pages, 540 rows, 107 inserts, 0 HTTP 429, 0 non-200, 0 retries.",
       "experiment_group": "om_group_04"
+    },
+    {
+      "github_run_id": "28489012173",
+      "label": "FG2 three-hour grouped treatment",
+      "comparison_group": "FG2_three_hour_grouped_frequency",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-07-01T02:18:55Z",
+      "updated_at": "2026-07-01T02:22:05Z",
+      "url": "https://github.com/XVvvVX-bot/app-store-review-pipeline/actions/runs/28489012173",
+      "head_sha": "6ff5da6dd4c98d73c8439fc5c1ef42a90a738ae3",
+      "job_total": 27,
+      "job_success": 27,
+      "job_failure": 0,
+      "job_cancelled": 0,
+      "inputs": {
+        "limit": "0",
+        "target_offset": "0",
+        "experiment_group": "om_group_04",
+        "max_parallel": "4",
+        "max_pages_per_app_country": "0",
+        "pressure_ramp_mode": "fixed",
+        "start_page": "1",
+        "review_limit": "20",
+        "request_delay_seconds": "10",
+        "request_delay_jitter_seconds": "5",
+        "web_429_retries": "2",
+        "web_429_retry_seconds": "300",
+        "web_429_backoff_multiplier": "1.5",
+        "web_429_retry_jitter_seconds": "60",
+        "web_time_budget_seconds": "3600",
+        "web_scope_time_budget_seconds": "3600",
+        "web_429_cooldown_minutes": "0"
+      },
+      "notes": "FG2 treatment for om_group_04 after a three-hour seed gap: 25 apps, 25 pages, 500 review rows, 0 inserts, 0 updates, 500 duplicates, 0 HTTP 429, 0 non-200, 0 retried pages, 0 fetch errors, runtime 3.2 minutes. Clean but no marginal inserts; three-hour grouped refresh appears too frequent for this sampled group.",
+      "experiment_group": "om_group_04"
     }
   ],
   "planned_experiments": [
@@ -601,9 +638,9 @@
     },
     {
       "experiment_id": "FG2",
-      "status": "seed_completed",
+      "status": "completed_rejected",
       "comparison_group": "FG2_three_hour_grouped_frequency",
-      "description": "Seed/control run completed for randomized 25-app group. Treatment run should execute three hours after the seed to measure marginal inserts.",
+      "description": "Completed randomized 25-app three-hour seed/treatment pair. Rejected as a recommended cadence because the treatment was operationally clean but produced zero marginal inserts: 25 pages, 500 rows, 0 inserts, and 500 duplicates.",
       "success_criteria": "Clean source-pressure metrics, no abnormal runtime growth, and enough marginal inserted rows per page to justify a three-hour grouped refresh.",
       "inputs": {
         "limit": "0",
