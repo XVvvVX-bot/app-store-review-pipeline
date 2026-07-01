@@ -1,22 +1,23 @@
 # Apple Review Pipeline Operating Limits
 
-Generated at: `2026-07-01T04:29:56+00:00`
+Generated at: `2026-07-01T11:02:51+00:00`
 Database: `postgresql:///app_store_reviews`
 Source: `apple_app_store_web_catalog_reviews`
 Ledger: `docs/experiments/operating_model_run_ledger.json`
 
 ## Recommendation
 
-Keep the twice-daily full-scope incremental schedule as the production baseline while remaining controlled tests are completed.
+Use twice-daily full-scope uncapped overlap-stop incremental as the production baseline. Do not switch all apps to a three-hour cadence and do not enable shallow page caps. Treat six-hour grouped refresh as a validated hybrid candidate for high-activity apps only.
 
-Evidence status: **interim**. Pending controlled experiments: FG1.
-
-Experiment isolation note: Scheduled cron runs are temporarily paused while grouped seed/treatment tests are running. The twice-daily schedule remains the current production baseline candidate, but only manual workflow_dispatch runs should execute until the grouped tests are complete or a deliberate clean baseline is needed.
+Evidence status: **ready_for_review**. Pending controlled experiments: none.
 
 Rationale:
 - Recent successful full-scope runs show clean source-pressure metrics.
 - There are enough successful baseline observations to compare against experiments.
-- High-activity apps account for 72.0% of recent inserts and 52.4% of recent pages.
+- High-activity apps account for 72.1% of recent inserts and 52.4% of recent pages.
+- One-page and three-page cap tests were rejected because same-group uncapped audits found missed inserts above the 5% threshold.
+- The three-hour grouped treatment was source-clean but low-yield: 107 inserts across 52 pages for the paired group.
+- The six-hour grouped pair was source-clean and productive: 531 inserts across 68 pages, supporting a targeted hybrid candidate.
 
 ## Experiment Target Groups
 
@@ -39,7 +40,7 @@ Strategy comparisons use fixed randomized 25-app groups instead of running every
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | F1 | completed |  |  | 0 | 1 | 1 | 1 | 283 | 5,640 | 2,826 | 2,811 | 0.4987 | 9.986 | 0 | 1 | 1 | 11 | 38.45 | Clean. The six-hour full-scope run passed source-pressure thresholds; its marginal yield was 9.986 inserts/page with 49.9% duplicate skips. |
 | F2 | completed_source_clean_github_artifact_failure |  |  | 0 | 1 | 0 | 1 | 203 | 4,060 | 136 | 3,924 | 0.9665 | 0.67 | 0 | 0 | 0 | 14 | 41.35 | Source-clean but not GitHub-clean. The run passed source-pressure checks, but at least one matching job failed after ingestion. |
-| FG1 | seed_completed | om_group_03 | pending_treatment | 0 | 1 | 1 | 1 | 28 | 560 | 123 | 436 | 0.78 | 4.393 | 0 | 0 | 0 | 0 | 3.3 | Seed clean. Treatment is pending, and no tracked full-scope run has contaminated the pair yet. |
+| FG1 | completed_supported_for_hybrid_candidate | om_group_03 | clean_pair | 0 | 2 | 2 | 2 | 68 | 1,360 | 531 | 828 | 0.6093 | 7.809 | 0 | 0 | 0 | 7 | 13.46 | Clean. The completed experiment passed the current source-pressure thresholds. |
 | FG2 | completed_rejected | om_group_04 | clean_pair | 0 | 2 | 2 | 2 | 52 | 1,040 | 107 | 933 | 0.8971 | 2.058 | 0 | 0 | 0 | 0 | 3.135 | Source-pressure clean, but rejected by the paired audit or strategy-specific decision rule. |
 | D1 | completed_rejected | om_group_01 |  | 0 | 1 | 1 | 1 | 25 | 500 | 0 | 500 | 1 | 0 | 0 | 0 | 0 | 0 | 2.78 | Source-pressure clean, but rejected by the paired audit or strategy-specific decision rule. |
 | D2 | completed_rejected | om_group_02 |  | 0 | 1 | 1 | 1 | 29 | 580 | 188 | 392 | 0.6759 | 6.483 | 0 | 0 | 0 | 0 | 3.02 | Source-pressure clean, but rejected by the paired audit or strategy-specific decision rule. |
@@ -48,7 +49,7 @@ Interpretation:
 - Full-scope F1/F2 runs are calibration/control evidence; future frequency strategy tests use randomized 25-app groups so one test does not consume the full 200-app incremental signal.
 - `successful_run_count` is GitHub-clean; `source_pressure_clean_run_count` is source-pressure clean and can include post-ingestion artifact-only failures.
 - Depth tests (D1/D2) use randomized 25-app groups and measure whether page caps miss more than 5% of rows later captured by a same-group uncapped audit.
-- A final recommendation should wait for the pending tests unless source-pressure thresholds stop the ladder early.
+- Controlled tests are complete; the recommendation above is ready for review and should be revisited only after new production evidence or a deliberate follow-up experiment.
 
 ### Depth Audit Comparisons
 
@@ -61,22 +62,22 @@ Interpretation:
 
 | observed_run_count | successful_run_count | source_pressure_clean_run_count | source_pressure_clean_pages | source_pressure_clean_review_rows | source_pressure_clean_reviews_inserted | source_pressure_clean_duplicates_skipped | source_pressure_clean_http_429_rate | failed_or_cancelled_run_count | successful_pages | successful_review_rows | successful_reviews_inserted | successful_duplicates_skipped | successful_http_429_rate | successful_retried_pages | successful_fetch_errors | successful_capped_scopes | median_successful_runtime_minutes | median_successful_pages | median_successful_inserted_per_page | max_schedule_delay_minutes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 21 | 17 | 20 | 4,849 | 96,880 | 54,935 | 41,927 | 0 | 4 | 4,284 | 85,600 | 50,654 | 34,929 | 0 | 128 | 4 | 3 | 38.45 | 220 | 4.786 | 315.5 |
+| 22 | 18 | 21 | 4,889 | 97,680 | 55,343 | 42,319 | 0 | 4 | 4,324 | 86,400 | 51,062 | 35,321 | 0 | 135 | 4 | 3 | 32.19 | 217 | 5.298 | 315.5 |
 
 ### Successful Run Attempt Distribution
 
 | attempt_count | page_count |
 | --- | --- |
-| 1 | 4,156 |
-| 2 | 113 |
-| 3 | 15 |
+| 1 | 4,189 |
+| 2 | 118 |
+| 3 | 17 |
 
 ### Successful Run Terminal Reasons
 
 | terminal_reason | page_count |
 | --- | --- |
-| caught_up_to_existing_reviews | 2,171 |
-| none | 2,110 |
+| caught_up_to_existing_reviews | 2,196 |
+| none | 2,125 |
 | page_cap | 3 |
 
 ## Observed Runs
@@ -104,6 +105,7 @@ Interpretation:
 | 28481871844 | FG2 three-hour grouped seed/control | om_group_04 | workflow_dispatch | success | 3.1 |  | 27/27 | 25 | 27 | 540 | 107 | 0 | 433 | 0.8019 | 0 | 0 | 0 | 0 |
 | 28489012173 | FG2 three-hour grouped treatment | om_group_04 | workflow_dispatch | success | 3.17 |  | 27/27 | 25 | 25 | 500 | 0 | 0 | 500 | 1 | 0 | 0 | 0 | 0 |
 | 28493387696 | FG1 six-hour grouped seed/control | om_group_03 | workflow_dispatch | success | 3.3 |  | 27/27 | 25 | 28 | 560 | 123 | 1 | 436 | 0.7786 | 0 | 0 | 0 | 0 |
+| 28511346047 | FG1 six-hour grouped treatment | om_group_03 | workflow_dispatch | success | 23.62 |  | 27/27 | 25 | 40 | 800 | 408 | 0 | 392 | 0.49 | 0 | 0 | 0 | 0 |
 
 ## Activity Segments
 
@@ -111,9 +113,9 @@ Segments are computed from successful ledger runs by app-level inserted rows and
 
 | segment | app_count | page_count | inserted | page_share | insert_share | inserted_per_page |
 | --- | --- | --- | --- | --- | --- | --- |
-| high | 50 | 2,244 | 36,493 | 0.5238 | 0.7204 | 16.26 |
-| normal | 100 | 1,458 | 12,573 | 0.3403 | 0.2482 | 8.623 |
-| low | 50 | 582 | 1,588 | 0.1359 | 0.0313 | 2.729 |
+| high | 50 | 2,266 | 36,809 | 0.5241 | 0.7209 | 16.24 |
+| normal | 100 | 1,470 | 12,663 | 0.34 | 0.248 | 8.614 |
+| low | 50 | 588 | 1,590 | 0.136 | 0.0311 | 2.704 |
 
 ### Top Recent Activity Apps
 
@@ -125,12 +127,12 @@ Segments are computed from successful ledger runs by app-level inserted rows and
 | Duolingo | education | high | 114 | 2,260 | 2,083 | 0 | 12 |
 | Vinted: Pre-loved marketplace | shopping | high | 85 | 1,700 | 1,557 | 0 | 12 |
 | Facebook | social_networking | high | 73 | 1,460 | 1,340 | 0 | 10 |
+| Instagram | social | high | 71 | 1,420 | 1,317 | 1 | 12 |
 | DoorDash | food_delivery | high | 70 | 1,400 | 1,243 | 0 | 12 |
-| Instagram | social | high | 66 | 1,320 | 1,225 | 1 | 11 |
 | TikTok | social | high | 66 | 1,320 | 1,218 | 0 | 10 |
-| Walmart | shopping | high | 63 | 1,260 | 1,128 | 0 | 11 |
+| Walmart | shopping | high | 66 | 1,320 | 1,169 | 0 | 12 |
 | Rips by Triumph | shopping | high | 63 | 1,260 | 1,101 | 0 | 10 |
-| Uber | travel | high | 58 | 1,160 | 1,030 | 0 | 11 |
+| Uber | travel | high | 61 | 1,220 | 1,071 | 0 | 12 |
 | ReelShort - Stream Drama & TV | entertainment | high | 52 | 1,040 | 898 | 0 | 12 |
 | SHEIN - Shopping Online | shopping | high | 47 | 940 | 816 | 0 | 10 |
 | Life360: Family Safety & GPS | social_networking | high | 46 | 920 | 779 | 0 | 12 |
@@ -139,10 +141,10 @@ Segments are computed from successful ledger runs by app-level inserted rows and
 
 | table_name | row_count | total_size | total_bytes |
 | --- | --- | --- | --- |
-| app_store_review_changes | 2,270,411 | 1159 MB | 1,215,283,200 |
-| app_store_review_pages | 117,914 | 84 MB | 88,489,984 |
-| app_store_reviews | 2,270,340 | 2465 MB | 2,584,682,496 |
-| app_store_runs | 4,633 | 1520 kB | 1,556,480 |
+| app_store_review_changes | 2,270,819 | 1159 MB | 1,215,479,808 |
+| app_store_review_pages | 117,954 | 84 MB | 88,514,560 |
+| app_store_reviews | 2,270,748 | 2465 MB | 2,585,239,552 |
+| app_store_runs | 4,658 | 1528 kB | 1,564,672 |
 
 ## Planned Controlled Tests
 
@@ -150,7 +152,7 @@ Segments are computed from successful ledger runs by app-level inserted rows and
 | --- | --- | --- | --- | --- | --- |
 | F1 | completed | F1_six_hour_full_scope |  | Completed full-scope six-hour calibration run. Kept as control evidence; do not repeat as the default strategy-test pattern. | 202/202 jobs success, HTTP 429 rate below 0.5%, fetch error rate below 1%, no abnormal runtime growth. |
 | F2 | completed_source_clean_github_artifact_failure | F2_three_hour_full_scope |  | Completed full-scope three-hour calibration run. Source ingestion was clean, but the workflow ended with a post-ingestion GitHub artifact failure. Kept as control evidence; do not repeat as the default strategy-test pattern. | Source-pressure metrics clean enough to inform grouped frequency-test design. |
-| FG1 | seed_completed | FG1_six_hour_grouped_frequency | om_group_03 | Randomized 25-app group uncapped incremental seed/control completed cleanly at 2026-07-01T04:27:23Z. Treatment should run at or after 2026-07-01T10:27:23Z if no run contaminates om_group_03 in between. | Clean source-pressure metrics, no abnormal runtime growth, and enough marginal inserted rows per page to justify a six-hour grouped refresh. |
+| FG1 | completed_supported_for_hybrid_candidate | FG1_six_hour_grouped_frequency | om_group_03 | Completed randomized 25-app six-hour seed/treatment pair. The treatment was operationally clean and materially productive: 40 pages, 800 rows, 408 inserts, 392 duplicates, 0 HTTP 429, 0 non-200, and 0 fetch errors. Treat this as evidence fo | Clean source-pressure metrics, no abnormal runtime growth, and enough marginal inserted rows per page to justify a six-hour grouped refresh. |
 | FG2 | completed_rejected | FG2_three_hour_grouped_frequency | om_group_04 | Completed randomized 25-app three-hour seed/treatment pair. Rejected as a recommended cadence because the treatment was operationally clean but produced zero marginal inserts: 25 pages, 500 rows, 0 inserts, and 500 duplicates. | Clean source-pressure metrics, no abnormal runtime growth, and enough marginal inserted rows per page to justify a three-hour grouped refresh. |
 | D1 | completed_rejected | D1_one_page_cap | om_group_01 | Completed randomized 25-app group capped at one page per app, followed by an uncapped audit on the same group. Rejected because the audit found missed inserts beyond the threshold. | Audit inserts after the capped pass are no more than 5% of total capped-plus-audit inserts, with clean source-pressure metrics. |
 | D2 | completed_rejected | D2_three_page_cap | om_group_02 | Completed cap=3 randomized 25-app test. Rejected: audit inserted 25 additional Spotify reviews, an 11.7% missed-insert rate. | Audit inserts after the capped pass are no more than 5% of total capped-plus-audit inserts, with clean source-pressure metrics. |

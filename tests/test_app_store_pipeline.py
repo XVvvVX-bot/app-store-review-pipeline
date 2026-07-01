@@ -45,6 +45,7 @@ from app_store_review_pipeline.operating import (
     build_depth_audit_findings,
     build_experiment_findings,
     build_metric_windows,
+    build_operating_recommendation,
     is_source_pressure_clean_run,
     load_operating_ledger,
     schedule_delay_minutes,
@@ -930,6 +931,52 @@ def test_operating_grouped_frequency_finding_detects_full_scope_contamination():
     assert findings[0]["contaminating_run_count"] == 1
     assert findings[0]["contaminating_run_ids"] == "full-scope"
     assert "Contaminated" in findings[0]["finding"]
+
+
+def test_operating_recommendation_finalizes_after_grouped_tests():
+    aggregate = {
+        "successful_http_429_rate": 0,
+        "successful_baseline_run_count": 3,
+    }
+    app_segments = {
+        "segments": [
+            {
+                "segment": "high",
+                "insert_share": 0.72,
+                "page_share": 0.52,
+            }
+        ]
+    }
+    ledger = {
+        "planned_experiments": [
+            {"experiment_id": "FG1", "status": "completed_supported_for_hybrid_candidate"},
+            {"experiment_id": "FG2", "status": "completed_rejected"},
+            {"experiment_id": "D1", "status": "completed_rejected"},
+            {"experiment_id": "D2", "status": "completed_rejected"},
+        ]
+    }
+    experiment_findings = [
+        {"experiment_id": "FG1", "inserted": 531, "page_count": 68},
+        {"experiment_id": "FG2", "inserted": 107, "page_count": 52},
+    ]
+    depth_audit_findings = [
+        {"experiment_id": "D1", "finding": "Rejected. The cap missed more than the configured audit threshold."},
+        {"experiment_id": "D2", "finding": "Rejected. The cap missed more than the configured audit threshold."},
+    ]
+
+    recommendation = build_operating_recommendation(
+        aggregate,
+        app_segments,
+        ledger,
+        experiment_findings=experiment_findings,
+        depth_audit_findings=depth_audit_findings,
+    )
+
+    assert recommendation["confidence"] == "ready_for_review"
+    assert recommendation["pending_experiments"] == []
+    assert "remaining controlled tests" not in recommendation["current_recommendation"]
+    assert "twice-daily full-scope uncapped overlap-stop" in recommendation["current_recommendation"]
+    assert "six-hour grouped refresh" in recommendation["current_recommendation"]
 
 
 def test_command_operating_report_passes_paths(tmp_path, monkeypatch):

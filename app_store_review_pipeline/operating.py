@@ -291,7 +291,13 @@ def build_operating_summary(
     aggregate = build_aggregate_summary(runs)
     experiment_findings = build_experiment_findings(runs, ledger.get("planned_experiments", []))
     depth_audit_findings = build_depth_audit_findings(runs, ledger.get("planned_experiments", []))
-    recommendation = build_operating_recommendation(aggregate, app_segments, ledger)
+    recommendation = build_operating_recommendation(
+        aggregate,
+        app_segments,
+        ledger,
+        experiment_findings=experiment_findings,
+        depth_audit_findings=depth_audit_findings,
+    )
     summary = {
         "metadata": {
             "generated_at": generated_at,
@@ -878,17 +884,83 @@ def build_operating_recommendation(
     aggregate: dict[str, Any],
     app_segments: dict[str, Any],
     ledger: dict[str, Any],
+    *,
+    experiment_findings: list[dict[str, Any]] | None = None,
+    depth_audit_findings: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    experiment_findings = experiment_findings or []
+    depth_audit_findings = depth_audit_findings or []
     pending_experiments = [
         row.get("experiment_id")
         for row in ledger.get("planned_experiments", [])
         if not is_experiment_status_done(row.get("status", "planned"))
     ]
+    planned_by_id = {
+        str(row.get("experiment_id") or ""): str(row.get("status") or "")
+        for row in ledger.get("planned_experiments", [])
+    }
+    findings_by_id = {
+        str(row.get("experiment_id") or ""): row
+        for row in experiment_findings
+    }
     high_segment = next((row for row in app_segments.get("segments", []) if row.get("segment") == "high"), {})
     source_pressure_clean = float(aggregate.get("successful_http_429_rate") or 0) == 0
     enough_success = int(aggregate.get("successful_baseline_run_count") or 0) >= 2
+    has_supported_fg1 = planned_by_id.get("FG1", "").startswith("completed_supported")
+    has_rejected_fg2 = planned_by_id.get("FG2", "").startswith("completed_rejected")
+    rejected_depth_tests = {
+        row.get("experiment_id")
+        for row in depth_audit_findings
+        if str(row.get("finding") or "").startswith("Rejected")
+    }
+    if pending_experiments:
+        current_recommendation = (
+            "Keep the twice-daily full-scope incremental schedule as the production baseline "
+            "while remaining controlled tests are completed."
+        )
+    elif has_supported_fg1 and has_rejected_fg2:
+        current_recommendation = (
+            "Use twice-daily full-scope uncapped overlap-stop incremental as the production baseline. "
+            "Do not switch all apps to a three-hour cadence and do not enable shallow page caps. "
+            "Treat six-hour grouped refresh as a validated hybrid candidate for high-activity apps only."
+        )
+    else:
+        current_recommendation = (
+            "Use twice-daily full-scope uncapped overlap-stop incremental as the production baseline "
+            "and review any supported grouped-refresh candidates before changing production cadence."
+        )
+    fg1 = findings_by_id.get("FG1", {})
+    fg2 = findings_by_id.get("FG2", {})
+    why = [
+        "Recent successful full-scope runs show clean source-pressure metrics."
+        if source_pressure_clean
+        else "Recent runs include source-pressure signals that need review.",
+        "There are enough successful baseline observations to compare against experiments."
+        if enough_success
+        else "More baseline observations are needed before final recommendation.",
+        (
+            f"High-activity apps account for {format_percent(high_segment.get('insert_share'))} of recent inserts "
+            f"and {format_percent(high_segment.get('page_share'))} of recent pages."
+            if high_segment
+            else "Hybrid segmentation is pending more successful run observations."
+        ),
+    ]
+    if not pending_experiments and rejected_depth_tests:
+        why.append(
+            "One-page and three-page cap tests were rejected because same-group uncapped audits found missed inserts above the 5% threshold."
+        )
+    if not pending_experiments and fg2:
+        why.append(
+            f"The three-hour grouped treatment was source-clean but low-yield: {fg2.get('inserted', 0):,} inserts "
+            f"across {fg2.get('page_count', 0):,} pages for the paired group."
+        )
+    if not pending_experiments and fg1:
+        why.append(
+            f"The six-hour grouped pair was source-clean and productive: {fg1.get('inserted', 0):,} inserts "
+            f"across {fg1.get('page_count', 0):,} pages, supporting a targeted hybrid candidate."
+        )
     return {
-        "current_recommendation": "Keep the twice-daily full-scope incremental schedule as the production baseline while remaining controlled tests are completed.",
+        "current_recommendation": current_recommendation,
         "confidence": "interim" if pending_experiments else "ready_for_review",
         "experiment_isolation_note": (
             "Scheduled cron runs are temporarily paused while grouped seed/treatment tests are running. "
@@ -897,16 +969,7 @@ def build_operating_recommendation(
             if pending_experiments
             else ""
         ),
-        "why": [
-            "Recent successful full-scope runs show clean source-pressure metrics." if source_pressure_clean else "Recent runs include source-pressure signals that need review.",
-            "There are enough successful baseline observations to compare against experiments." if enough_success else "More baseline observations are needed before final recommendation.",
-            (
-                f"High-activity apps account for {format_percent(high_segment.get('insert_share'))} of recent inserts "
-                f"and {format_percent(high_segment.get('page_share'))} of recent pages."
-                if high_segment
-                else "Hybrid segmentation is pending more successful run observations."
-            ),
-        ],
+        "why": why,
         "pending_experiments": pending_experiments,
         "stop_thresholds": {
             "http_429_rate": 0.005,
@@ -953,6 +1016,11 @@ def render_operating_markdown(summary: dict[str, Any]) -> str:
     aggregate = summary["aggregate"]
     recommendation = summary["recommendation"]
     run_rows = [run_table_row(run) for run in summary["runs"]]
+    final_recommendation_line = (
+        "- A final recommendation should wait for the pending tests unless source-pressure thresholds stop the ladder early."
+        if recommendation.get("pending_experiments")
+        else "- Controlled tests are complete; the recommendation above is ready for review and should be revisited only after new production evidence or a deliberate follow-up experiment."
+    )
     lines = [
         "# Apple Review Pipeline Operating Limits",
         "",
@@ -1018,7 +1086,7 @@ def render_operating_markdown(summary: dict[str, Any]) -> str:
         "- Full-scope F1/F2 runs are calibration/control evidence; future frequency strategy tests use randomized 25-app groups so one test does not consume the full 200-app incremental signal.",
         "- `successful_run_count` is GitHub-clean; `source_pressure_clean_run_count` is source-pressure clean and can include post-ingestion artifact-only failures.",
         "- Depth tests (D1/D2) use randomized 25-app groups and measure whether page caps miss more than 5% of rows later captured by a same-group uncapped audit.",
-        "- A final recommendation should wait for the pending tests unless source-pressure thresholds stop the ladder early.",
+        final_recommendation_line,
         "",
         "### Depth Audit Comparisons",
         "",
