@@ -1,12 +1,9 @@
 name: App Store Review Pipeline
 
 on:
-  # Scheduled daily incremental runs are temporarily paused during controlled
-  # operating-model experiments so full-scope refreshes do not contaminate
-  # seed/treatment groups. Keep workflow_dispatch enabled for manual tests.
   # GitHub cron is UTC. These map to 20:07 and 08:07 America/Los_Angeles during PDT.
-  # schedule:
-  #   - cron: "7 3,15 * * *"
+  schedule:
+    - cron: "7 3,15 * * *"
   workflow_dispatch:
     inputs:
       limit:
