@@ -1,0 +1,104 @@
+name: App Store Review Pipeline Monitor
+
+on:
+  # GitHub cron is UTC. These run about 90 minutes after the daily 03:07/15:07 UTC slots.
+  schedule:
+    - cron: "37 4,16 * * *"
+  workflow_dispatch:
+    inputs:
+      lookback_minutes:
+        description: "Lookback window for expected scheduled runs and Postgres ingestion rows"
+        required: false
+        default: "180"
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: app-store-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 30
+    env:
+      PIP_CONFIG_FILE: /dev/null
+      PIP_USER: "false"
+      GH_TOKEN: ${{ github.token }}
+      INPUT_LOOKBACK_MINUTES: ${{ github.event_name == 'workflow_dispatch' && inputs.lookback_minutes || '180' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Create Python virtualenv
+        run: |
+          set -euo pipefail
+          python3.12 -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+
+      - name: Install dependencies
+        run: .venv/bin/python -m pip install -r requirements.txt
+
+      - name: Fetch recent daily workflow runs
+        run: |
+          set -euo pipefail
+          mkdir -p data/reports/monitoring
+          gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/app-store-daily-pipeline.yml/runs?per_page=20" \
+            > data/reports/monitoring/github_runs.json
+
+      - name: Generate scheduled-run monitoring report
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          since="$(LOOKBACK_MINUTES="$INPUT_LOOKBACK_MINUTES" .venv/bin/python - <<'PY'
+          import os
+          from datetime import datetime, timedelta, timezone
+
+          minutes = max(1, int(os.environ["LOOKBACK_MINUTES"]))
+          print((datetime.now(timezone.utc) - timedelta(minutes=minutes)).replace(microsecond=0).isoformat().replace("+00:00", "Z"))
+          PY
+          )"
+          selected_count="$(.venv/bin/python - <<'PY'
+          from app_store_review_pipeline.config import DEFAULT_TARGETS
+          from app_store_review_pipeline.targets import active_targets, load_targets
+
+          print(len(active_targets(load_targets(DEFAULT_TARGETS))))
+          PY
+          )"
+          set +e
+          .venv/bin/python app_store_pipeline.py monitoring-report \
+            --database-url "$database_url" \
+            --source apple_app_store_web_catalog_reviews \
+            --since "$since" \
+            --selected-count "$selected_count" \
+            --workflow-result monitor \
+            --github-run-id "$GITHUB_RUN_ID" \
+            --github-run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --github-runs-json data/reports/monitoring/github_runs.json \
+            --markdown-output data/reports/monitoring/scheduled_monitor_health.md \
+            --json-output data/reports/monitoring/scheduled_monitor_health.json \
+            --fail-on failing \
+            --require-recent-scheduled-run \
+            --schedule-lookback-minutes "$INPUT_LOOKBACK_MINUTES"
+          report_code=$?
+          set -e
+          cat data/reports/monitoring/scheduled_monitor_health.md >> "$GITHUB_STEP_SUMMARY"
+          exit "$report_code"
+
+      - name: Upload monitoring report
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-store-scheduled-monitor-${{ github.run_id }}
+          retention-days: 30
+          if-no-files-found: warn
+          path: |
+            data/reports/monitoring/scheduled_monitor_health.md
+            data/reports/monitoring/scheduled_monitor_health.json
+            data/reports/monitoring/github_runs.json

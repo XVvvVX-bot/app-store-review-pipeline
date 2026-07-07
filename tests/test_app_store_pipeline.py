@@ -30,6 +30,7 @@ from app_store_review_pipeline.cli import (
     command_check_web_429_cooldown,
     command_select_web_catalog_pressure,
     command_daily_web_catalog,
+    command_monitoring_report,
     command_operating_ledger_upsert_run,
     command_operating_report,
     select_target_window,
@@ -40,6 +41,14 @@ from app_store_review_pipeline.eda import add_rates, calculate_concentration, re
 from app_store_review_pipeline.experiment_groups import build_daily_matrix_rows
 from app_store_review_pipeline.fetcher import fetch_targets, terminal_reason_for_page
 from app_store_review_pipeline.models import AppTarget, ReviewPage
+from app_store_review_pipeline.monitoring import (
+    evaluate_alerts,
+    extract_jobs,
+    extract_runs,
+    monitor_exit_code,
+    overall_status,
+    render_monitoring_markdown,
+)
 from app_store_review_pipeline.operating import (
     build_aggregate_summary,
     build_depth_audit_findings,
@@ -1008,6 +1017,206 @@ def test_command_operating_report_passes_paths(tmp_path, monkeypatch):
     assert observed["markdown_path"] == tmp_path / "operating.md"
     assert observed["json_path"] == tmp_path / "operating.json"
     assert observed["grace_minutes"] == 7
+
+
+def monitoring_alert_status(
+    *,
+    run_metrics: dict | None = None,
+    stale_apps: list[dict] | None = None,
+    history: dict | None = None,
+    github: dict | None = None,
+    selected_count: int = 200,
+    workflow_result: str = "success",
+    require_recent_scheduled_run: bool = False,
+) -> tuple[str, list[dict]]:
+    base_run_metrics = {
+        "page_count": 100,
+        "reviews_inserted": 50,
+        "http_429_pages": 0,
+        "http_429_rate": 0,
+        "other_non_200_pages": 0,
+        "non_200_rate": 0,
+        "fetch_error_rate": 0,
+        "retry_rate": 0,
+        "duplicate_rate": 0.5,
+        "backlog_terminal_rate": 0,
+        "runtime_minutes": 30,
+    }
+    base_github = {
+        "job_failure": 0,
+        "recent_schedule_run_count": 1,
+        "recent_failed_schedule_run_count": 0,
+    }
+    base_run_metrics.update(run_metrics or {})
+    base_github.update(github or {})
+    alerts = evaluate_alerts(
+        run_metrics=base_run_metrics,
+        app_metrics={},
+        stale_apps=stale_apps or [],
+        history=history or {"median_inserted_per_app_run": 10},
+        github=base_github,
+        selected_count=selected_count,
+        workflow_result=workflow_result,
+        require_recent_scheduled_run=require_recent_scheduled_run,
+    )
+    return overall_status(alerts), alerts
+
+
+def alert_codes(alerts: list[dict]) -> set[str]:
+    return {alert["code"] for alert in alerts}
+
+
+def test_monitoring_alerts_clean_run_is_healthy():
+    status, alerts = monitoring_alert_status()
+
+    assert status == "healthy"
+    assert alert_codes(alerts) == {"all_clear"}
+
+
+def test_monitoring_workflow_and_schedule_failures_are_failing():
+    status, alerts = monitoring_alert_status(workflow_result="failure")
+    assert status == "failing"
+    assert "workflow_failure" in alert_codes(alerts)
+
+    status, alerts = monitoring_alert_status(
+        github={"recent_schedule_run_count": 0},
+        require_recent_scheduled_run=True,
+    )
+    assert status == "failing"
+    assert "missing_scheduled_run" in alert_codes(alerts)
+
+    status, alerts = monitoring_alert_status(github={"recent_failed_schedule_run_count": 2})
+    assert status == "failing"
+    assert "repeated_scheduled_failures" in alert_codes(alerts)
+
+
+def test_monitoring_http_429_thresholds_map_to_degraded_and_failing():
+    status, alerts = monitoring_alert_status(run_metrics={"http_429_pages": 1, "http_429_rate": 0.004})
+    assert status == "degraded"
+    assert "http_429_present" in alert_codes(alerts)
+
+    status, alerts = monitoring_alert_status(run_metrics={"http_429_pages": 3, "http_429_rate": 0.03})
+    assert status == "failing"
+    assert "excessive_http_429" in alert_codes(alerts)
+
+
+def test_monitoring_fetch_stale_duplicate_insert_and_backlog_alerts():
+    status, alerts = monitoring_alert_status(run_metrics={"fetch_error_rate": 0.01})
+    assert status == "failing"
+    assert "fetch_error_rate" in alert_codes(alerts)
+
+    status, alerts = monitoring_alert_status(stale_apps=[{"hours_since_completed": 25}])
+    assert status == "degraded"
+    assert "stale_apps_24h" in alert_codes(alerts)
+
+    status, alerts = monitoring_alert_status(stale_apps=[{"hours_since_completed": None}])
+    assert status == "failing"
+    assert "stale_apps_36h" in alert_codes(alerts)
+
+    status, alerts = monitoring_alert_status(run_metrics={"duplicate_rate": 0.95})
+    assert status == "degraded"
+    assert "high_duplicate_rate" in alert_codes(alerts)
+
+    status, alerts = monitoring_alert_status(
+        run_metrics={"reviews_inserted": 2},
+        history={"median_inserted_per_app_run": 10},
+    )
+    assert status == "degraded"
+    assert "insert_drop" in alert_codes(alerts)
+
+    status, alerts = monitoring_alert_status(run_metrics={"backlog_terminal_rate": 0.051})
+    assert status == "failing"
+    assert "backlog_terminal_rate" in alert_codes(alerts)
+
+
+def test_monitoring_markdown_and_json_helpers_render_expected_fields():
+    summary = {
+        "metadata": {
+            "generated_at": "2026-07-01T00:00:00Z",
+            "source": WEB_CATALOG_SOURCE,
+            "since": "2026-07-01T00:00:00Z",
+            "github_run_id": "123",
+            "workflow_result": "success",
+            "selected_count": 200,
+        },
+        "status": "degraded",
+        "alerts": [{"severity": "degraded", "code": "http_429_present", "message": "fixture"}],
+        "github": {"job_total": 2, "job_success": 2, "job_failure": 0},
+        "run_metrics": {
+            "page_count": 10,
+            "app_count": 2,
+            "review_rows": 200,
+            "reviews_inserted": 10,
+            "reviews_updated": 1,
+            "duplicates_skipped": 189,
+            "duplicate_rate": 0.945,
+            "http_429_pages": 1,
+            "non_200_rate": 0.1,
+            "retried_pages": 1,
+            "fetch_errors": 0,
+            "terminal_reasons": [{"terminal_reason": "caught_up_to_existing_reviews", "page_count": 2}],
+        },
+        "app_metrics": {
+            "long_tail_apps": [{"app_name": "Fixture", "page_count": 5}],
+            "top_inserted_apps": [{"app_name": "Fixture", "inserted": 10}],
+        },
+        "stale_apps": [],
+        "database_snapshot": [{"table_name": "app_store_reviews", "row_count": 10, "total_size": "1 MB"}],
+    }
+
+    markdown = render_monitoring_markdown(summary)
+
+    assert "Status: **degraded**" in markdown
+    assert "Top Inserted Apps" in markdown
+    assert extract_jobs({"jobs": [{"name": "daily"}]}) == [{"name": "daily"}]
+    assert extract_runs({"workflow_runs": [{"id": 1}]}) == [{"id": 1}]
+    assert monitor_exit_code("healthy", "failing") == 0
+    assert monitor_exit_code("failing", "failing") == 1
+
+
+def test_command_monitoring_report_writes_outputs(tmp_path, monkeypatch, capsys):
+    observed = {}
+
+    def fake_generate_monitoring_report(*args, **kwargs):
+        observed["database_url"] = args[0]
+        observed.update(kwargs)
+        kwargs["markdown_path"].write_text("# Fixture monitoring\n", encoding="utf-8")
+        kwargs["json_path"].write_text(
+            json.dumps(
+                {
+                    "status": "degraded",
+                    "alerts": [{"severity": "degraded", "code": "http_429_present", "message": "fixture"}],
+                }
+            ),
+            encoding="utf-8",
+        )
+        return {"status": "degraded", "exit_code": 0}
+
+    monkeypatch.setattr("app_store_review_pipeline.cli.generate_monitoring_report", fake_generate_monitoring_report)
+    args = argparse.Namespace(
+        database_url="postgresql:///fixture",
+        source=WEB_CATALOG_SOURCE,
+        since="2026-07-01T00:00:00Z",
+        selected_count=200,
+        workflow_result="success",
+        github_run_id="123",
+        github_run_url="https://github.com/example/repo/actions/runs/123",
+        github_jobs_json=tmp_path / "jobs.json",
+        github_runs_json=tmp_path / "runs.json",
+        markdown_output=tmp_path / "monitor.md",
+        json_output=tmp_path / "monitor.json",
+        fail_on="failing",
+        require_recent_scheduled_run=True,
+        schedule_lookback_minutes=180,
+    )
+
+    assert command_monitoring_report(args) == 0
+    output = capsys.readouterr().out
+    assert "::warning title=http_429_present::fixture" in output
+    assert observed["database_url"] == "postgresql:///fixture"
+    assert observed["markdown_path"] == tmp_path / "monitor.md"
+    assert observed["json_path"] == tmp_path / "monitor.json"
+    assert observed["require_recent_scheduled_run"] is True
 
 
 def test_command_operating_ledger_upsert_run_writes_github_metadata(tmp_path):

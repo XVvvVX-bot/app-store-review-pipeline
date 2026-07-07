@@ -8,9 +8,7 @@ The purpose of this mode is to keep the Postgres review dataset fresh across all
 
 The active workflow is `App Store Review Pipeline` in `.github/workflows/app-store-daily-pipeline.yml`.
 
-Scheduled cron runs are temporarily paused while controlled grouped operating-model experiments are running, because a full-scope scheduled refresh between a seed/control run and its treatment run would contaminate the experiment. Manual `workflow_dispatch` remains enabled and is the only way this workflow should run during the experiment window.
-
-Production cadence to restore after the experiments:
+Production cadence:
 
 - 08:07 America/Los_Angeles during PDT
 - 20:07 America/Los_Angeles during PDT
@@ -116,7 +114,14 @@ The completed full-scope F1/F2 runs are retained as calibration evidence. Future
 
 ## Monitoring Checklist
 
-For each scheduled run, check:
+Automated monitoring is now the primary run-health surface:
+
+- Command: `python app_store_pipeline.py monitoring-report`
+- Daily workflow monitor job: `.github/workflows/app-store-daily-pipeline.yml`
+- Scheduled watchdog workflow: `.github/workflows/app-store-monitor.yml`
+- Detailed design and runbook: `docs/monitoring.md`
+
+For each scheduled run, the monitor checks:
 
 - GitHub job count: all matrix jobs should finish successfully.
 - `app_store_review_pages`: page count, app count, status code distribution, terminal reasons.
@@ -124,6 +129,12 @@ For each scheduled run, check:
 - HTTP 429 count and rate.
 - Long-tail apps with unusually high page counts.
 - Apps that stop by time budget, fetch error, or final non-200 instead of trusted overlap.
+- App-country freshness from `app_store_sync_state`.
+- Database row counts and table sizes.
+
+The monitor appends a Markdown health summary to the GitHub Actions run summary and uploads both Markdown and JSON artifacts. It classifies the run as `healthy`, `degraded`, or `failing`; only `failing` status fails the monitor job in v1.
+
+Manual SQL checks remain useful for investigation:
 
 Useful Postgres checks:
 

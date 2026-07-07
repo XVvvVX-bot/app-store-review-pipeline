@@ -16,6 +16,12 @@ from app_store_review_pipeline.config import (
 )
 from app_store_review_pipeline.eda import DEFAULT_EDA_HTML, DEFAULT_EDA_JSON, DEFAULT_EDA_MARKDOWN, generate_eda_report
 from app_store_review_pipeline.files import write_json, write_jsonl
+from app_store_review_pipeline.monitoring import (
+    DEFAULT_MONITORING_JSON,
+    DEFAULT_MONITORING_MARKDOWN,
+    emit_github_annotations,
+    generate_monitoring_report,
+)
 from app_store_review_pipeline.operating import (
     DEFAULT_OPERATING_JSON,
     DEFAULT_OPERATING_LEDGER,
@@ -171,6 +177,26 @@ def build_parser() -> argparse.ArgumentParser:
     ledger_run.add_argument("--input", action="append", default=[], help="Run input as key=value. May be repeated.")
     ledger_run.add_argument("--run-json", type=Path, help="Optional gh run view JSON payload for offline/test use.")
     ledger_run.set_defaults(func=command_operating_ledger_upsert_run)
+
+    monitor = subparsers.add_parser(
+        "monitoring-report",
+        help="Generate a GitHub-native health report for daily incremental ingestion.",
+    )
+    monitor.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
+    monitor.add_argument("--source", default=WEB_CATALOG_SOURCE)
+    monitor.add_argument("--since", required=True)
+    monitor.add_argument("--selected-count", type=int, required=True)
+    monitor.add_argument("--workflow-result", required=True)
+    monitor.add_argument("--github-run-id", default="")
+    monitor.add_argument("--github-run-url", default="")
+    monitor.add_argument("--github-jobs-json", type=Path)
+    monitor.add_argument("--github-runs-json", type=Path)
+    monitor.add_argument("--markdown-output", type=Path, default=DEFAULT_MONITORING_MARKDOWN)
+    monitor.add_argument("--json-output", type=Path, default=DEFAULT_MONITORING_JSON)
+    monitor.add_argument("--fail-on", choices=["never", "degraded", "failing"], default="failing")
+    monitor.add_argument("--require-recent-scheduled-run", action="store_true")
+    monitor.add_argument("--schedule-lookback-minutes", type=int, default=180)
+    monitor.set_defaults(func=command_monitoring_report)
 
     daily_web_catalog = subparsers.add_parser(
         "daily-web-catalog",
@@ -526,6 +552,29 @@ def command_operating_ledger_upsert_run(args: argparse.Namespace) -> int:
     result = upsert_operating_ledger_run(args.ledger, entry)
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
+
+
+def command_monitoring_report(args: argparse.Namespace) -> int:
+    result = generate_monitoring_report(
+        args.database_url,
+        source=args.source,
+        since=args.since,
+        selected_count=args.selected_count,
+        workflow_result=args.workflow_result,
+        github_run_id=args.github_run_id,
+        github_run_url=args.github_run_url,
+        github_jobs_json=args.github_jobs_json,
+        github_runs_json=args.github_runs_json,
+        markdown_path=args.markdown_output,
+        json_path=args.json_output,
+        fail_on=args.fail_on,
+        require_recent_scheduled_run=args.require_recent_scheduled_run,
+        schedule_lookback_minutes=args.schedule_lookback_minutes,
+    )
+    summary = json.loads(args.json_output.read_text(encoding="utf-8"))
+    emit_github_annotations(summary)
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return int(result["exit_code"])
 
 
 def select_target_window(targets: list, *, limit: int, offset: int = 0) -> list:

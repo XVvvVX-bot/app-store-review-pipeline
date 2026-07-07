@@ -128,6 +128,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: app-store-postgres-writer
@@ -415,3 +416,131 @@ jobs:
           path: |
             data/raw/apple_web_catalog/
             data/reports/apple_web_catalog/
+
+  monitor:
+    needs:
+      - prepare-matrix
+      - preflight
+      - daily
+    if: ${{ always() && !cancelled() }}
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 30
+    env:
+      PIP_CONFIG_FILE: /dev/null
+      PIP_USER: "false"
+      DAILY_RUN_STARTED_AT: ${{ needs.prepare-matrix.outputs.run_started_at }}
+      SELECTED_COUNT: ${{ needs.prepare-matrix.outputs.selected_count }}
+      PREPARE_RESULT: ${{ needs.prepare-matrix.result }}
+      PREFLIGHT_RESULT: ${{ needs.preflight.result }}
+      DAILY_RESULT: ${{ needs.daily.result }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Create Python virtualenv
+        run: |
+          set -euo pipefail
+          python3.12 -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+
+      - name: Install dependencies
+        run: .venv/bin/python -m pip install -r requirements.txt
+
+      - name: Fetch GitHub workflow metadata
+        run: |
+          set -euo pipefail
+          mkdir -p data/reports/monitoring
+          .venv/bin/python - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          run_id = os.environ["GITHUB_RUN_ID"]
+          jobs = []
+          page = 1
+          while True:
+              result = subprocess.run(
+                  ["gh", "api", f"repos/{repo}/actions/runs/{run_id}/jobs?per_page=100&page={page}"],
+                  check=True,
+                  capture_output=True,
+                  text=True,
+              )
+              payload = json.loads(result.stdout)
+              batch = payload.get("jobs") or []
+              jobs.extend(batch)
+              if len(batch) < 100:
+                  break
+              page += 1
+
+          runs = subprocess.run(
+              ["gh", "api", f"repos/{repo}/actions/workflows/app-store-daily-pipeline.yml/runs?per_page=20"],
+              check=True,
+              capture_output=True,
+              text=True,
+          )
+          output = Path("data/reports/monitoring")
+          (output / "github_jobs.json").write_text(json.dumps({"jobs": jobs}, indent=2), encoding="utf-8")
+          (output / "github_runs.json").write_text(runs.stdout, encoding="utf-8")
+          PY
+
+      - name: Generate monitoring report
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          run_started_at="${DAILY_RUN_STARTED_AT:-}"
+          if [ -z "$run_started_at" ]; then
+            run_started_at="$(.venv/bin/python - <<'PY'
+          from datetime import datetime, timedelta, timezone
+
+          print((datetime.now(timezone.utc) - timedelta(hours=3)).replace(microsecond=0).isoformat().replace("+00:00", "Z"))
+          PY
+            )"
+          fi
+          selected_count="${SELECTED_COUNT:-0}"
+          workflow_result="success"
+          for result in "$PREPARE_RESULT" "$PREFLIGHT_RESULT" "$DAILY_RESULT"; do
+            case "$result" in
+              success|skipped) ;;
+              *) workflow_result="failure" ;;
+            esac
+          done
+          if [ "$selected_count" != "0" ] && [ "$DAILY_RESULT" != "success" ]; then
+            workflow_result="failure"
+          fi
+          set +e
+          .venv/bin/python app_store_pipeline.py monitoring-report \
+            --database-url "$database_url" \
+            --source apple_app_store_web_catalog_reviews \
+            --since "$run_started_at" \
+            --selected-count "$selected_count" \
+            --workflow-result "$workflow_result" \
+            --github-run-id "$GITHUB_RUN_ID" \
+            --github-run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --github-jobs-json data/reports/monitoring/github_jobs.json \
+            --github-runs-json data/reports/monitoring/github_runs.json \
+            --markdown-output data/reports/monitoring/current_run_health.md \
+            --json-output data/reports/monitoring/current_run_health.json \
+            --fail-on failing
+          report_code=$?
+          set -e
+          cat data/reports/monitoring/current_run_health.md >> "$GITHUB_STEP_SUMMARY"
+          exit "$report_code"
+
+      - name: Upload monitoring report
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-store-monitoring-${{ github.run_id }}
+          retention-days: 30
+          if-no-files-found: warn
+          path: |
+            data/reports/monitoring/current_run_health.md
+            data/reports/monitoring/current_run_health.json
+            data/reports/monitoring/github_jobs.json
+            data/reports/monitoring/github_runs.json
