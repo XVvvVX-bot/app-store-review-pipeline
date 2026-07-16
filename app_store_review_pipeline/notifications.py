@@ -68,17 +68,27 @@ def write_fallback_failure_report(
 def build_monitoring_notification(summary: dict[str, Any]) -> dict[str, Any]:
     metadata = summary.get("metadata") or {}
     run = summary.get("run_metrics") or {}
+    status = str(summary.get("status") or "failing").lower()
     failing_alerts = [alert for alert in summary.get("alerts", []) if alert.get("severity") == "failing"]
     codes = [str(alert.get("code") or "monitoring_failure") for alert in failing_alerts]
-    primary = failing_alerts[0] if failing_alerts else {}
+    status_alerts = [alert for alert in summary.get("alerts", []) if alert.get("severity") == status]
+    primary = (failing_alerts or status_alerts or summary.get("alerts", []) or [{}])[0]
     run_id = str(metadata.get("github_run_id") or "unknown")
     event_name = str(metadata.get("github_event_name") or "")
     run_attempt = int(metadata.get("github_run_attempt") or 1)
-    eligible = summary.get("status") == "failing" and event_name == "schedule" and run_attempt == 1
+    eligible = status == "failing" and event_name == "schedule" and run_attempt == 1
     affected_scopes = select_affected_scopes(summary)
-    primary_code = str(primary.get("code") or "monitoring_failure")
-    primary_message = str(primary.get("message") or "The ingestion monitor classified the run as failing.")
-    subject = f"[App Store Review Pipeline] FAILING: {primary_code} (run {run_id})"
+    default_code = "monitoring_failure" if status == "failing" else "all_clear" if status == "healthy" else status
+    default_message = (
+        "The ingestion monitor classified the run as failing."
+        if status == "failing"
+        else "No monitoring thresholds were tripped."
+        if status == "healthy"
+        else f"The ingestion monitor classified the run as {status}."
+    )
+    primary_code = str(primary.get("code") or default_code)
+    primary_message = str(primary.get("message") or default_message)
+    subject = f"[App Store Review Pipeline] {status.upper()}: {primary_code} (run {run_id})"
     metrics = {
         "pages": int(run.get("page_count") or 0),
         "rows": int(run.get("review_rows") or 0),
@@ -95,6 +105,7 @@ def build_monitoring_notification(summary: dict[str, Any]) -> dict[str, Any]:
         "missing_scopes": int(run.get("missing_scope_count") or 0),
     }
     body = render_notification_body(
+        status=status,
         primary_code=primary_code,
         primary_message=primary_message,
         affected_scopes=affected_scopes,
@@ -102,7 +113,7 @@ def build_monitoring_notification(summary: dict[str, Any]) -> dict[str, Any]:
         github_run_url=str(metadata.get("github_run_url") or ""),
         generated_at=str(metadata.get("generated_at") or ""),
     )
-    fingerprint_input = "|".join([run_id, *sorted(codes)])
+    fingerprint_input = "|".join([run_id, status, *sorted(codes or [primary_code])])
     return {
         "eligible": eligible,
         "reason": "failing_scheduled_first_attempt" if eligible else notification_skip_reason(summary),
@@ -179,6 +190,7 @@ def select_affected_scopes(summary: dict[str, Any], *, limit: int = 3) -> list[d
 
 def render_notification_body(
     *,
+    status: str,
     primary_code: str,
     primary_message: str,
     affected_scopes: list[dict[str, Any]],
@@ -189,15 +201,19 @@ def render_notification_body(
     scope_text = ", ".join(
         f"{scope.get('app_name') or scope.get('app_id') or 'unknown'} ({scope.get('country') or 'n/a'})"
         for scope in affected_scopes
-    ) or "pipeline-wide or unavailable"
+    ) or ("pipeline-wide or unavailable" if status == "failing" else "none requiring external alert")
     metric_text = ", ".join(f"{key}={value}" for key, value in metrics.items())
+    why_it_matters = {
+        "healthy": "No operator action is required.",
+        "degraded": "Review the GitHub report; external email remains suppressed for degraded status.",
+    }.get(status, "Operator attention is required before relying on the next refresh.")
     return "\n".join(
         [
-            "App Store Review Pipeline status: FAILING",
+            f"App Store Review Pipeline status: {status.upper()}",
             f"Reason: {primary_code} - {primary_message}",
             f"Affected scope: {scope_text}",
             f"Key metrics: {metric_text}",
-            "Why it matters: operator attention is required before relying on the next refresh.",
+            f"Why it matters: {why_it_matters}",
             f"Evidence: {github_run_url or 'GitHub Actions run URL unavailable'}",
             f"Detected: {generated_at or 'unknown'}",
         ]

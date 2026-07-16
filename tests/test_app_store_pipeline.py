@@ -1511,7 +1511,20 @@ def test_monitoring_notification_is_short_scoped_and_failing_only():
 
     summary["status"] = "degraded"
     summary["alerts"][0]["severity"] = "degraded"
-    assert build_monitoring_notification(summary)["eligible"] is False
+    notification = build_monitoring_notification(summary)
+    assert notification["eligible"] is False
+    assert "DEGRADED" in notification["subject"]
+    assert "FAILING" not in notification["subject"]
+
+    summary["status"] = "healthy"
+    summary["alerts"] = [{"severity": "healthy", "code": "all_clear", "message": "No thresholds tripped."}]
+    notification = build_monitoring_notification(summary)
+    assert notification["eligible"] is False
+    assert notification["primary_code"] == "all_clear"
+    assert "HEALTHY" in notification["subject"]
+    assert "status: HEALTHY" in notification["body"]
+    assert "FAILING" not in notification["subject"]
+    assert "FAILING" not in notification["body"]
 
     summary = failing_monitoring_summary()
     summary["alerts"] = [{"severity": "failing", "code": "workflow_failure", "message": "job failed"}]
