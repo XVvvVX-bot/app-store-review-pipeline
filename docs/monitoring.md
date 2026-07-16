@@ -114,6 +114,10 @@ Optional repository variables are `APP_STORE_ALERT_SMTP_HOST` and `APP_STORE_ALE
 
 The workflow uploads `notification_result.json`, which contains delivery status, recipient count, subject, and alert fingerprint, but no addresses or credentials.
 
+### Controlled SMTP Test
+
+Use `.github/workflows/app-store-alert-email-test.yml` after first-time setup or credential rotation. It is manual-only, sends a message whose subject starts with `[TEST]`, and uses a synthetic failing report with `--force` solely to exercise SMTP delivery. It does not start ingestion or read or modify Postgres. The workflow summary and seven-day artifact record the delivery result without storing email addresses or credentials.
+
 ## Missing Scheduled Runs
 
 Set `APP_STORE_HEARTBEAT_URL` to a secret ping URL from an external dead-man service. Configure the check for:

@@ -1,0 +1,109 @@
+name: App Store Alert Email Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  email-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Build controlled test report
+        run: |
+          set -euo pipefail
+          mkdir -p data/reports/monitoring
+          python - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          run_id = os.environ["GITHUB_RUN_ID"]
+          run_url = f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{run_id}"
+          report = {
+              "metadata": {
+                  "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                  "github_run_id": run_id,
+                  "github_run_url": run_url,
+                  "github_event_name": "workflow_dispatch",
+                  "github_run_attempt": int(os.environ.get("GITHUB_RUN_ATTEMPT", "1")),
+              },
+              "status": "failing",
+              "alerts": [
+                  {
+                      "severity": "failing",
+                      "code": "smtp_connectivity_test",
+                      "message": "Controlled SMTP connectivity test; ingestion is not failing.",
+                  }
+              ],
+              "run_metrics": {},
+              "app_metrics": {"pressure_scopes": []},
+              "stale_apps": [],
+              "notification": {
+                  "eligible": False,
+                  "reason": "manual_smtp_connectivity_test",
+                  "fingerprint": f"smtp-test-{run_id}",
+                  "subject": f"[TEST] App Store Review Pipeline email alert (run {run_id})",
+                  "body": "\n".join(
+                      [
+                          "App Store Review Pipeline email delivery test",
+                          "",
+                          "This is a controlled SMTP connectivity test.",
+                          "No ingestion was started and Postgres was not read or modified.",
+                          f"GitHub Actions evidence: {run_url}",
+                      ]
+                  ),
+              },
+          }
+          Path("data/reports/monitoring/email_test_report.json").write_text(
+              json.dumps(report, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Send controlled test email
+        env:
+          APP_STORE_ALERT_SMTP_HOST: ${{ vars.APP_STORE_ALERT_SMTP_HOST }}
+          APP_STORE_ALERT_SMTP_PORT: ${{ vars.APP_STORE_ALERT_SMTP_PORT }}
+          APP_STORE_ALERT_SMTP_USERNAME: ${{ secrets.APP_STORE_ALERT_SMTP_USERNAME }}
+          APP_STORE_ALERT_SMTP_APP_PASSWORD: ${{ secrets.APP_STORE_ALERT_SMTP_APP_PASSWORD }}
+          APP_STORE_ALERT_EMAIL_FROM: ${{ secrets.APP_STORE_ALERT_EMAIL_FROM }}
+          APP_STORE_ALERT_EMAIL_TO: ${{ secrets.APP_STORE_ALERT_EMAIL_TO }}
+        run: |
+          set -euo pipefail
+          python app_store_pipeline.py send-monitoring-email \
+            --report-json data/reports/monitoring/email_test_report.json \
+            --result-json data/reports/monitoring/email_test_result.json \
+            --force
+          {
+            echo "## SMTP Email Test"
+            echo
+            echo '```json'
+            cat data/reports/monitoring/email_test_result.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test evidence
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-store-alert-email-test-${{ github.run_id }}
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            data/reports/monitoring/email_test_report.json
+            data/reports/monitoring/email_test_result.json
