@@ -142,6 +142,10 @@ jobs:
       max_parallel: ${{ steps.build-matrix.outputs.max_parallel }}
       run_started_at: ${{ steps.build-matrix.outputs.run_started_at }}
       selected_count: ${{ steps.build-matrix.outputs.selected_count }}
+      intended_scope_count: ${{ steps.build-matrix.outputs.intended_scope_count }}
+      execution_id: ${{ steps.build-matrix.outputs.execution_id }}
+      scope_signature: ${{ steps.build-matrix.outputs.scope_signature }}
+      config_signature: ${{ steps.build-matrix.outputs.config_signature }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -153,15 +157,32 @@ jobs:
           INPUT_TARGET_OFFSET: ${{ github.event_name == 'workflow_dispatch' && inputs.target_offset || '0' }}
           INPUT_EXPERIMENT_GROUP: ${{ github.event_name == 'workflow_dispatch' && inputs.experiment_group || '' }}
           INPUT_MAX_PARALLEL: ${{ github.event_name == 'workflow_dispatch' && inputs.max_parallel || '4' }}
+          INPUT_MAX_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.max_pages_per_app_country || '0' }}
+          INPUT_START_PAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.start_page || '1' }}
+          INPUT_REVIEW_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.review_limit || '20' }}
+          INPUT_REQUEST_DELAY: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '10' }}
+          INPUT_REQUEST_JITTER: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_jitter_seconds || '5' }}
+          INPUT_429_RETRIES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retries || '2' }}
+          INPUT_429_RETRY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_seconds || '300' }}
+          INPUT_429_BACKOFF: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_backoff_multiplier || '1.5' }}
+          INPUT_429_RETRY_JITTER: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_retry_jitter_seconds || '60' }}
+          INPUT_TIME_BUDGET: ${{ github.event_name == 'workflow_dispatch' && inputs.web_time_budget_seconds || '3600' }}
+          INPUT_SCOPE_BUDGET: ${{ github.event_name == 'workflow_dispatch' && inputs.web_scope_time_budget_seconds || '3600' }}
+          INPUT_DISABLE_OVERLAP: ${{ github.event_name == 'workflow_dispatch' && inputs.disable_overlap_stop || 'false' }}
+          INPUT_PRESSURE_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.pressure_ramp_mode || 'fixed' }}
+          INPUT_PRESSURE_LOOKBACK: ${{ github.event_name == 'workflow_dispatch' && inputs.pressure_ramp_lookback_minutes || '720' }}
+          INPUT_PRESSURE_MAX_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.pressure_ramp_max_pages || '25' }}
         run: |
           set -euo pipefail
           echo "run_started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import json
+          import hashlib
           import os
           from pathlib import Path
 
           from app_store_review_pipeline.experiment_groups import build_daily_matrix_rows
+          from app_store_review_pipeline.targets import load_targets
 
           limit = max(0, int(os.environ["INPUT_LIMIT"]))
           offset_raw = os.environ["INPUT_TARGET_OFFSET"].strip().lower()
@@ -175,9 +196,41 @@ jobs:
               experiment_group=experiment_group,
           )
           matrix = {"include": rows}
+          selected_ids = {row["app_id"] for row in rows}
+          scopes = sorted(
+              (target.apple_app_id, country.lower(), "recent")
+              for target in load_targets(Path("data/targets/apple_apps.csv"))
+              if target.apple_app_id in selected_ids
+              for country in target.countries
+          )
+          config = {
+              "max_parallel": os.environ["INPUT_MAX_PARALLEL"],
+              "max_pages": os.environ["INPUT_MAX_PAGES"],
+              "start_page": os.environ["INPUT_START_PAGE"],
+              "review_limit": os.environ["INPUT_REVIEW_LIMIT"],
+              "request_delay": os.environ["INPUT_REQUEST_DELAY"],
+              "request_jitter": os.environ["INPUT_REQUEST_JITTER"],
+              "web_429_retries": os.environ["INPUT_429_RETRIES"],
+              "web_429_retry_seconds": os.environ["INPUT_429_RETRY_SECONDS"],
+              "web_429_backoff": os.environ["INPUT_429_BACKOFF"],
+              "web_429_retry_jitter": os.environ["INPUT_429_RETRY_JITTER"],
+              "time_budget": os.environ["INPUT_TIME_BUDGET"],
+              "scope_budget": os.environ["INPUT_SCOPE_BUDGET"],
+              "overlap_stop": os.environ["INPUT_DISABLE_OVERLAP"].lower() != "true",
+              "pressure_mode": os.environ["INPUT_PRESSURE_MODE"],
+              "pressure_lookback": os.environ["INPUT_PRESSURE_LOOKBACK"],
+              "pressure_max_pages": os.environ["INPUT_PRESSURE_MAX_PAGES"],
+          }
+          signature = lambda value: hashlib.sha256(
+              json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
+          ).hexdigest()[:20]
           print(f"matrix={json.dumps(matrix, separators=(',', ':'))}")
           print(f"selected_count={len(rows)}")
+          print(f"intended_scope_count={len(scopes)}")
+          print(f"scope_signature={signature(scopes)}")
+          print(f"config_signature={signature(config)}")
           print(f"max_parallel={max_parallel}")
+          print(f"execution_id=github:{os.environ['GITHUB_RUN_ID']}:{os.environ['GITHUB_RUN_ATTEMPT']}:apple-web-catalog")
           PY
 
       - name: Send external schedule heartbeat
@@ -195,7 +248,7 @@ jobs:
             --max-time 20 \
             --retry 2 \
             --retry-all-errors \
-            "$APP_STORE_HEARTBEAT_URL" \
+            "${APP_STORE_HEARTBEAT_URL%/}/start" \
             >/dev/null
 
   preflight:
@@ -209,6 +262,12 @@ jobs:
       INPUT_WEB_429_COOLDOWN_MINUTES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_cooldown_minutes || '0' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_circuit_breaker_min_pages || '4' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_circuit_breaker_max_rate || '0.5' }}
+      EXECUTION_ID: ${{ needs.prepare-matrix.outputs.execution_id }}
+      EXECUTION_STARTED_AT: ${{ needs.prepare-matrix.outputs.run_started_at }}
+      SELECTED_COUNT: ${{ needs.prepare-matrix.outputs.selected_count }}
+      INTENDED_SCOPE_COUNT: ${{ needs.prepare-matrix.outputs.intended_scope_count }}
+      SCOPE_SIGNATURE: ${{ needs.prepare-matrix.outputs.scope_signature }}
+      CONFIG_SIGNATURE: ${{ needs.prepare-matrix.outputs.config_signature }}
 
     steps:
       - name: Check out repository
@@ -218,10 +277,9 @@ jobs:
         run: |
           set -euo pipefail
           python3.12 -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip
 
       - name: Install dependencies
-        run: .venv/bin/python -m pip install -r requirements.txt
+        run: .venv/bin/python -m pip install -r requirements.lock
 
       - name: Check local Postgres
         env:
@@ -230,6 +288,26 @@ jobs:
           set -euo pipefail
           database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
           .venv/bin/python app_store_pipeline.py init-postgres --database-url "$database_url"
+
+      - name: Start ingestion execution
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          .venv/bin/python app_store_pipeline.py start-execution \
+            --database-url "$database_url" \
+            --execution-id "$EXECUTION_ID" \
+            --execution-started-at "$EXECUTION_STARTED_AT" \
+            --github-run-id "$GITHUB_RUN_ID" \
+            --github-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --github-workflow "$GITHUB_WORKFLOW" \
+            --github-event-name "$GITHUB_EVENT_NAME" \
+            --git-sha "$GITHUB_SHA" \
+            --scope-signature "$SCOPE_SIGNATURE" \
+            --config-signature "$CONFIG_SIGNATURE" \
+            --intended-target-count "$SELECTED_COUNT" \
+            --intended-scope-count "$INTENDED_SCOPE_COUNT"
 
       - name: Sync targets to Postgres
         env:
@@ -303,6 +381,11 @@ jobs:
       INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_circuit_breaker_min_pages || '4' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE: ${{ github.event_name == 'workflow_dispatch' && inputs.web_429_circuit_breaker_max_rate || '0.5' }}
       DAILY_RUN_STARTED_AT: ${{ needs.prepare-matrix.outputs.run_started_at }}
+      EXECUTION_ID: ${{ needs.prepare-matrix.outputs.execution_id }}
+      SELECTED_COUNT: ${{ needs.prepare-matrix.outputs.selected_count }}
+      INTENDED_SCOPE_COUNT: ${{ needs.prepare-matrix.outputs.intended_scope_count }}
+      SCOPE_SIGNATURE: ${{ needs.prepare-matrix.outputs.scope_signature }}
+      CONFIG_SIGNATURE: ${{ needs.prepare-matrix.outputs.config_signature }}
 
     steps:
       - name: Check out repository
@@ -312,10 +395,9 @@ jobs:
         run: |
           set -euo pipefail
           python3.12 -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip
 
       - name: Install dependencies
-        run: .venv/bin/python -m pip install -r requirements.txt
+        run: .venv/bin/python -m pip install -r requirements.lock
 
       - name: Check local Postgres connection
         env:
@@ -389,6 +471,18 @@ jobs:
             --web-429-retry-jitter-seconds "$INPUT_WEB_429_RETRY_JITTER_SECONDS" \
             --web-time-budget-seconds "$INPUT_WEB_TIME_BUDGET_SECONDS" \
             --web-scope-time-budget-seconds "$INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS" \
+            --execution-id "$EXECUTION_ID" \
+            --execution-started-at "$DAILY_RUN_STARTED_AT" \
+            --github-run-id "$GITHUB_RUN_ID" \
+            --github-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --github-workflow "$GITHUB_WORKFLOW" \
+            --github-event-name "$GITHUB_EVENT_NAME" \
+            --git-sha "$GITHUB_SHA" \
+            --worker-key "${{ matrix.target_offset }}:${MATRIX_APP_ID}" \
+            --scope-signature "$SCOPE_SIGNATURE" \
+            --config-signature "$CONFIG_SIGNATURE" \
+            --intended-target-count "$SELECTED_COUNT" \
+            --intended-scope-count "$INTENDED_SCOPE_COUNT" \
             --assume-postgres-schema \
             --skip-target-sync \
             $overlap_flag
@@ -451,6 +545,7 @@ jobs:
       PREPARE_RESULT: ${{ needs.prepare-matrix.result }}
       PREFLIGHT_RESULT: ${{ needs.preflight.result }}
       DAILY_RESULT: ${{ needs.daily.result }}
+      EXECUTION_ID: ${{ needs.prepare-matrix.outputs.execution_id }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Check out repository
@@ -460,10 +555,9 @@ jobs:
         run: |
           set -euo pipefail
           python3.12 -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip
 
       - name: Install dependencies
-        run: .venv/bin/python -m pip install -r requirements.txt
+        run: .venv/bin/python -m pip install -r requirements.lock
 
       - name: Fetch GitHub workflow metadata
         run: |
@@ -581,6 +675,7 @@ jobs:
             --github-run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
             --github-event-name "$GITHUB_EVENT_NAME" \
             --github-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --execution-id "$EXECUTION_ID" \
             --github-jobs-json data/reports/monitoring/github_jobs.json \
             --github-runs-json data/reports/monitoring/github_runs.json \
             --markdown-output data/reports/monitoring/current_run_health.md \
@@ -590,25 +685,6 @@ jobs:
           set -e
           cat data/reports/monitoring/current_run_health.md >> "$GITHUB_STEP_SUMMARY"
           exit "$report_code"
-
-      - name: Send failing monitoring email
-        if: ${{ always() && !cancelled() }}
-        env:
-          APP_STORE_ALERT_SMTP_HOST: ${{ vars.APP_STORE_ALERT_SMTP_HOST }}
-          APP_STORE_ALERT_SMTP_PORT: ${{ vars.APP_STORE_ALERT_SMTP_PORT }}
-          APP_STORE_ALERT_SMTP_USERNAME: ${{ secrets.APP_STORE_ALERT_SMTP_USERNAME }}
-          APP_STORE_ALERT_SMTP_APP_PASSWORD: ${{ secrets.APP_STORE_ALERT_SMTP_APP_PASSWORD }}
-          APP_STORE_ALERT_EMAIL_FROM: ${{ secrets.APP_STORE_ALERT_EMAIL_FROM }}
-          APP_STORE_ALERT_EMAIL_TO: ${{ secrets.APP_STORE_ALERT_EMAIL_TO }}
-        run: |
-          set -euo pipefail
-          if [ ! -f data/reports/monitoring/current_run_health.json ]; then
-            echo "::warning title=monitoring_email_skipped::Monitoring JSON was not generated."
-            exit 0
-          fi
-          .venv/bin/python app_store_pipeline.py send-monitoring-email \
-            --report-json data/reports/monitoring/current_run_health.json \
-            --result-json data/reports/monitoring/notification_result.json
 
       - name: Upload monitoring report
         if: ${{ always() && !cancelled() }}
@@ -623,4 +699,121 @@ jobs:
             data/reports/monitoring/current_run_health.json
             data/reports/monitoring/github_jobs.json
             data/reports/monitoring/github_runs.json
+
+  notify:
+    needs:
+      - prepare-matrix
+      - preflight
+      - daily
+      - monitor
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PIP_CONFIG_FILE: /dev/null
+      PIP_USER: "false"
+      PREPARE_RESULT: ${{ needs.prepare-matrix.result }}
+      PREFLIGHT_RESULT: ${{ needs.preflight.result }}
+      DAILY_RESULT: ${{ needs.daily.result }}
+      MONITOR_RESULT: ${{ needs.monitor.result }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Create Python virtualenv
+        run: |
+          set -euo pipefail
+          python3 -m venv .venv
+          .venv/bin/python -m pip install --disable-pip-version-check -r requirements.lock
+
+      - name: Download primary monitoring report
+        id: download-monitoring
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: app-store-monitoring-${{ github.run_id }}
+          path: data/reports/monitoring
+
+      - name: Create fallback report when primary monitoring is unavailable
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          report="data/reports/monitoring/current_run_health.json"
+          if [ -f "$report" ]; then
+            exit 0
+          fi
+          failure_code="monitor_report_unavailable"
+          failure_message="The primary self-hosted monitor did not produce a health report."
+          for result in "$PREPARE_RESULT" "$PREFLIGHT_RESULT" "$DAILY_RESULT"; do
+            case "$result" in
+              success|skipped) ;;
+              *)
+                failure_code="workflow_failure"
+                failure_message="A required ingestion job failed or did not run, and the primary monitor report is unavailable."
+                ;;
+            esac
+          done
+          .venv/bin/python app_store_pipeline.py fallback-monitoring-report \
+            --json-output "$report" \
+            --failure-code "$failure_code" \
+            --failure-message "$failure_message" \
+            --github-run-id "$GITHUB_RUN_ID" \
+            --github-run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --github-event-name "$GITHUB_EVENT_NAME" \
+            --github-run-attempt "$GITHUB_RUN_ATTEMPT"
+
+      - name: Send email for failing scheduled status only
+        env:
+          APP_STORE_ALERT_SMTP_HOST: ${{ vars.APP_STORE_ALERT_SMTP_HOST }}
+          APP_STORE_ALERT_SMTP_PORT: ${{ vars.APP_STORE_ALERT_SMTP_PORT }}
+          APP_STORE_ALERT_SMTP_USERNAME: ${{ secrets.APP_STORE_ALERT_SMTP_USERNAME }}
+          APP_STORE_ALERT_SMTP_APP_PASSWORD: ${{ secrets.APP_STORE_ALERT_SMTP_APP_PASSWORD }}
+          APP_STORE_ALERT_EMAIL_FROM: ${{ secrets.APP_STORE_ALERT_EMAIL_FROM }}
+          APP_STORE_ALERT_EMAIL_TO: ${{ secrets.APP_STORE_ALERT_EMAIL_TO }}
+        run: |
+          set -euo pipefail
+          .venv/bin/python app_store_pipeline.py send-monitoring-email \
+            --report-json data/reports/monitoring/current_run_health.json \
+            --result-json data/reports/monitoring/notification_result.json
+
+      - name: Complete external schedule heartbeat
+        if: ${{ always() && github.event_name == 'schedule' }}
+        continue-on-error: true
+        env:
+          APP_STORE_HEARTBEAT_URL: ${{ secrets.APP_STORE_HEARTBEAT_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${APP_STORE_HEARTBEAT_URL:-}" ]; then
+            echo "::notice title=external_heartbeat_not_configured::APP_STORE_HEARTBEAT_URL is not configured."
+            exit 0
+          fi
+          status="$(.venv/bin/python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("data/reports/monitoring/current_run_health.json").read_text(encoding="utf-8"))
+          print(report.get("status") or "failing")
+          PY
+          )"
+          heartbeat_url="${APP_STORE_HEARTBEAT_URL%/}"
+          if [ "$status" = "failing" ]; then
+            heartbeat_url="$heartbeat_url/fail"
+          fi
+          curl --fail --silent --show-error \
+            --max-time 20 \
+            --retry 2 \
+            --retry-all-errors \
+            "$heartbeat_url" \
+            >/dev/null
+
+      - name: Upload notification evidence
+        if: ${{ always() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-store-notification-${{ github.run_id }}
+          retention-days: 30
+          if-no-files-found: warn
+          path: |
+            data/reports/monitoring/current_run_health.json
             data/reports/monitoring/notification_result.json

@@ -1,14 +1,14 @@
 app_name,category,apple_app_id,apple_slug,countries,active,notes
 Amazon Shopping,shopping,297606951,amazon-shopping,us,true,Mainstream retail benchmark
 Walmart,shopping,338137227,walmart-shopping-grocery,us,true,Mainstream retail and grocery benchmark
-Target,shopping,297430070,target,us,true,Temporarily rotated out after repeated sparse frontier checks
+Target,shopping,297430070,target,us,true,Historical backfill note: Temporarily rotated out after repeated sparse frontier checks
 Uber,travel,368677368,uber-request-a-ride,us,true,Rideshare and local services benchmark
 Lyft,travel,529379082,lyft,us,true,Rideshare benchmark
 DoorDash,food_delivery,719972451,doordash-food-delivery,us,true,Food delivery benchmark
 Uber Eats,food_delivery,1058959277,uber-eats-food-delivery,us,true,Food delivery benchmark
-Airbnb,travel,401626263,airbnb,us,true,Temporarily rotated out after repeated sparse frontier checks
+Airbnb,travel,401626263,airbnb,us,true,Historical backfill note: Temporarily rotated out after repeated sparse frontier checks
 Booking.com,travel,367003839,booking-com-hotels-travel,us,true,Travel booking benchmark
-Expedia,travel,427916203,expedia-hotels-flights-car,us,true,Temporarily rotated out after repeated sparse frontier checks
+Expedia,travel,427916203,expedia-hotels-flights-car,us,true,Historical backfill note: Temporarily rotated out after repeated sparse frontier checks
 PayPal,finance,283646709,paypal-send-shop-manage,us,true,Payments benchmark
 Venmo,finance,351727428,venmo,us,true,Peer payments benchmark
 Cash App,finance,711923939,cash-app,us,true,Consumer finance benchmark
@@ -19,31 +19,31 @@ Instagram,social,389801252,instagram,us,true,Social media benchmark
 ChatGPT,ai_tools,6448311069,chatgpt,us,true,AI assistant benchmark
 Duolingo,education,570060128,duolingo-language-lessons,us,true,Education benchmark
 MyFitnessPal,health,341232718,myfitnesspal-calorie-counter,us,true,Health and fitness benchmark
-Peacock TV: Stream TV & Movies,entertainment,1508186374,peacock-tv-stream-tv-movies,us,true,Temporarily rotated out after repeated sparse frontier checks
-Love Island USA,entertainment,1465944282,love-island-usa,us,true,Temporarily rotated out after repeated sparse frontier checks
-Kalshi: Trade the Cup,finance,1632713844,kalshi-trade-the-cup,us,true,Temporarily rotated out after repeated sparse frontier checks
-"FOX One: Live News, Sports, TV",entertainment,6746049430,fox-one-live-news-sports-tv,us,true,Reached observed frontier in shallow-page test; rotated out
-Claude by Anthropic,productivity,6473753684,claude-by-anthropic,us,true,Temporarily rotated out after repeated sparse frontier checks
-Threads,social_networking,6446901002,threads,us,true,Rotated in after frontier-heavy apps were paused
-Google Gemini,productivity,6477489729,google-gemini,us,true,Rotated in after frontier-heavy apps were paused
+Peacock TV: Stream TV & Movies,entertainment,1508186374,peacock-tv-stream-tv-movies,us,true,Historical backfill note: Temporarily rotated out after repeated sparse frontier checks
+Love Island USA,entertainment,1465944282,love-island-usa,us,true,Historical backfill note: Temporarily rotated out after repeated sparse frontier checks
+Kalshi: Trade the Cup,finance,1632713844,kalshi-trade-the-cup,us,true,Historical backfill note: Temporarily rotated out after repeated sparse frontier checks
+"FOX One: Live News, Sports, TV",entertainment,6746049430,fox-one-live-news-sports-tv,us,true,Historical backfill note: Reached observed frontier in shallow-page test; rotated out
+Claude by Anthropic,productivity,6473753684,claude-by-anthropic,us,true,Historical backfill note: Temporarily rotated out after repeated sparse frontier checks
+Threads,social_networking,6446901002,threads,us,true,Historical backfill note: Rotated in after frontier-heavy apps were paused
+Google Gemini,productivity,6477489729,google-gemini,us,true,Historical backfill note: Rotated in after frontier-heavy apps were paused
 Netflix Game Controller,entertainment,6447582581,netflix-game-controller,us,true,Apple US topfreeapplications chart seed
-Trump Accounts: Official App,finance,6767364919,trump-accounts-official-app,us,true,Reached observed frontier in shallow-page test; rotated out
-FWC2026 Mobile Tickets,sports,6532603739,fwc2026-mobile-tickets,us,true,Reached observed frontier in shallow-page test; rotated out
+Trump Accounts: Official App,finance,6767364919,trump-accounts-official-app,us,true,Historical backfill note: Reached observed frontier in shallow-page test; rotated out
+FWC2026 Mobile Tickets,sports,6532603739,fwc2026-mobile-tickets,us,true,Historical backfill note: Reached observed frontier in shallow-page test; rotated out
 Telemundo: Series y TV en vivo,entertainment,680595680,telemundo-series-y-tv-en-vivo,us,true,Apple US topfreeapplications chart seed
-Google,utilities,284815942,google,us,true,Rotated in after frontier-heavy apps were paused
-"Whatnot: Shop, Sell, Connect",shopping,1488269261,whatnot-shop-sell-connect,us,true,Paused when reducing controlled backfill set from 25 to 20 apps
-CapCut: Photo & Video Editor,photo_and_video,1500855883,capcut-photo-video-editor,us,true,Paused when reducing controlled backfill set from 25 to 20 apps
-WhatsApp Messenger,social_networking,310633997,whatsapp-messenger,us,true,Paused when reducing controlled backfill set from 25 to 20 apps
-Polymarket,finance,6648798962,polymarket,us,true,Reached observed frontier in shallow-page test; rotated out
-FIFA World Cup 2026™,sports,6476561442,fifa-world-cup-2026,us,true,Reached observed frontier in shallow-page test; rotated out
+Google,utilities,284815942,google,us,true,Historical backfill note: Rotated in after frontier-heavy apps were paused
+"Whatnot: Shop, Sell, Connect",shopping,1488269261,whatnot-shop-sell-connect,us,true,Historical backfill note: Paused when reducing controlled backfill set from 25 to 20 apps
+CapCut: Photo & Video Editor,photo_and_video,1500855883,capcut-photo-video-editor,us,true,Historical backfill note: Paused when reducing controlled backfill set from 25 to 20 apps
+WhatsApp Messenger,social_networking,310633997,whatsapp-messenger,us,true,Historical backfill note: Paused when reducing controlled backfill set from 25 to 20 apps
+Polymarket,finance,6648798962,polymarket,us,true,Historical backfill note: Reached observed frontier in shallow-page test; rotated out
+FIFA World Cup 2026™,sports,6476561442,fifa-world-cup-2026,us,true,Historical backfill note: Reached observed frontier in shallow-page test; rotated out
 Planet Fitness,health_and_fitness,399857015,planet-fitness,us,true,Apple US topfreeapplications chart seed
 Temu: Shop Like a Billionaire,shopping,1641486558,temu-shop-like-a-billionaire,us,true,Apple US topfreeapplications chart seed
 Vinted: Pre-loved marketplace,shopping,632064380,vinted-pre-loved-marketplace,us,true,Apple US topfreeapplications chart seed
 Depop - Buy & Sell Clothes,shopping,518684914,depop-buy-sell-clothes,us,true,Apple US topfreeapplications chart seed
-Google Maps,navigation,585027354,google-maps,us,true,Paused when reducing controlled backfill set from 25 to 20 apps
+Google Maps,navigation,585027354,google-maps,us,true,Historical backfill note: Paused when reducing controlled backfill set from 25 to 20 apps
 Fubo: Watch Live TV & Sports,entertainment,905401434,fubo-watch-live-tv-sports,us,true,Apple US topfreeapplications chart seed
 Shop: All your favorite brands,shopping,1223471316,shop-all-your-favorite-brands,us,true,Apple US topfreeapplications chart seed
-Gmail - Email by Google,productivity,422689480,gmail-email-by-google,us,true,Paused when reducing controlled backfill set from 25 to 20 apps
+Gmail - Email by Google,productivity,422689480,gmail-email-by-google,us,true,Historical backfill note: Paused when reducing controlled backfill set from 25 to 20 apps
 SHEIN - Shopping Online,shopping,878577184,shein-shopping-online,us,true,Apple US topfreeapplications chart seed
 Tubi: Movies & Live TV,entertainment,886445756,tubi-movies-live-tv,us,true,Apple US topfreeapplications chart seed
 Indeed Job Search,business,309735670,indeed-job-search,us,true,Apple US topfreeapplications chart seed
@@ -51,7 +51,7 @@ Meta AI,productivity,1558240027,meta-ai,us,true,Apple US topfreeapplications cha
 Microsoft Authenticator,productivity,983156458,microsoft-authenticator,us,true,Apple US topfreeapplications chart seed
 Paramount+,entertainment,530168168,paramount,us,true,Apple US topfreeapplications chart seed
 Google Chrome,utilities,535886823,google-chrome,us,true,Apple US topfreeapplications chart seed
-TikTok Pro - Events,entertainment,6741796873,tiktok-pro-events,us,true,Reached observed frontier in shallow-page test; rotated out
+TikTok Pro - Events,entertainment,6741796873,tiktok-pro-events,us,true,Historical backfill note: Reached observed frontier in shallow-page test; rotated out
 Life360: Family Safety & GPS,social_networking,384830320,life360-family-safety-gps,us,true,Apple US topfreeapplications chart seed
 Facebook,social_networking,284882215,facebook,us,true,Apple US topfreeapplications chart seed
 Microsoft Teams,business,1113153706,microsoft-teams,us,true,Apple US topfreeapplications chart seed
@@ -62,7 +62,7 @@ Capital One Shopping: Save Now,shopping,1089294040,capital-one-shopping-save-now
 "Discord - Talk, Play, Hang Out",social_networking,985746746,discord-talk-play-hang-out,us,true,Apple US topfreeapplications chart seed
 T-Life,lifestyle,1111876388,t-life,us,true,Apple US topfreeapplications chart seed
 Pinterest,lifestyle,429047995,pinterest,us,true,Apple US topfreeapplications chart seed
-WeatherWise.app,weather,6736407724,weatherwise-app,us,true,Reached observed frontier in shallow-page test; rotated out
+WeatherWise.app,weather,6736407724,weatherwise-app,us,true,Historical backfill note: Reached observed frontier in shallow-page test; rotated out
 YouTube,photo_and_video,544007664,youtube,us,true,Apple US topfreeapplications chart seed
 The Roku App (Official),entertainment,482066631,the-roku-app-official,us,true,Apple US topfreeapplications chart seed
 Microsoft Outlook,productivity,951937596,microsoft-outlook,us,true,Apple US topfreeapplications chart seed
@@ -72,33 +72,33 @@ Grok - AI Chat & Video,productivity,6670324846,grok-ai-chat-video,us,true,Apple 
 Canva: AI Video & Photo Editor,photo_and_video,897446215,canva-ai-video-photo-editor,us,true,Apple US topfreeapplications chart seed
 Freecash - Get Paid Real Money,entertainment,1673567402,freecash-get-paid-real-money,us,true,Apple US topfreeapplications chart seed
 Rips by Triumph,shopping,6751921248,rips-by-triumph,us,true,Apple US topfreeapplications chart seed
-Google Meet,social_networking,1096918571,google-meet,us,true,Rotated in for shallow high-potential depth test; current max OK page around 65
+Google Meet,social_networking,1096918571,google-meet,us,true,Historical backfill note: Rotated in for shallow high-potential depth test; current max OK page around 65
 Speak & Learn English: Learna,education,6478287397,speak-learn-english-learna,us,true,Apple US topfreeapplications chart seed
-McDonald's,food_and_drink,922103212,mcdonalds,us,true,Rotated in for shallow high-potential depth test; current max OK page around 77
+McDonald's,food_and_drink,922103212,mcdonalds,us,true,Historical backfill note: Rotated in for shallow high-potential depth test; current max OK page around 77
 "Strava: Run, Bike, Walk",health_and_fitness,426826309,strava-run-bike-walk,us,true,Apple US topfreeapplications chart seed
-DealSeek: Coupons & Discounts,shopping,6745274862,dealseek-coupons-discounts,us,true,Reached observed frontier in shallow-page test; rotated out
+DealSeek: Coupons & Discounts,shopping,6745274862,dealseek-coupons-discounts,us,true,Historical backfill note: Reached observed frontier in shallow-page test; rotated out
 MyChart,medical,382952264,mychart,us,true,Apple US topfreeapplications chart seed
 Snapchat,photo_and_video,447188370,snapchat,us,true,Apple US topfreeapplications chart seed
-Zoom Workplace,business,546505307,zoom-workplace,us,true,Rotated in for shallow high-potential depth test; current max OK page around 75
-AliExpress - Shopping App,shopping,436672029,aliexpress-shopping-app,us,true,Rotated in for shallow high-potential depth test; current max OK page around 77
-Chase Mobile®: Bank & Invest,finance,298867247,chase-mobile-bank-invest,us,true,Rotated in for shallow high-potential depth test; current max OK page around 66
-YouTube TV,entertainment,1193350206,youtube-tv,us,true,Rotated in for shallow high-potential depth test; current max OK page around 65
+Zoom Workplace,business,546505307,zoom-workplace,us,true,Historical backfill note: Rotated in for shallow high-potential depth test; current max OK page around 75
+AliExpress - Shopping App,shopping,436672029,aliexpress-shopping-app,us,true,Historical backfill note: Rotated in for shallow high-potential depth test; current max OK page around 77
+Chase Mobile®: Bank & Invest,finance,298867247,chase-mobile-bank-invest,us,true,Historical backfill note: Rotated in for shallow high-potential depth test; current max OK page around 66
+YouTube TV,entertainment,1193350206,youtube-tv,us,true,Historical backfill note: Rotated in for shallow high-potential depth test; current max OK page around 65
 DraftKings: Sports & Casino,sports,1375031369,draftkings-sports-casino,us,true,Apple US topfreeapplications chart seed
 VIZIO | WatchFree+,entertainment,1054033219,vizio-watchfree,us,true,Apple US topfreeapplications chart seed
 Taco Bell Fast Food & Delivery,food_and_drink,497387361,taco-bell-fast-food-delivery,us,true,Apple US topfreeapplications chart seed
 eBay online shopping & selling,shopping,282614216,ebay-online-shopping-selling,us,true,Apple US topfreeapplications chart seed
-Reddit,news,1064216828,reddit,us,true,Rotated in for shallow high-potential depth test; current max OK page around 78
+Reddit,news,1064216828,reddit,us,true,Historical backfill note: Rotated in for shallow high-potential depth test; current max OK page around 78
 LinkedIn: Community & Network,business,288429040,linkedin-community-network,us,true,Apple US topfreeapplications chart seed
-American Airlines,travel,382698565,american-airlines,us,true,Rotated in for shallow high-potential depth test; current max OK page around 70
+American Airlines,travel,382698565,american-airlines,us,true,Historical backfill note: Rotated in for shallow high-potential depth test; current max OK page around 70
 Fly Delta,travel,388491656,fly-delta,us,true,Apple US topfreeapplications chart seed
 ADP Mobile Solutions,business,444553167,adp-mobile-solutions,us,true,Apple US topfreeapplications chart seed
-Disney+,entertainment,1446075923,disney,us,true,Rotated in for shallow high-potential depth test; current max OK page around 65
-Costco,shopping,535509415,costco,us,true,Rotated in for shallow high-potential depth test; current max OK page around 77
-Twitch: Live Streaming,photo_and_video,460177396,twitch-live-streaming,us,true,Rotated in for shallow high-potential depth test; current max OK page around 75
+Disney+,entertainment,1446075923,disney,us,true,Historical backfill note: Rotated in for shallow high-potential depth test; current max OK page around 65
+Costco,shopping,535509415,costco,us,true,Historical backfill note: Rotated in for shallow high-potential depth test; current max OK page around 77
+Twitch: Live Streaming,photo_and_video,460177396,twitch-live-streaming,us,true,Historical backfill note: Rotated in for shallow high-potential depth test; current max OK page around 75
 GroupMe,social_networking,392796698,groupme,us,true,Apple US topfreeapplications chart seed
-Google Drive,productivity,507874739,google-drive,us,true,Rotated in for shallow high-potential depth test; current max OK page around 68
+Google Drive,productivity,507874739,google-drive,us,true,Historical backfill note: Rotated in for shallow high-potential depth test; current max OK page around 68
 Chime® – Mobile Banking,finance,836215269,chime-mobile-banking,us,true,Apple US topfreeapplications chart seed
-Southwest Airlines: Travel App,travel,344542975,southwest-airlines-travel-app,us,true,Rotated in for shallow high-potential depth test; current max OK page around 65
+Southwest Airlines: Travel App,travel,344542975,southwest-airlines-travel-app,us,true,Historical backfill note: Rotated in for shallow high-potential depth test; current max OK page around 65
 MLB Ballpark,sports,513135722,mlb-ballpark,us,true,Apple US topfreeapplications chart seed
 PrizePicks - Sports Picks,sports,1437843273,prizepicks-sports-picks,us,true,Apple US topfreeapplications chart seed
 Google Authenticator,utilities,388497605,google-authenticator,us,true,Apple US topfreeapplications chart seed
@@ -134,7 +134,7 @@ Gardenscapes,games,1105855019,gardenscapes,us,true,Apple US topgrossingapplicati
 Love and Deepspace,games,6443467666,love-and-deepspace,us,true,Apple US topgrossingapplications chart seed
 ReelShort - Stream Drama & TV,entertainment,1636235979,reelshort-stream-drama-tv,us,true,Apple US topgrossingapplications chart seed
 Amazon Music: Songs & Podcasts,music,510855668,amazon-music-songs-podcasts,us,true,Apple US topgrossingapplications chart seed
-Block Out! - Color Sort Puzzle,games,6752672568,block-out-color-sort-puzzle,us,true,Reached observed frontier in shallow-page test; rotated out
+Block Out! - Color Sort Puzzle,games,6752672568,block-out-color-sort-puzzle,us,true,Historical backfill note: Reached observed frontier in shallow-page test; rotated out
 Facetune: Photo & Video Editor,photo_and_video,1149994032,facetune-photo-video-editor,us,true,Apple US topgrossingapplications chart seed
 Free Fire: Undersea Mystery,games,1300146617,free-fire-undersea-mystery,us,true,Apple US topgrossingapplications chart seed
 Coin Master,games,406889139,coin-master,us,true,Apple US topgrossingapplications chart seed
@@ -156,7 +156,7 @@ LADDER Strength Training Plans,health_and_fitness,1502936453,ladder-strength-tra
 Bumble Dating App: Meet & Date,lifestyle,930441707,bumble-dating-app-meet-date,us,true,Apple US topgrossingapplications chart seed
 NYTimes: US and Global News,news,284862083,nytimes-us-and-global-news,us,true,Apple US topgrossingapplications chart seed
 FaceApp: Perfect Face Editor,photo_and_video,1180884341,faceapp-perfect-face-editor,us,true,Apple US topgrossingapplications chart seed
-Raya,lifestyle,957215308,raya,us,true,Reached observed frontier in shallow-page test; rotated out
+Raya,lifestyle,957215308,raya,us,true,Historical backfill note: Reached observed frontier in shallow-page test; rotated out
 Cashman Casino Slots Games,games,1123582513,cashman-casino-slots-games,us,true,Apple US topgrossingapplications chart seed
 Wyze - Never Wonder,lifestyle,1288415553,wyze-never-wonder,us,true,Apple US topgrossingapplications chart seed
 Total Battle: War Strategy,games,1274132545,total-battle-war-strategy,us,true,Apple US topgrossingapplications chart seed
@@ -192,10 +192,10 @@ Bloons TD 6,games,1118115766,bloons-td-6,us,true,Apple US toppaidapplications ch
 Stardew Valley,games,1406710800,stardew-valley,us,true,Apple US toppaidapplications chart seed
 RadarScope,weather,288419283,radarscope,us,true,Apple US toppaidapplications chart seed
 Balatro,games,6502453075,balatro,us,true,Apple US toppaidapplications chart seed
-AnkiMobile Flashcards,education,373493387,ankimobile-flashcards,us,true,Reached observed frontier in shallow-page test; rotated out
+AnkiMobile Flashcards,education,373493387,ankimobile-flashcards,us,true,Historical backfill note: Reached observed frontier in shallow-page test; rotated out
 Papa's Freezeria To Go!,games,824305459,papas-freezeria-to-go,us,true,Apple US toppaidapplications chart seed
 MONOPOLY: The Board Game,games,1477966166,monopoly-the-board-game,us,true,Apple US toppaidapplications chart seed
-Scritchy Scratchy,games,6758328352,scritchy-scratchy,us,true,Reached observed frontier in shallow-page test; rotated out
+Scritchy Scratchy,games,6758328352,scritchy-scratchy,us,true,Historical backfill note: Reached observed frontier in shallow-page test; rotated out
 Procreate Pocket,graphics_and_design,916366645,procreate-pocket,us,true,Apple US toppaidapplications chart seed
-Backyard Baseball '01,games,6740349587,backyard-baseball-01,us,true,Reached observed frontier in shallow-page test; rotated out
+Backyard Baseball '01,games,6740349587,backyard-baseball-01,us,true,Historical backfill note: Reached observed frontier in shallow-page test; rotated out
 SkyView®,education,404990064,skyview,us,true,Apple US toppaidapplications chart seed

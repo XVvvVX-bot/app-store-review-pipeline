@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import hashlib
 import time
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 from urllib.parse import urlsplit, urlunsplit
 
 import psycopg
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 
 from app_store_review_pipeline.config import DEFAULT_SORT_BY, PLATFORM, SOURCE, WEB_CATALOG_SOURCE
 from app_store_review_pipeline.files import read_jsonl
@@ -205,6 +207,15 @@ POSTGRES_SCHEMA_MIGRATIONS = (
     "ALTER TABLE app_store_reviews DROP COLUMN IF EXISTS vote_count",
 )
 
+POSTGRES_MIGRATIONS_DIR = Path(__file__).with_name("migrations")
+POSTGRES_MIGRATION_LEDGER_SCHEMA = """
+CREATE TABLE IF NOT EXISTS app_store_schema_migrations (
+    version TEXT PRIMARY KEY,
+    checksum TEXT NOT NULL,
+    applied_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+"""
+
 POSTGRES_SCHEMA_ADVISORY_LOCK_ID = 63206438020260619
 POSTGRES_SCHEMA_MAX_ATTEMPTS = 5
 POSTGRES_SCHEMA_RETRY_SECONDS = 0.5
@@ -217,6 +228,26 @@ POSTGRES_RETRYABLE_WRITE_ERRORS = (
     psycopg.errors.SerializationFailure,
     psycopg.errors.LockNotAvailable,
 )
+
+SUCCESS_TERMINAL_REASONS = {
+    "caught_up_to_existing_reviews",
+    "no_next_href",
+    "target_review_count_reached",
+    "target_review_count_zero",
+}
+BACKLOG_TERMINAL_REASONS = {
+    "page_cap",
+    "empty_page_before_overlap",
+    "empty_page_after_sparse_scan",
+    "time_budget_exceeded",
+    "scope_time_budget_exceeded",
+    "time_budget_retry_window_exceeded",
+    "scope_time_budget_retry_window_exceeded",
+}
+HARD_FAILURE_TERMINAL_REASONS = {
+    "fetch_error",
+    "sparse_fetch_error_threshold",
+}
 
 
 def connect_postgres(database_url: str) -> psycopg.Connection:
@@ -234,12 +265,99 @@ def initialize_postgres(database_url: str) -> None:
                 connection.execute(POSTGRES_SCHEMA)
                 for statement in POSTGRES_SCHEMA_MIGRATIONS:
                     connection.execute(statement)
+                connection.execute(POSTGRES_MIGRATION_LEDGER_SCHEMA)
+                apply_versioned_migrations(connection)
                 connection.commit()
             return
         except psycopg.errors.DeadlockDetected:
             if attempt >= POSTGRES_SCHEMA_MAX_ATTEMPTS:
                 raise
             time.sleep(POSTGRES_SCHEMA_RETRY_SECONDS * attempt)
+
+
+def apply_versioned_migrations(connection: psycopg.Connection) -> list[str]:
+    applied = []
+    for path in sorted(POSTGRES_MIGRATIONS_DIR.glob("*.sql")):
+        sql = path.read_text(encoding="utf-8")
+        checksum = hashlib.sha256(sql.encode("utf-8")).hexdigest()
+        inserted = connection.execute(
+            """
+            INSERT INTO app_store_schema_migrations (version, checksum)
+            VALUES (%s, %s)
+            ON CONFLICT (version) DO NOTHING
+            RETURNING version
+            """,
+            (path.name, checksum),
+        ).fetchone()
+        if inserted:
+            connection.execute(sql)
+            applied.append(path.name)
+            continue
+        existing = connection.execute(
+            "SELECT checksum FROM app_store_schema_migrations WHERE version = %s",
+            (path.name,),
+        ).fetchone()
+        if not existing or existing["checksum"] != checksum:
+            raise RuntimeError(f"Postgres migration checksum mismatch: {path.name}")
+    return applied
+
+
+def backfill_typed_timestamps_postgres(
+    database_url: str,
+    *,
+    batch_size: int = 5_000,
+    max_batches: int = 0,
+    initialize_schema: bool = True,
+) -> dict[str, int]:
+    """Backfill large typed timestamp columns in short committed batches."""
+    if initialize_schema:
+        initialize_postgres(database_url)
+    batch_size = max(1, int(batch_size))
+    max_batches = max(0, int(max_batches))
+    totals = {"review_changes": 0, "reviews": 0, "batches": 0}
+    while max_batches == 0 or totals["batches"] < max_batches:
+        with connect_postgres(database_url) as connection:
+            changed_rows = connection.execute(
+                """
+                WITH batch AS (
+                    SELECT change_id
+                    FROM app_store_review_changes
+                    WHERE changed_at_ts IS NULL AND changed_at IS NOT NULL
+                    ORDER BY change_id
+                    LIMIT %s
+                    FOR UPDATE SKIP LOCKED
+                )
+                UPDATE app_store_review_changes changes
+                SET changed_at_ts = changes.changed_at::timestamptz
+                FROM batch
+                WHERE changes.change_id = batch.change_id
+                """,
+                (batch_size,),
+            ).rowcount
+            review_rows = connection.execute(
+                """
+                WITH batch AS (
+                    SELECT review_key
+                    FROM app_store_reviews
+                    WHERE collected_at_ts IS NULL AND collected_at IS NOT NULL
+                    ORDER BY review_key
+                    LIMIT %s
+                    FOR UPDATE SKIP LOCKED
+                )
+                UPDATE app_store_reviews reviews
+                SET collected_at_ts = reviews.collected_at::timestamptz
+                FROM batch
+                WHERE reviews.review_key = batch.review_key
+                """,
+                (batch_size,),
+            ).rowcount
+            connection.commit()
+        totals["review_changes"] += int(changed_rows or 0)
+        totals["reviews"] += int(review_rows or 0)
+        totals["batches"] += 1
+        if not changed_rows and not review_rows:
+            break
+    return totals
 
 
 def retryable_postgres_write_error(error: BaseException) -> bool:
@@ -259,6 +377,218 @@ def mask_database_url(database_url: str) -> str:
     return urlunsplit((parsed.scheme, netloc, parsed.path, parsed.query, parsed.fragment))
 
 
+def upsert_execution_postgres(
+    database_url: str,
+    *,
+    execution_id: str,
+    source: str,
+    started_at: str,
+    github_run_id: str = "",
+    github_run_attempt: int = 1,
+    workflow_name: str = "",
+    event_name: str = "",
+    git_sha: str = "",
+    scope_signature: str = "",
+    config_signature: str = "",
+    intended_target_count: int = 0,
+    intended_scope_count: int = 0,
+    initialize_schema: bool = True,
+) -> dict[str, Any]:
+    if initialize_schema:
+        initialize_postgres(database_url)
+    with connect_postgres(database_url) as connection:
+        connection.execute(
+            """
+            INSERT INTO app_store_executions (
+                execution_id, github_run_id, github_run_attempt, workflow_name,
+                event_name, git_sha, source, scope_signature, config_signature,
+                intended_target_count, intended_scope_count, started_at
+            )
+            VALUES (%s, NULLIF(%s, ''), %s, NULLIF(%s, ''), NULLIF(%s, ''),
+                    NULLIF(%s, ''), %s, NULLIF(%s, ''), NULLIF(%s, ''), %s, %s, %s)
+            ON CONFLICT (execution_id) DO UPDATE
+            SET github_run_id = COALESCE(EXCLUDED.github_run_id, app_store_executions.github_run_id),
+                github_run_attempt = EXCLUDED.github_run_attempt,
+                workflow_name = COALESCE(EXCLUDED.workflow_name, app_store_executions.workflow_name),
+                event_name = COALESCE(EXCLUDED.event_name, app_store_executions.event_name),
+                git_sha = COALESCE(EXCLUDED.git_sha, app_store_executions.git_sha),
+                scope_signature = COALESCE(EXCLUDED.scope_signature, app_store_executions.scope_signature),
+                config_signature = COALESCE(EXCLUDED.config_signature, app_store_executions.config_signature),
+                intended_target_count = GREATEST(
+                    app_store_executions.intended_target_count,
+                    EXCLUDED.intended_target_count
+                ),
+                intended_scope_count = GREATEST(
+                    app_store_executions.intended_scope_count,
+                    EXCLUDED.intended_scope_count
+                ),
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (
+                execution_id,
+                github_run_id,
+                max(1, int(github_run_attempt or 1)),
+                workflow_name,
+                event_name,
+                git_sha,
+                source,
+                scope_signature,
+                config_signature,
+                max(0, int(intended_target_count or 0)),
+                max(0, int(intended_scope_count or 0)),
+                started_at,
+            ),
+        )
+        connection.commit()
+    return {
+        "execution_id": execution_id,
+        "github_run_id": github_run_id,
+        "github_run_attempt": max(1, int(github_run_attempt or 1)),
+        "intended_target_count": max(0, int(intended_target_count or 0)),
+        "intended_scope_count": max(0, int(intended_scope_count or 0)),
+    }
+
+
+def finalize_execution_postgres(
+    database_url: str,
+    *,
+    execution_id: str,
+    status: str,
+    completed_at: str | None = None,
+    initialize_schema: bool = True,
+) -> dict[str, Any]:
+    if status not in {"healthy", "degraded", "failing", "cancelled"}:
+        raise ValueError(f"Unsupported execution status: {status}")
+    if initialize_schema:
+        initialize_postgres(database_url)
+    completed_at = completed_at or utc_timestamp()
+    with connect_postgres(database_url) as connection:
+        counts = refresh_execution_scope_counts(connection, execution_id)
+        updated = connection.execute(
+            """
+            UPDATE app_store_executions
+            SET status = %s,
+                completed_at = %s,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE execution_id = %s
+            RETURNING execution_id
+            """,
+            (status, completed_at, execution_id),
+        ).fetchone()
+        connection.commit()
+    if not updated:
+        raise ValueError(f"Unknown execution_id: {execution_id}")
+    return {"execution_id": execution_id, "status": status, "completed_at": completed_at, **counts}
+
+
+def record_monitor_snapshot_postgres(
+    database_url: str,
+    *,
+    execution_id: str,
+    status: str,
+    metrics: dict[str, Any],
+    initialize_schema: bool = True,
+) -> dict[str, Any]:
+    if status not in {"healthy", "degraded", "failing"}:
+        raise ValueError(f"Unsupported monitor status: {status}")
+    if initialize_schema:
+        initialize_postgres(database_url)
+    database_snapshot = metrics.get("database_snapshot") or []
+    counts = {
+        str(row.get("table_name")): {
+            "row_count": int(row.get("row_count") or 0),
+            "total_bytes": int(row.get("total_bytes") or 0),
+        }
+        for row in database_snapshot
+    }
+    review_count = counts.get("app_store_reviews", {}).get("row_count", 0)
+    page_count = counts.get("app_store_review_pages", {}).get("row_count", 0)
+    run_count = counts.get("app_store_runs", {}).get("row_count", 0)
+    change_count = counts.get("app_store_review_changes", {}).get("row_count", 0)
+    database_bytes = sum(row["total_bytes"] for row in counts.values())
+    with connect_postgres(database_url) as connection:
+        row = connection.execute(
+            """
+            INSERT INTO app_store_monitor_snapshots (
+                execution_id, status, review_row_count, page_row_count,
+                run_row_count, change_row_count, database_bytes, metrics
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (execution_id) WHERE execution_id IS NOT NULL DO UPDATE
+            SET status = EXCLUDED.status,
+                review_row_count = EXCLUDED.review_row_count,
+                page_row_count = EXCLUDED.page_row_count,
+                run_row_count = EXCLUDED.run_row_count,
+                change_row_count = EXCLUDED.change_row_count,
+                database_bytes = EXCLUDED.database_bytes,
+                metrics = EXCLUDED.metrics,
+                captured_at = CURRENT_TIMESTAMP
+            RETURNING snapshot_id, captured_at
+            """,
+            (
+                execution_id,
+                status,
+                review_count,
+                page_count,
+                run_count,
+                change_count,
+                database_bytes,
+                Jsonb(metrics),
+            ),
+        ).fetchone()
+        connection.commit()
+    return {
+        "snapshot_id": int(row["snapshot_id"]),
+        "execution_id": execution_id,
+        "status": status,
+        "captured_at": row["captured_at"],
+        "database_bytes": database_bytes,
+    }
+
+
+def refresh_execution_scope_counts(connection: psycopg.Connection, execution_id: str) -> dict[str, int]:
+    counts = connection.execute(
+        """
+        SELECT
+            COUNT(*)::integer AS completed_scope_count,
+            COUNT(*) FILTER (WHERE outcome = 'caught_up')::integer AS caught_up_scope_count,
+            COUNT(*) FILTER (WHERE outcome = 'backlogged')::integer AS backlogged_scope_count,
+            COUNT(*) FILTER (WHERE outcome = 'hard_failure')::integer AS hard_failure_scope_count
+        FROM app_store_run_scopes
+        WHERE execution_id = %s
+        """,
+        (execution_id,),
+    ).fetchone()
+    values = {
+        key: int(counts[key] or 0)
+        for key in (
+            "completed_scope_count",
+            "caught_up_scope_count",
+            "backlogged_scope_count",
+            "hard_failure_scope_count",
+        )
+    }
+    connection.execute(
+        """
+        UPDATE app_store_executions
+        SET completed_scope_count = %s,
+            caught_up_scope_count = %s,
+            backlogged_scope_count = %s,
+            hard_failure_scope_count = %s,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE execution_id = %s
+        """,
+        (
+            values["completed_scope_count"],
+            values["caught_up_scope_count"],
+            values["backlogged_scope_count"],
+            values["hard_failure_scope_count"],
+            execution_id,
+        ),
+    )
+    return values
+
+
 def web_catalog_429_circuit_breaker_status(
     database_url: str,
     *,
@@ -273,14 +603,14 @@ def web_catalog_429_circuit_breaker_status(
     max_rate = max(0.0, float(max_rate))
     lookback_minutes = max(0, int(lookback_minutes))
 
-    where_clauses = ["source = %s", "fetched_at IS NOT NULL"]
+    where_clauses = ["source = %s", "fetched_at_ts IS NOT NULL"]
     params: list = [source]
     if since:
-        where_clauses.append("fetched_at::timestamptz >= %s::timestamptz")
+        where_clauses.append("fetched_at_ts >= %s::timestamptz")
         params.append(since)
         window = {"since": since}
     elif lookback_minutes:
-        where_clauses.append("fetched_at::timestamptz >= now() - (%s * INTERVAL '1 minute')")
+        where_clauses.append("fetched_at_ts >= now() - (%s * INTERVAL '1 minute')")
         params.append(lookback_minutes)
         window = {"lookback_minutes": lookback_minutes}
     else:
@@ -292,10 +622,14 @@ def web_catalog_429_circuit_breaker_status(
             SELECT
                 COUNT(*) AS page_count,
                 COUNT(*) FILTER (WHERE status_code = 429) AS http_429_page_count,
+                COUNT(*) FILTER (
+                    WHERE http_429_attempt_count > 0 OR status_code = 429
+                ) AS http_429_affected_page_count,
+                COALESCE(SUM(http_429_attempt_count), 0) AS http_429_attempt_count,
                 COUNT(*) FILTER (WHERE status = 'ok') AS ok_page_count,
                 COUNT(*) FILTER (WHERE status = 'error') AS error_page_count,
-                MIN(fetched_at::timestamptz) AS first_page_at,
-                MAX(fetched_at::timestamptz) AS last_page_at
+                MIN(fetched_at_ts) AS first_page_at,
+                MAX(fetched_at_ts) AS last_page_at
             FROM app_store_review_pages
             WHERE {" AND ".join(where_clauses)}
             """,
@@ -304,13 +638,18 @@ def web_catalog_429_circuit_breaker_status(
 
     page_count = int(row["page_count"] or 0)
     http_429_page_count = int(row["http_429_page_count"] or 0)
-    http_429_rate = http_429_page_count / page_count if page_count else 0.0
+    http_429_affected_page_count = int(
+        row.get("http_429_affected_page_count", http_429_page_count) or 0
+    )
+    http_429_rate = http_429_affected_page_count / page_count if page_count else 0.0
     tripped = page_count >= min_pages and max_rate > 0 and http_429_rate >= max_rate
     return {
         "source": source,
         "window": window,
         "page_count": page_count,
         "http_429_page_count": http_429_page_count,
+        "http_429_affected_page_count": http_429_affected_page_count,
+        "http_429_attempt_count": int(row.get("http_429_attempt_count", http_429_page_count) or 0),
         "ok_page_count": int(row["ok_page_count"] or 0),
         "error_page_count": int(row["error_page_count"] or 0),
         "http_429_rate": http_429_rate,
@@ -335,18 +674,27 @@ def web_catalog_429_cooldown_status(
         row = connection.execute(
             """
             SELECT
-                MAX(fetched_at::timestamptz) AS last_http_429_at,
-                EXTRACT(EPOCH FROM (now() - MAX(fetched_at::timestamptz))) / 60.0
+                MAX(fetched_at_ts) FILTER (
+                    WHERE http_429_attempt_count > 0 OR status_code = 429
+                ) AS last_http_429_at,
+                EXTRACT(EPOCH FROM (
+                    now() - MAX(fetched_at_ts) FILTER (
+                        WHERE http_429_attempt_count > 0 OR status_code = 429
+                    )
+                )) / 60.0
                     AS minutes_since_last_http_429,
                 COUNT(*) FILTER (
-                    WHERE fetched_at::timestamptz >= now() - (%s * INTERVAL '1 minute')
-                ) AS http_429_count_in_cooldown
+                    WHERE fetched_at_ts >= now() - (%s * INTERVAL '1 minute')
+                        AND (http_429_attempt_count > 0 OR status_code = 429)
+                ) AS http_429_count_in_cooldown,
+                COALESCE(SUM(http_429_attempt_count) FILTER (
+                    WHERE fetched_at_ts >= now() - (%s * INTERVAL '1 minute')
+                ), 0) AS http_429_attempt_count_in_cooldown
             FROM app_store_review_pages
             WHERE source = %s
-                AND fetched_at IS NOT NULL
-                AND status_code = 429
+                AND fetched_at_ts IS NOT NULL
             """,
-            (cooldown_minutes, source),
+            (cooldown_minutes, cooldown_minutes, source),
         ).fetchone()
 
     last_http_429_at = row["last_http_429_at"]
@@ -365,6 +713,9 @@ def web_catalog_429_cooldown_status(
         "last_http_429_at": str(last_http_429_at) if last_http_429_at is not None else None,
         "minutes_since_last_http_429": minutes_since_last_http_429,
         "http_429_count_in_cooldown": int(row["http_429_count_in_cooldown"] or 0),
+        "http_429_attempt_count_in_cooldown": int(
+            row.get("http_429_attempt_count_in_cooldown", row["http_429_count_in_cooldown"]) or 0
+        ),
         "tripped": tripped,
     }
 
@@ -553,13 +904,13 @@ def web_catalog_recent_pressure_metrics(
     lookback_minutes: int = 720,
     since: str | None = None,
 ) -> dict:
-    where_clauses = ["source = %s", "fetched_at IS NOT NULL"]
+    where_clauses = ["source = %s", "fetched_at_ts IS NOT NULL"]
     params: list = [source]
     if since:
-        where_clauses.append("fetched_at::timestamptz >= %s::timestamptz")
+        where_clauses.append("fetched_at_ts >= %s::timestamptz")
         params.append(since)
     elif lookback_minutes:
-        where_clauses.append("fetched_at::timestamptz >= now() - (%s * INTERVAL '1 minute')")
+        where_clauses.append("fetched_at_ts >= now() - (%s * INTERVAL '1 minute')")
         params.append(lookback_minutes)
 
     row = connection.execute(
@@ -569,6 +920,10 @@ def web_catalog_recent_pressure_metrics(
             COUNT(*) FILTER (WHERE status = 'ok') AS ok_page_count,
             COUNT(*) FILTER (WHERE status = 'error') AS error_page_count,
             COUNT(*) FILTER (WHERE status_code = 429) AS http_429_page_count,
+            COUNT(*) FILTER (
+                WHERE http_429_attempt_count > 0 OR status_code = 429
+            ) AS http_429_affected_page_count,
+            COALESCE(SUM(http_429_attempt_count), 0) AS http_429_attempt_count,
             COUNT(*) FILTER (
                 WHERE status_code IS NOT NULL
                     AND (status_code < 200 OR status_code >= 300)
@@ -581,8 +936,8 @@ def web_catalog_recent_pressure_metrics(
                     )
             ) AS soft_error_page_count,
             COUNT(*) FILTER (WHERE attempt_count > 1) AS retried_page_count,
-            MIN(fetched_at::timestamptz) AS first_page_at,
-            MAX(fetched_at::timestamptz) AS last_page_at
+            MIN(fetched_at_ts) AS first_page_at,
+            MAX(fetched_at_ts) AS last_page_at
         FROM app_store_review_pages
         WHERE {" AND ".join(where_clauses)}
         """,
@@ -593,6 +948,12 @@ def web_catalog_recent_pressure_metrics(
         "ok_page_count": int(row["ok_page_count"] or 0),
         "error_page_count": int(row["error_page_count"] or 0),
         "http_429_page_count": int(row["http_429_page_count"] or 0),
+        "http_429_affected_page_count": int(
+            row.get("http_429_affected_page_count", row["http_429_page_count"]) or 0
+        ),
+        "http_429_attempt_count": int(
+            row.get("http_429_attempt_count", row["http_429_page_count"]) or 0
+        ),
         "final_non_200_page_count": int(row["final_non_200_page_count"] or 0),
         "soft_error_page_count": int(row.get("soft_error_page_count") or 0),
         "retried_page_count": int(row["retried_page_count"] or 0),
@@ -617,7 +978,7 @@ def pressure_soft_error_threshold_exceeded(metrics: dict) -> bool:
 def pressure_metrics_are_clean(metrics: dict) -> bool:
     return (
         int(metrics["page_count"] or 0) > 0
-        and int(metrics["http_429_page_count"] or 0) == 0
+        and int(metrics.get("http_429_attempt_count") or metrics["http_429_page_count"] or 0) == 0
         and int(metrics["final_non_200_page_count"] or 0) == 0
         and not pressure_soft_error_threshold_exceeded(metrics)
     )
@@ -766,6 +1127,8 @@ def web_catalog_pressure_status(
         "ok_page_count": int(metrics["ok_page_count"] or 0),
         "error_page_count": int(metrics["error_page_count"] or 0),
         "http_429_page_count": int(metrics["http_429_page_count"] or 0),
+        "http_429_affected_page_count": int(metrics.get("http_429_affected_page_count") or 0),
+        "http_429_attempt_count": int(metrics.get("http_429_attempt_count") or 0),
         "final_non_200_page_count": int(metrics["final_non_200_page_count"] or 0),
         "soft_error_page_count": soft_error_page_count,
         "soft_error_rate": soft_error_rate,
@@ -1104,7 +1467,7 @@ def record_web_catalog_pressure_result(
                 safe_scope_time_budget_seconds,
                 int(metrics["page_count"] or 0),
                 int(metrics["ok_page_count"] or 0),
-                int(metrics["http_429_page_count"] or 0),
+                int(metrics.get("http_429_affected_page_count") or metrics["http_429_page_count"] or 0),
                 int(metrics["error_page_count"] or 0),
                 int(metrics["final_non_200_page_count"] or 0),
                 int(metrics["retried_page_count"] or 0),
@@ -1152,8 +1515,14 @@ def record_web_catalog_pressure_result(
     }
 
 
-def scope_key(app_id: str, country: str, sort_by: str = DEFAULT_SORT_BY) -> str:
-    return f"{app_id}:{country.lower()}:{sort_by}"
+def scope_key(
+    app_id: str,
+    country: str,
+    sort_by: str = DEFAULT_SORT_BY,
+    *,
+    source: str = SOURCE,
+) -> str:
+    return f"{source}:{app_id}:{country.lower()}:{sort_by}"
 
 
 def infer_field_value(page_rows: list[dict], review_rows: list[dict], field: str, default: str) -> str:
@@ -1214,6 +1583,7 @@ def trusted_existing_review_ids_by_scope(
                   ON s.app_id = r.app_id
                  AND s.country = r.country
                  AND s.sort_by = %s
+                 AND s.source = %s
                 LEFT JOIN app_store_runs first_run
                   ON first_run.run_id = r.first_seen_run_id
                 LEFT JOIN app_store_runs success_run
@@ -1274,6 +1644,7 @@ def trusted_existing_review_ids_by_scope(
                 """,
                 (
                     sort_by,
+                    source,
                     app_id,
                     country,
                     sort_by,
@@ -1417,6 +1788,11 @@ def load_pipeline_run_postgres(
     raw_dir: Path,
     targets_path: Path,
     *,
+    execution_id: str | None = None,
+    github_run_id: str | None = None,
+    github_run_attempt: int | None = None,
+    worker_key: str | None = None,
+    selected_target_count: int | None = None,
     initialize_schema: bool = True,
 ) -> dict:
     run_id = raw_dir.name
@@ -1442,6 +1818,11 @@ def load_pipeline_run_postgres(
                 loaded_at=loaded_at,
                 platform=platform,
                 source=source,
+                execution_id=execution_id,
+                github_run_id=github_run_id,
+                github_run_attempt=github_run_attempt,
+                worker_key=worker_key,
+                selected_target_count=selected_target_count,
             )
         except POSTGRES_RETRYABLE_WRITE_ERRORS:
             if attempt >= POSTGRES_LOAD_MAX_ATTEMPTS:
@@ -1462,9 +1843,19 @@ def _load_pipeline_run_postgres_once(
     loaded_at: str,
     platform: str,
     source: str,
+    execution_id: str | None = None,
+    github_run_id: str | None = None,
+    github_run_attempt: int | None = None,
+    worker_key: str | None = None,
+    selected_target_count: int | None = None,
 ) -> dict:
     target_ids = {str(row.get("app_id")) for row in [*page_rows, *review_rows] if row.get("app_id")}
-    targets_to_upsert = [target for target in targets if str(target.apple_app_id) in target_ids] if target_ids else targets
+    targets_to_upsert = [target for target in targets if str(target.apple_app_id) in target_ids]
+    actual_target_count = (
+        max(0, int(selected_target_count))
+        if selected_target_count is not None
+        else len(target_ids)
+    )
     with connect_postgres(database_url) as connection:
         upsert_run(
             connection,
@@ -1472,9 +1863,13 @@ def _load_pipeline_run_postgres_once(
             raw_dir,
             targets_path,
             loaded_at,
-            target_count=sum(1 for target in targets if target.active),
+            target_count=actual_target_count,
             platform=platform,
             source=source,
+            execution_id=execution_id,
+            github_run_id=github_run_id,
+            github_run_attempt=github_run_attempt,
+            worker_key=worker_key,
         )
         upsert_targets(connection, targets_to_upsert, run_id)
         insert_pages(connection, page_rows)
@@ -1513,6 +1908,8 @@ def _load_pipeline_run_postgres_once(
         **review_summary,
         "fetch_errors": fetch_errors,
         "capped_scopes": capped_scopes,
+        "target_count": actual_target_count,
+        "execution_id": execution_id,
     }
 
 
@@ -1526,20 +1923,43 @@ def upsert_run(
     target_count: int,
     platform: str = PLATFORM,
     source: str = SOURCE,
+    execution_id: str | None = None,
+    github_run_id: str | None = None,
+    github_run_attempt: int | None = None,
+    worker_key: str | None = None,
 ) -> None:
     connection.execute(
         """
         INSERT INTO app_store_runs (
-            run_id, raw_dir, targets_path, loaded_at, platform, source, target_count
+            run_id, raw_dir, targets_path, loaded_at, loaded_at_ts, platform, source,
+            target_count, execution_id, github_run_id, github_run_attempt, worker_key
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s::timestamptz, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (run_id) DO UPDATE
         SET raw_dir = EXCLUDED.raw_dir,
             targets_path = EXCLUDED.targets_path,
             loaded_at = EXCLUDED.loaded_at,
-            target_count = EXCLUDED.target_count
+            loaded_at_ts = EXCLUDED.loaded_at_ts,
+            target_count = EXCLUDED.target_count,
+            execution_id = COALESCE(EXCLUDED.execution_id, app_store_runs.execution_id),
+            github_run_id = COALESCE(EXCLUDED.github_run_id, app_store_runs.github_run_id),
+            github_run_attempt = COALESCE(EXCLUDED.github_run_attempt, app_store_runs.github_run_attempt),
+            worker_key = COALESCE(EXCLUDED.worker_key, app_store_runs.worker_key)
         """,
-        (run_id, str(raw_dir), str(targets_path), loaded_at, platform, source, target_count),
+        (
+            run_id,
+            str(raw_dir),
+            str(targets_path),
+            loaded_at,
+            loaded_at,
+            platform,
+            source,
+            target_count,
+            execution_id,
+            github_run_id,
+            github_run_attempt,
+            worker_key,
+        ),
     )
 
 
@@ -1581,21 +2001,39 @@ def insert_pages(connection: psycopg.Connection, rows: Iterable[dict]) -> None:
             """
             INSERT INTO app_store_review_pages (
                 page_key, run_id, platform, source, app_id, app_name, country,
-                sort_by, page_number, request_url, status, status_code, fetched_at,
+                sort_by, page_number, request_url, status, status_code, fetched_at, fetched_at_ts,
                 raw_json_path, response_bytes, review_count, unique_review_count,
                 duplicate_count, missing_text_count, missing_rating_count,
                 missing_updated_count, max_updated_epoch_seconds,
                 min_updated_epoch_seconds, has_next_link, attempt_count,
+                http_429_attempt_count, soft_retry_count,
                 error_message, terminal_reason, overlap_review_count
             )
             VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                %s::timestamptz, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s
             )
             ON CONFLICT (page_key) DO UPDATE
-            SET status = EXCLUDED.status,
+            SET request_url = EXCLUDED.request_url,
+                status = EXCLUDED.status,
                 status_code = EXCLUDED.status_code,
+                fetched_at = EXCLUDED.fetched_at,
+                fetched_at_ts = EXCLUDED.fetched_at_ts,
+                raw_json_path = EXCLUDED.raw_json_path,
+                response_bytes = EXCLUDED.response_bytes,
                 review_count = EXCLUDED.review_count,
+                unique_review_count = EXCLUDED.unique_review_count,
+                duplicate_count = EXCLUDED.duplicate_count,
+                missing_text_count = EXCLUDED.missing_text_count,
+                missing_rating_count = EXCLUDED.missing_rating_count,
+                missing_updated_count = EXCLUDED.missing_updated_count,
+                max_updated_epoch_seconds = EXCLUDED.max_updated_epoch_seconds,
+                min_updated_epoch_seconds = EXCLUDED.min_updated_epoch_seconds,
+                has_next_link = EXCLUDED.has_next_link,
+                attempt_count = EXCLUDED.attempt_count,
+                http_429_attempt_count = EXCLUDED.http_429_attempt_count,
+                soft_retry_count = EXCLUDED.soft_retry_count,
                 terminal_reason = EXCLUDED.terminal_reason,
                 overlap_review_count = EXCLUDED.overlap_review_count,
                 error_message = EXCLUDED.error_message
@@ -1614,6 +2052,7 @@ def insert_pages(connection: psycopg.Connection, rows: Iterable[dict]) -> None:
                 row.get("status"),
                 row.get("status_code"),
                 row.get("fetched_at"),
+                row.get("fetched_at"),
                 row.get("raw_json_path"),
                 row.get("response_bytes") or 0,
                 row.get("review_count") or 0,
@@ -1626,6 +2065,8 @@ def insert_pages(connection: psycopg.Connection, rows: Iterable[dict]) -> None:
                 row.get("min_updated_epoch_seconds"),
                 int(bool(row.get("has_next_link"))),
                 row.get("attempt_count") or 1,
+                row.get("http_429_attempt_count") or 0,
+                row.get("soft_retry_count") or 0,
                 row.get("error_message"),
                 row.get("terminal_reason"),
                 row.get("overlap_review_count") or 0,
@@ -1634,15 +2075,28 @@ def insert_pages(connection: psycopg.Connection, rows: Iterable[dict]) -> None:
 
 
 def upsert_reviews(connection: psycopg.Connection, rows: Iterable[dict], run_id: str) -> dict:
-    summary = {"inserted": 0, "updated": 0, "duplicates_skipped": 0}
+    summary: dict[str, Any] = {"inserted": 0, "updated": 0, "duplicates_skipped": 0}
+    by_scope: dict[tuple[str, str], dict[str, Any]] = {}
     for row in rows:
+        scope = (str(row.get("app_id") or ""), str(row.get("country") or "").lower())
+        scope_summary = by_scope.setdefault(
+            scope,
+            {
+                "app_id": scope[0],
+                "country": scope[1],
+                "inserted": 0,
+                "updated": 0,
+                "duplicates_skipped": 0,
+            },
+        )
         review_key = row.get("review_key")
         if not review_key:
             summary["duplicates_skipped"] += 1
+            scope_summary["duplicates_skipped"] += 1
             continue
         existing = connection.execute(
             """
-            SELECT updated_epoch_seconds, rating, title, content
+            SELECT app_name, author_name, updated_at, updated_epoch_seconds, rating, title, content
             FROM app_store_reviews
             WHERE review_key = %s
             """,
@@ -1650,13 +2104,15 @@ def upsert_reviews(connection: psycopg.Connection, rows: Iterable[dict], run_id:
         ).fetchone()
         if existing is None:
             insert_review(connection, row, run_id)
-            insert_review_change(connection, row, run_id, "inserted", None)
+            insert_review_change(connection, row, run_id, "inserted", None, [])
             summary["inserted"] += 1
-        elif review_changed(existing, row):
+            scope_summary["inserted"] += 1
+        elif changed_fields := review_changed_fields(existing, row):
             previous_updated = existing.get("updated_epoch_seconds")
             update_review(connection, row, run_id)
-            insert_review_change(connection, row, run_id, "updated", previous_updated)
+            insert_review_change(connection, row, run_id, "updated", previous_updated, changed_fields, existing)
             summary["updated"] += 1
+            scope_summary["updated"] += 1
         else:
             connection.execute(
                 """
@@ -1664,18 +2120,39 @@ def upsert_reviews(connection: psycopg.Connection, rows: Iterable[dict], run_id:
                 SET last_seen_run_id = %s,
                     source_page_key = %s,
                     collected_at = %s,
+                    collected_at_ts = %s::timestamptz,
                     row_updated_at = CURRENT_TIMESTAMP
                 WHERE review_key = %s
                 """,
-                (run_id, row.get("source_page_key"), row.get("collected_at"), review_key),
+                (
+                    run_id,
+                    row.get("source_page_key"),
+                    row.get("collected_at"),
+                    row.get("collected_at"),
+                    review_key,
+                ),
             )
             summary["duplicates_skipped"] += 1
+            scope_summary["duplicates_skipped"] += 1
+    summary["by_scope"] = list(by_scope.values())
     return summary
 
 
 def review_changed(existing: dict, row: dict) -> bool:
-    fields = ("updated_epoch_seconds", "rating", "title", "content")
-    return any(existing.get(field) != row.get(field) for field in fields)
+    return bool(review_changed_fields(existing, row))
+
+
+def review_changed_fields(existing: dict, row: dict) -> list[str]:
+    fields = (
+        "app_name",
+        "author_name",
+        "updated_at",
+        "updated_epoch_seconds",
+        "rating",
+        "title",
+        "content",
+    )
+    return [field for field in fields if existing.get(field) != row.get(field)]
 
 
 def insert_review(connection: psycopg.Connection, row: dict, run_id: str) -> None:
@@ -1685,11 +2162,11 @@ def insert_review(connection: psycopg.Connection, row: dict, run_id: str) -> Non
             review_key, platform, source, app_id, app_name, country, review_id,
             author_name, updated_at, updated_epoch_seconds, rating, title,
             content, first_seen_run_id, last_seen_run_id, source_page_key,
-            collected_at
+            collected_at, collected_at_ts
         )
         VALUES (
             %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-            %s
+            %s, %s::timestamptz
         )
         """,
         review_values(row, run_id),
@@ -1710,6 +2187,7 @@ def update_review(connection: psycopg.Connection, row: dict, run_id: str) -> Non
             last_seen_run_id = %s,
             source_page_key = %s,
             collected_at = %s,
+            collected_at_ts = %s::timestamptz,
             row_updated_at = CURRENT_TIMESTAMP
         WHERE review_key = %s
         """,
@@ -1723,6 +2201,7 @@ def update_review(connection: psycopg.Connection, row: dict, run_id: str) -> Non
             row.get("content"),
             run_id,
             row.get("source_page_key"),
+            row.get("collected_at"),
             row.get("collected_at"),
             row.get("review_key"),
         ),
@@ -1748,6 +2227,7 @@ def review_values(row: dict, run_id: str) -> tuple:
         run_id,
         row.get("source_page_key"),
         row.get("collected_at"),
+        row.get("collected_at"),
     )
 
 
@@ -1757,14 +2237,19 @@ def insert_review_change(
     run_id: str,
     change_type: str,
     previous_updated_epoch_seconds: int | None,
+    changed_fields: list[str],
+    existing: dict | None = None,
 ) -> None:
+    previous_values = {field: existing.get(field) for field in changed_fields} if existing else None
+    new_values = {field: row.get(field) for field in changed_fields} if changed_fields else None
     connection.execute(
         """
         INSERT INTO app_store_review_changes (
             run_id, review_key, app_id, country, change_type,
-            previous_updated_epoch_seconds, new_updated_epoch_seconds, source_page_key
+            previous_updated_epoch_seconds, new_updated_epoch_seconds, source_page_key,
+            changed_at_ts, changed_fields, previous_values, new_values
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, %s, %s, %s)
         ON CONFLICT (run_id, review_key) DO NOTHING
         """,
         (
@@ -1776,8 +2261,166 @@ def insert_review_change(
             previous_updated_epoch_seconds,
             row.get("updated_epoch_seconds"),
             row.get("source_page_key"),
+            changed_fields or None,
+            Jsonb(previous_values) if previous_values is not None else None,
+            Jsonb(new_values) if new_values is not None else None,
         ),
     )
+
+
+def record_run_scopes_postgres(
+    database_url: str,
+    *,
+    run_id: str,
+    execution_id: str | None,
+    source: str,
+    sort_by: str,
+    started_at: str,
+    completed_at: str,
+    expected_scopes: Iterable[dict[str, str]],
+    page_rows: list[dict],
+    review_summary: dict[str, Any],
+    initialize_schema: bool = True,
+) -> dict[str, Any]:
+    if initialize_schema:
+        initialize_postgres(database_url)
+    pages_by_scope: dict[tuple[str, str, str], list[dict]] = {}
+    for row in page_rows:
+        key = (
+            str(row.get("app_id") or ""),
+            str(row.get("country") or "").lower(),
+            str(row.get("sort_by") or sort_by),
+        )
+        pages_by_scope.setdefault(key, []).append(row)
+    reviews_by_scope = {
+        (str(row.get("app_id") or ""), str(row.get("country") or "").lower()): row
+        for row in review_summary.get("by_scope", [])
+    }
+    scopes = []
+    with connect_postgres(database_url) as connection:
+        for expected in expected_scopes:
+            app_id = str(expected["app_id"])
+            app_name = str(expected.get("app_name") or "")
+            country = str(expected["country"]).lower()
+            scope_sort = str(expected.get("sort_by") or sort_by)
+            pages = sorted(pages_by_scope.get((app_id, country, scope_sort), []), key=lambda row: int(row.get("page_number") or 0))
+            load = reviews_by_scope.get((app_id, country), {})
+            terminal_reason = next(
+                (str(row["terminal_reason"]) for row in reversed(pages) if row.get("terminal_reason")),
+                None,
+            )
+            http_429_pages = sum(int(row.get("status_code") == 429) for row in pages)
+            http_429_attempt_count = sum(
+                int(row.get("http_429_attempt_count") or 0) for row in pages
+            )
+            soft_retry_count = sum(int(row.get("soft_retry_count") or 0) for row in pages)
+            other_non_200_pages = sum(
+                int(row.get("status_code") is not None and int(row["status_code"]) not in {200, 429})
+                for row in pages
+            )
+            fetch_errors = sum(int(row.get("status") == "error") for row in pages)
+            outcome = scope_outcome(
+                terminal_reason=terminal_reason,
+                page_count=len(pages),
+                fetch_errors=fetch_errors,
+                other_non_200_pages=other_non_200_pages,
+            )
+            values = {
+                "scope_run_key": f"{run_id}:{source}:{app_id}:{country}:{scope_sort}",
+                "execution_id": execution_id,
+                "run_id": run_id,
+                "app_id": app_id,
+                "app_name": app_name,
+                "country": country,
+                "source": source,
+                "sort_by": scope_sort,
+                "page_count": len(pages),
+                "review_count": sum(
+                    int(load.get(key) or 0) for key in ("inserted", "updated", "duplicates_skipped")
+                ),
+                "reviews_inserted": int(load.get("inserted") or 0),
+                "reviews_updated": int(load.get("updated") or 0),
+                "duplicates_skipped": int(load.get("duplicates_skipped") or 0),
+                "http_429_pages": http_429_pages,
+                "http_429_attempt_count": http_429_attempt_count,
+                "soft_retry_count": soft_retry_count,
+                "other_non_200_pages": other_non_200_pages,
+                "retried_pages": sum(int(row.get("attempt_count") or 1) > 1 for row in pages),
+                "fetch_errors": fetch_errors,
+                "overlap_review_count": sum(int(row.get("overlap_review_count") or 0) for row in pages),
+                "terminal_reason": terminal_reason,
+                "outcome": outcome,
+            }
+            connection.execute(
+                """
+                INSERT INTO app_store_run_scopes (
+                    scope_run_key, execution_id, run_id, app_id, app_name, country,
+                    source, sort_by, page_count, review_count, reviews_inserted,
+                    reviews_updated, duplicates_skipped, http_429_pages,
+                    http_429_attempt_count, soft_retry_count,
+                    other_non_200_pages, retried_pages, fetch_errors,
+                    overlap_review_count, terminal_reason, outcome, started_at, completed_at
+                )
+                VALUES (
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                )
+                ON CONFLICT (scope_run_key) DO UPDATE
+                SET execution_id = EXCLUDED.execution_id,
+                    page_count = EXCLUDED.page_count,
+                    review_count = EXCLUDED.review_count,
+                    reviews_inserted = EXCLUDED.reviews_inserted,
+                    reviews_updated = EXCLUDED.reviews_updated,
+                    duplicates_skipped = EXCLUDED.duplicates_skipped,
+                    http_429_pages = EXCLUDED.http_429_pages,
+                    http_429_attempt_count = EXCLUDED.http_429_attempt_count,
+                    soft_retry_count = EXCLUDED.soft_retry_count,
+                    other_non_200_pages = EXCLUDED.other_non_200_pages,
+                    retried_pages = EXCLUDED.retried_pages,
+                    fetch_errors = EXCLUDED.fetch_errors,
+                    overlap_review_count = EXCLUDED.overlap_review_count,
+                    terminal_reason = EXCLUDED.terminal_reason,
+                    outcome = EXCLUDED.outcome,
+                    completed_at = EXCLUDED.completed_at,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (
+                    values["scope_run_key"], execution_id, run_id, app_id, app_name,
+                    country, source, scope_sort, values["page_count"], values["review_count"],
+                    values["reviews_inserted"], values["reviews_updated"],
+                    values["duplicates_skipped"], http_429_pages,
+                    http_429_attempt_count, soft_retry_count, other_non_200_pages,
+                    values["retried_pages"], fetch_errors, values["overlap_review_count"],
+                    terminal_reason, outcome, started_at, completed_at,
+                ),
+            )
+            scopes.append(values)
+        if execution_id:
+            refresh_execution_scope_counts(connection, execution_id)
+        connection.commit()
+    return {
+        "scope_count": len(scopes),
+        "caught_up_scope_count": sum(row["outcome"] == "caught_up" for row in scopes),
+        "backlogged_scope_count": sum(row["outcome"] == "backlogged" for row in scopes),
+        "hard_failure_scope_count": sum(row["outcome"] == "hard_failure" for row in scopes),
+        "scopes": scopes,
+    }
+
+
+def scope_outcome(
+    *,
+    terminal_reason: str | None,
+    page_count: int,
+    fetch_errors: int,
+    other_non_200_pages: int,
+) -> str:
+    if page_count <= 0 or fetch_errors > 0 or other_non_200_pages > 0:
+        return "hard_failure"
+    if terminal_reason in HARD_FAILURE_TERMINAL_REASONS:
+        return "hard_failure"
+    if terminal_reason in SUCCESS_TERMINAL_REASONS:
+        return "caught_up"
+    return "backlogged"
 
 
 def update_sync_states_postgres(
@@ -1840,31 +2483,19 @@ def _update_sync_states_postgres_once(
             reviews = grouped_reviews.get(key, [])
             terminal_reason = pages[-1].get("terminal_reason") if pages else None
             overlap = sum(int(page.get("overlap_review_count") or 0) for page in pages)
-            backlog_reasons = {
-                "page_cap",
-                "empty_page_before_overlap",
-                "empty_page_after_sparse_scan",
-                "fetch_error",
-                "sparse_fetch_error_threshold",
-                "time_budget_exceeded",
-                "scope_time_budget_exceeded",
-                "time_budget_retry_window_exceeded",
-                "scope_time_budget_retry_window_exceeded",
-            }
-            success_reasons = {
-                "caught_up_to_existing_reviews",
-                "no_next_href",
-                "target_review_count_reached",
-                "target_review_count_zero",
-            }
-            backlogged = terminal_reason in backlog_reasons and overlap == 0
+            backlogged = (
+                terminal_reason in (BACKLOG_TERMINAL_REASONS | HARD_FAILURE_TERMINAL_REASONS)
+                and overlap == 0
+            )
             state_row = connection.execute(
                 """
-                SELECT complete_through_updated_epoch_seconds, last_successful_run_id
+                SELECT complete_through_updated_epoch_seconds, last_successful_run_id,
+                       last_successful_at, backlog_started_at,
+                       consecutive_incomplete_runs, backlogged
                 FROM app_store_sync_state
                 WHERE scope_key = %s
                 """,
-                (scope_key(app_id, country, scope_sort),),
+                (scope_key(app_id, country, scope_sort, source=source),),
             ).fetchone()
             current_high_water = connection.execute(
                 """
@@ -1874,9 +2505,12 @@ def _update_sync_states_postgres_once(
                 """,
                 (app_id, country, source),
             ).fetchone()["high_water"]
-            if terminal_reason in success_reasons:
+            if terminal_reason in SUCCESS_TERMINAL_REASONS:
                 high_water = int(current_high_water or 0)
                 last_successful_run_id = run_id
+                last_successful_at = completed_at
+                backlog_started_at = None
+                consecutive_incomplete_runs = 0
             else:
                 high_water = int(
                     state_row["complete_through_updated_epoch_seconds"]
@@ -1884,37 +2518,61 @@ def _update_sync_states_postgres_once(
                     else 0
                 )
                 last_successful_run_id = state_row["last_successful_run_id"] if state_row else None
+                last_successful_at = state_row["last_successful_at"] if state_row else None
+                was_backlogged = bool(state_row and state_row["backlogged"])
+                backlog_started_at = (
+                    state_row["backlog_started_at"]
+                    if was_backlogged and state_row.get("backlog_started_at")
+                    else completed_at
+                ) if backlogged else None
+                consecutive_incomplete_runs = (
+                    int(state_row.get("consecutive_incomplete_runs") or 0) + 1
+                    if backlogged
+                    else 0
+                )
             connection.execute(
                 """
                 INSERT INTO app_store_sync_state (
-                    scope_key, app_id, country, sort_by,
+                    scope_key, app_id, country, sort_by, source,
                     complete_through_updated_epoch_seconds, backlogged,
-                    last_started_at, last_completed_at, last_run_id,
+                    last_started_at, last_completed_at, last_started_at_ts, last_completed_at_ts, last_run_id,
                     last_successful_run_id, last_terminal_reason,
                     last_page_count, last_review_count, last_overlap_review_count,
-                    updated_at
+                    last_successful_at, last_attempt_completed_at, backlog_started_at,
+                    consecutive_incomplete_runs, updated_at
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::timestamptz, %s::timestamptz,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
                 ON CONFLICT (scope_key) DO UPDATE
-                SET complete_through_updated_epoch_seconds = EXCLUDED.complete_through_updated_epoch_seconds,
+                SET source = EXCLUDED.source,
+                    complete_through_updated_epoch_seconds = EXCLUDED.complete_through_updated_epoch_seconds,
                     backlogged = EXCLUDED.backlogged,
                     last_started_at = EXCLUDED.last_started_at,
                     last_completed_at = EXCLUDED.last_completed_at,
+                    last_started_at_ts = EXCLUDED.last_started_at_ts,
+                    last_completed_at_ts = EXCLUDED.last_completed_at_ts,
                     last_run_id = EXCLUDED.last_run_id,
                     last_successful_run_id = EXCLUDED.last_successful_run_id,
                     last_terminal_reason = EXCLUDED.last_terminal_reason,
                     last_page_count = EXCLUDED.last_page_count,
                     last_review_count = EXCLUDED.last_review_count,
                     last_overlap_review_count = EXCLUDED.last_overlap_review_count,
+                    last_successful_at = EXCLUDED.last_successful_at,
+                    last_attempt_completed_at = EXCLUDED.last_attempt_completed_at,
+                    backlog_started_at = EXCLUDED.backlog_started_at,
+                    consecutive_incomplete_runs = EXCLUDED.consecutive_incomplete_runs,
                     updated_at = CURRENT_TIMESTAMP
                 """,
                 (
-                    scope_key(app_id, country, scope_sort),
+                    scope_key(app_id, country, scope_sort, source=source),
                     app_id,
                     country,
                     scope_sort,
+                    source,
                     high_water,
                     int(backlogged),
+                    started_at,
+                    completed_at,
                     started_at,
                     completed_at,
                     run_id,
@@ -1923,6 +2581,10 @@ def _update_sync_states_postgres_once(
                     len(pages),
                     len(reviews),
                     overlap,
+                    last_successful_at,
+                    completed_at,
+                    backlog_started_at,
+                    consecutive_incomplete_runs,
                 ),
             )
             summaries.append(
@@ -1947,6 +2609,9 @@ def validate_postgres(database_url: str, run_id: str | None = None, *, initializ
         initialize_postgres(database_url)
     where_reviews = "WHERE last_seen_run_id = %s" if run_id else ""
     where_pages = "WHERE run_id = %s" if run_id else ""
+    where_runs = "WHERE run_id = %s" if run_id else ""
+    where_changes = "WHERE run_id = %s" if run_id else ""
+    where_sync = "WHERE last_run_id = %s" if run_id else ""
     params = (run_id,) if run_id else ()
     with connect_postgres(database_url) as connection:
         review_counts = connection.execute(
@@ -1974,17 +2639,62 @@ def validate_postgres(database_url: str, run_id: str | None = None, *, initializ
             params,
         ).fetchone()
         sync_counts = connection.execute(
-            """
+            f"""
             SELECT
                 COUNT(*) AS scopes,
                 COUNT(*) FILTER (WHERE backlogged = 1) AS backlogged_scopes
             FROM app_store_sync_state
-            """
+            {where_sync}
+            """,
+            params,
         ).fetchone()
+        typed_timestamp_counts = {
+            "reviews_missing_collected_at_ts": int(
+                connection.execute(
+                    f"SELECT COUNT(*) FROM app_store_reviews {where_reviews} "
+                    f"{'AND' if where_reviews else 'WHERE'} collected_at IS NOT NULL AND collected_at_ts IS NULL",
+                    params,
+                ).fetchone()["count"]
+            ),
+            "pages_missing_fetched_at_ts": int(
+                connection.execute(
+                    f"SELECT COUNT(*) FROM app_store_review_pages {where_pages} "
+                    f"{'AND' if where_pages else 'WHERE'} fetched_at IS NOT NULL AND fetched_at_ts IS NULL",
+                    params,
+                ).fetchone()["count"]
+            ),
+            "runs_missing_loaded_at_ts": int(
+                connection.execute(
+                    f"SELECT COUNT(*) FROM app_store_runs {where_runs} "
+                    f"{'AND' if where_runs else 'WHERE'} loaded_at IS NOT NULL AND loaded_at_ts IS NULL",
+                    params,
+                ).fetchone()["count"]
+            ),
+            "changes_missing_changed_at_ts": int(
+                connection.execute(
+                    f"SELECT COUNT(*) FROM app_store_review_changes {where_changes} "
+                    f"{'AND' if where_changes else 'WHERE'} changed_at IS NOT NULL AND changed_at_ts IS NULL",
+                    params,
+                ).fetchone()["count"]
+            ),
+        }
+    data_integrity_healthy = (
+        int(review_counts["missing_text"] or 0) == 0
+        and int(review_counts["missing_rating"] or 0) == 0
+        and all(count == 0 for count in typed_timestamp_counts.values())
+    )
+    operational_clean = (
+        int(page_counts["errors"] or 0) == 0
+        and int(page_counts["capped_pages"] or 0) == 0
+        and int(sync_counts["backlogged_scopes"] or 0) == 0
+    )
     return {
         "run_id": run_id,
         "review_counts": dict(review_counts),
         "page_counts": dict(page_counts),
         "sync_counts": dict(sync_counts),
-        "healthy": int(page_counts["errors"] or 0) == 0,
+        "typed_timestamp_counts": typed_timestamp_counts,
+        "data_integrity_healthy": data_integrity_healthy,
+        "operational_clean": operational_clean,
+        "healthy": data_integrity_healthy and (int(page_counts["errors"] or 0) == 0 if run_id else True),
     }

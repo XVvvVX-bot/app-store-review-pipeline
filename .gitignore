@@ -1,4 +1,5 @@
 .venv/
+.DS_Store
 .playwright-cli/
 node_modules/
 __pycache__/

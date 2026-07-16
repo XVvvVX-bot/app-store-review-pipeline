@@ -581,12 +581,12 @@ def enrich_run_from_postgres(
             COUNT(*) FILTER (WHERE attempt_count > 1)::bigint AS retried_pages,
             COALESCE(MAX(attempt_count), 0)::bigint AS max_attempt_count,
             COUNT(*) FILTER (WHERE terminal_reason IS NOT NULL AND terminal_reason <> '')::bigint AS terminal_pages,
-            MIN(fetched_at::timestamptz) AS first_page_at,
-            MAX(fetched_at::timestamptz) AS last_page_at
+            MIN(fetched_at_ts) AS first_page_at,
+            MAX(fetched_at_ts) AS last_page_at
         FROM app_store_review_pages
         WHERE source = %s
-            AND fetched_at::timestamptz >= %s
-            AND fetched_at::timestamptz <= %s
+            AND fetched_at_ts >= %s
+            AND fetched_at_ts <= %s
         """,
         (source, window_start, window_end),
     )
@@ -604,8 +604,8 @@ def enrich_run_from_postgres(
             COALESCE(SUM(capped_scopes), 0)::bigint AS capped_scopes
         FROM app_store_runs
         WHERE source = %s
-            AND loaded_at::timestamptz >= %s
-            AND loaded_at::timestamptz <= %s
+            AND loaded_at_ts >= %s
+            AND loaded_at_ts <= %s
         """,
         (source, window_start, window_end),
     )
@@ -615,8 +615,8 @@ def enrich_run_from_postgres(
         SELECT attempt_count, COUNT(*)::bigint AS page_count
         FROM app_store_review_pages
         WHERE source = %s
-            AND fetched_at::timestamptz >= %s
-            AND fetched_at::timestamptz <= %s
+            AND fetched_at_ts >= %s
+            AND fetched_at_ts <= %s
         GROUP BY attempt_count
         ORDER BY attempt_count
         """,
@@ -628,8 +628,8 @@ def enrich_run_from_postgres(
         SELECT COALESCE(NULLIF(terminal_reason, ''), 'none') AS terminal_reason, COUNT(*)::bigint AS page_count
         FROM app_store_review_pages
         WHERE source = %s
-            AND fetched_at::timestamptz >= %s
-            AND fetched_at::timestamptz <= %s
+            AND fetched_at_ts >= %s
+            AND fetched_at_ts <= %s
         GROUP BY COALESCE(NULLIF(terminal_reason, ''), 'none')
         ORDER BY page_count DESC, terminal_reason
         LIMIT 12
@@ -651,8 +651,8 @@ def enrich_run_from_postgres(
             MAX(COALESCE(NULLIF(terminal_reason, ''), 'none')) AS terminal_reason
         FROM app_store_review_pages
         WHERE source = %s
-            AND fetched_at::timestamptz >= %s
-            AND fetched_at::timestamptz <= %s
+            AND fetched_at_ts >= %s
+            AND fetched_at_ts <= %s
         GROUP BY app_id
         ORDER BY page_count DESC, review_rows DESC, app_name
         LIMIT 15
@@ -802,8 +802,8 @@ def build_app_activity_segments(
             FROM app_store_review_pages p
             LEFT JOIN app_store_targets t ON t.app_id = p.app_id
             WHERE p.source = %s
-                AND p.fetched_at::timestamptz >= %s
-                AND p.fetched_at::timestamptz <= %s
+                AND p.fetched_at_ts >= %s
+                AND p.fetched_at_ts <= %s
             GROUP BY p.app_id
             """,
             (source, start, end),
@@ -818,8 +818,8 @@ def build_app_activity_segments(
                     COUNT(*) FILTER (WHERE change_type = 'inserted')::bigint AS inserted,
                     COUNT(*) FILTER (WHERE change_type = 'updated')::bigint AS updated
                 FROM app_store_review_changes
-                WHERE changed_at::timestamptz >= %s
-                    AND changed_at::timestamptz <= %s
+                WHERE changed_at_ts >= %s
+                    AND changed_at_ts <= %s
                 GROUP BY app_id
                 """,
                 (start, end),

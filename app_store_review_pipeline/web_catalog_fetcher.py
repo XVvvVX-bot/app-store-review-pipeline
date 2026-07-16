@@ -60,7 +60,11 @@ def fetch_web_catalog_targets(
 ) -> dict[str, Any]:
     raw_dir.mkdir(parents=True, exist_ok=True)
     start_page = max(1, start_page)
-    page_cap = max_pages_per_app_country if max_pages_per_app_country > 0 else None
+    page_cap = (
+        start_page + max_pages_per_app_country - 1
+        if max_pages_per_app_country > 0
+        else None
+    )
     deadline_monotonic = monotonic_fn() + time_budget_seconds if time_budget_seconds and time_budget_seconds > 0 else None
     known_review_ids_by_scope = known_review_ids_by_scope or {}
     target_review_counts_by_scope = target_review_counts_by_scope or {}
@@ -308,6 +312,7 @@ def fetch_web_catalog_targets(
         "sort_by": sort_by,
         "start_page": start_page,
         "max_pages_per_app_country": max_pages_per_app_country,
+        "last_allowed_page_number": page_cap,
         "page_cap_enabled": page_cap is not None,
         "request_delay_seconds": request_delay_seconds,
         "request_delay_jitter_seconds": request_delay_jitter_seconds,
@@ -527,7 +532,7 @@ def fetch_web_catalog_page(
             sleep_fn(soft_retry_delay)
 
     if payload is None or response is None:
-        return web_error_page(
+        page = web_error_page(
             target,
             page_key,
             run_id,
@@ -545,6 +550,13 @@ def fetch_web_catalog_page(
                 response_bytes=last_response_bytes,
                 body_preview=last_body_preview,
             ),
+        )
+        return replace(
+            page,
+            http_429_attempt_count=sum(
+                int(attempt.get("status_code") == 429) for attempt in attempts
+            ),
+            soft_retry_count=max(0, soft_attempts_made - 1),
         ), [], None
 
     write_json(raw_json_path, payload)
@@ -589,6 +601,10 @@ def fetch_web_catalog_page(
         error_message=None if status_ok else f"HTTP {response.status_code}",
         terminal_reason=None,
         overlap_review_count=0,
+        http_429_attempt_count=sum(
+            int(attempt.get("status_code") == 429) for attempt in attempts
+        ),
+        soft_retry_count=max(0, soft_attempts_made - 1),
     )
     if final_attempt_stopped_for_time_budget([{"attempts": attempts}]):
         page = replace(page, terminal_reason="time_budget_exceeded")

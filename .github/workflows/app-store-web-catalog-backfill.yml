@@ -3,10 +3,15 @@ name: App Store Web Catalog Backfill
 on:
   workflow_dispatch:
     inputs:
+      confirm_backfill:
+        description: "Type I_UNDERSTAND_BACKFILL_PRESSURE to enable this disabled-by-default workflow"
+        required: true
+        default: ""
+        type: string
       limit:
         description: "Maximum active targets to backfill"
         required: false
-        default: "200"
+        default: "1"
         type: string
       target_offset:
         description: "Number of active targets to skip before applying limit"
@@ -14,14 +19,14 @@ on:
         default: "0"
         type: string
       max_pages_per_app_country:
-        description: "Maximum web catalog pages per app-country scope; use 0 only for explicit no-cap exhaustion probes"
+        description: "Required positive page count per app-country scope"
         required: false
-        default: "0"
+        default: "25"
         type: string
       start_page:
-        description: "First web catalog page to fetch, or auto to continue from Postgres max page + 1"
+        description: "Explicit first web catalog page to fetch"
         required: false
-        default: "auto"
+        default: "1"
         type: string
       review_limit:
         description: "Requested web catalog reviews per page; Apple currently caps this at 20"
@@ -71,27 +76,12 @@ on:
       max_parallel:
         description: "Maximum app backfill jobs to run in parallel. True parallelism requires multiple self-hosted runner instances."
         required: false
-        default: "4"
-        type: string
-      auto_continue:
-        description: "Dispatch the next full selected-target round after a clean round"
-        required: false
-        default: true
-        type: boolean
-      chain_depth:
-        description: "Internal continuation counter"
-        required: false
-        default: "0"
-        type: string
-      max_chain_depth:
-        description: "Maximum automatic continuation rounds"
-        required: false
-        default: "100"
+        default: "1"
         type: string
       web_429_cooldown_minutes:
         description: "Optional pre-run fail-fast cooldown after recent HTTP 429; 0 disables pre-run cooldown"
         required: false
-        default: "0"
+        default: "180"
         type: string
       web_429_circuit_breaker_min_pages:
         description: "Minimum current-run web catalog pages before the global HTTP 429 circuit breaker can trip"
@@ -105,7 +95,7 @@ on:
         type: string
 
 permissions:
-  actions: write
+  actions: read
   contents: read
 
 concurrency:
@@ -127,11 +117,60 @@ jobs:
       - name: Build app backfill matrix
         id: build-matrix
         env:
-          INPUT_LIMIT: ${{ inputs.limit || '200' }}
+          INPUT_CONFIRM_BACKFILL: ${{ inputs.confirm_backfill }}
+          INPUT_LIMIT: ${{ inputs.limit || '1' }}
           INPUT_TARGET_OFFSET: ${{ inputs.target_offset || '0' }}
-          INPUT_MAX_PARALLEL: ${{ inputs.max_parallel || '4' }}
+          INPUT_MAX_PARALLEL: ${{ inputs.max_parallel || '1' }}
+          INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ inputs.max_pages_per_app_country || '25' }}
+          INPUT_START_PAGE: ${{ inputs.start_page || '1' }}
+          INPUT_REVIEW_LIMIT: ${{ inputs.review_limit || '20' }}
+          INPUT_REQUEST_DELAY_SECONDS: ${{ inputs.request_delay_seconds || '10' }}
+          INPUT_WEB_429_RETRIES: ${{ inputs.web_429_retries || '1' }}
+          INPUT_WEB_429_RETRY_SECONDS: ${{ inputs.web_429_retry_seconds || '300' }}
+          INPUT_WEB_TIME_BUDGET_SECONDS: ${{ inputs.web_time_budget_seconds || '1200' }}
+          INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS: ${{ inputs.web_scope_time_budget_seconds || '1200' }}
+          INPUT_WEB_429_COOLDOWN_MINUTES: ${{ inputs.web_429_cooldown_minutes || '180' }}
         run: |
           set -euo pipefail
+          if [ "$INPUT_CONFIRM_BACKFILL" != "I_UNDERSTAND_BACKFILL_PRESSURE" ]; then
+            echo "Backfill confirmation phrase is missing or incorrect." >&2
+            exit 2
+          fi
+          python3 - <<'PY'
+          import os
+
+          def integer(name, minimum, maximum):
+              raw = os.environ[name]
+              try:
+                  value = int(raw)
+              except ValueError as exc:
+                  raise SystemExit(f"{name} must be an integer, got {raw!r}") from exc
+              if not minimum <= value <= maximum:
+                  raise SystemExit(f"{name} must be between {minimum} and {maximum}, got {value}")
+              return value
+
+          def number(name, minimum, maximum):
+              raw = os.environ[name]
+              try:
+                  value = float(raw)
+              except ValueError as exc:
+                  raise SystemExit(f"{name} must be numeric, got {raw!r}") from exc
+              if not minimum <= value <= maximum:
+                  raise SystemExit(f"{name} must be between {minimum} and {maximum}, got {value}")
+              return value
+
+          integer("INPUT_LIMIT", 1, 5)
+          integer("INPUT_MAX_PARALLEL", 1, 1)
+          integer("INPUT_MAX_PAGES_PER_APP_COUNTRY", 1, 25)
+          integer("INPUT_START_PAGE", 1, 1_000_000)
+          integer("INPUT_REVIEW_LIMIT", 1, 20)
+          integer("INPUT_WEB_429_RETRIES", 0, 2)
+          integer("INPUT_WEB_429_COOLDOWN_MINUTES", 180, 1_440)
+          number("INPUT_REQUEST_DELAY_SECONDS", 10, 300)
+          number("INPUT_WEB_429_RETRY_SECONDS", 300, 1_800)
+          number("INPUT_WEB_TIME_BUDGET_SECONDS", 1, 1_800)
+          number("INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS", 1, 1_800)
+          PY
           echo "run_started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import csv
@@ -179,8 +218,8 @@ jobs:
       INPUT_LIMIT: "1"
       INPUT_TARGET_OFFSET: ${{ matrix.target_offset }}
       MATRIX_APP_ID: ${{ matrix.app_id }}
-      INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ inputs.max_pages_per_app_country || '0' }}
-      INPUT_START_PAGE: ${{ inputs.start_page || 'auto' }}
+      INPUT_MAX_PAGES_PER_APP_COUNTRY: ${{ inputs.max_pages_per_app_country || '25' }}
+      INPUT_START_PAGE: ${{ inputs.start_page || '1' }}
       INPUT_REVIEW_LIMIT: ${{ inputs.review_limit || '20' }}
       INPUT_REQUEST_DELAY_SECONDS: ${{ inputs.request_delay_seconds || '10' }}
       INPUT_REQUEST_DELAY_JITTER_SECONDS: ${{ inputs.request_delay_jitter_seconds || '5' }}
@@ -190,7 +229,7 @@ jobs:
       INPUT_WEB_429_RETRY_JITTER_SECONDS: ${{ inputs.web_429_retry_jitter_seconds || '60' }}
       INPUT_WEB_TIME_BUDGET_SECONDS: ${{ inputs.web_time_budget_seconds || '1200' }}
       INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS: ${{ inputs.web_scope_time_budget_seconds || '1200' }}
-      INPUT_WEB_429_COOLDOWN_MINUTES: ${{ inputs.web_429_cooldown_minutes || '0' }}
+      INPUT_WEB_429_COOLDOWN_MINUTES: ${{ inputs.web_429_cooldown_minutes || '180' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES: ${{ inputs.web_429_circuit_breaker_min_pages || '4' }}
       INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE: ${{ inputs.web_429_circuit_breaker_max_rate || '0.5' }}
       BACKFILL_RUN_STARTED_AT: ${{ needs.prepare-matrix.outputs.run_started_at }}
@@ -203,10 +242,9 @@ jobs:
         run: |
           set -euo pipefail
           python3.12 -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip
 
       - name: Install dependencies
-        run: .venv/bin/python -m pip install -r requirements.txt
+        run: .venv/bin/python -m pip install -r requirements.lock
 
       - name: Check local Postgres
         env:
@@ -240,7 +278,7 @@ jobs:
             --min-pages "$INPUT_WEB_429_CIRCUIT_BREAKER_MIN_PAGES" \
             --max-rate "$INPUT_WEB_429_CIRCUIT_BREAKER_MAX_RATE"
 
-      - name: Run complete web catalog backfill probe
+      - name: Run capped web catalog backfill diagnostic
         env:
           DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
         run: |
@@ -256,9 +294,9 @@ jobs:
             exit 1
           fi
           start_page="$INPUT_START_PAGE"
-          if [[ "$start_page" == "auto" ]]; then
-            start_page="$(psql "$database_url" \
-              -Atc "select coalesce(max(page_number) filter (where status = 'ok'), 1) from app_store_review_pages where source = 'apple_app_store_web_catalog_reviews' and app_id = '$MATRIX_APP_ID';")"
+          if [[ ! "$start_page" =~ ^[1-9][0-9]*$ ]]; then
+            echo "Invalid explicit start page: $start_page" >&2
+            exit 1
           fi
           echo "Using start page: $start_page"
 
@@ -289,78 +327,3 @@ jobs:
           path: |
             data/raw/apple_web_catalog/
             data/reports/apple_web_catalog/
-
-  continue-backfill:
-    needs:
-      - prepare-matrix
-      - backfill
-    if: ${{ needs.backfill.result == 'success' && fromJSON(needs.prepare-matrix.outputs.selected_count) > 0 && (inputs.auto_continue == true || inputs.auto_continue == 'true') && fromJSON(inputs.chain_depth || '0') < fromJSON(inputs.max_chain_depth || '100') }}
-    runs-on: [self-hosted, macOS, ARM64]
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-
-      - name: Dispatch next backfill round
-        id: dispatch
-        env:
-          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
-          GH_TOKEN: ${{ github.token }}
-          INPUT_CHAIN_DEPTH: ${{ inputs.chain_depth || '0' }}
-          INPUT_LIMIT: ${{ inputs.limit || '200' }}
-          INPUT_TARGET_OFFSET: ${{ inputs.target_offset || '0' }}
-          INPUT_REVIEW_LIMIT: ${{ inputs.review_limit || '20' }}
-        run: |
-          set -euo pipefail
-          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
-          if [[ ! "$INPUT_REVIEW_LIMIT" =~ ^[0-9]+$ ]]; then
-            echo "Invalid review limit: $INPUT_REVIEW_LIMIT" >&2
-            exit 1
-          fi
-          selected_ids="$(
-            python3 - <<'PY'
-          import csv
-          import os
-
-          limit = max(0, int(os.environ["INPUT_LIMIT"]))
-          start_offset = max(0, int(os.environ["INPUT_TARGET_OFFSET"]))
-          ids = []
-          active_index = 0
-          with open("data/targets/apple_apps.csv", newline="", encoding="utf-8") as handle:
-              for row in csv.DictReader(handle):
-                  if str(row.get("active", "")).lower() != "true":
-                      continue
-                  if active_index >= start_offset:
-                      ids.append(row["apple_app_id"])
-                  active_index += 1
-                  if limit and len(ids) >= limit:
-                      break
-          print(",".join("'" + app_id.replace("'", "''") + "'" for app_id in ids))
-          PY
-          )"
-          if [[ -z "$selected_ids" ]]; then
-            echo "No selected targets remain; stopping auto-continuation."
-            exit 0
-          fi
-          next_depth="$(( INPUT_CHAIN_DEPTH + 1 ))"
-          gh workflow run app-store-web-catalog-backfill.yml \
-            --ref "${GITHUB_REF_NAME:-main}" \
-            -f limit="${{ inputs.limit || '200' }}" \
-            -f target_offset="${{ inputs.target_offset || '0' }}" \
-            -f max_pages_per_app_country="${{ inputs.max_pages_per_app_country || '0' }}" \
-            -f start_page="${{ inputs.start_page || 'auto' }}" \
-            -f review_limit="${{ inputs.review_limit || '20' }}" \
-            -f request_delay_seconds="${{ inputs.request_delay_seconds || '10' }}" \
-            -f request_delay_jitter_seconds="${{ inputs.request_delay_jitter_seconds || '5' }}" \
-            -f web_429_retries="${{ inputs.web_429_retries || '1' }}" \
-            -f web_429_retry_seconds="${{ inputs.web_429_retry_seconds || '300' }}" \
-            -f web_429_backoff_multiplier="${{ inputs.web_429_backoff_multiplier || '1.5' }}" \
-            -f web_429_retry_jitter_seconds="${{ inputs.web_429_retry_jitter_seconds || '60' }}" \
-            -f web_time_budget_seconds="${{ inputs.web_time_budget_seconds || '1200' }}" \
-            -f web_scope_time_budget_seconds="${{ inputs.web_scope_time_budget_seconds || '1200' }}" \
-            -f max_parallel="${{ inputs.max_parallel || '4' }}" \
-            -f auto_continue="${{ inputs.auto_continue }}" \
-            -f chain_depth="$next_depth" \
-            -f max_chain_depth="${{ inputs.max_chain_depth || '100' }}" \
-            -f web_429_cooldown_minutes="${{ inputs.web_429_cooldown_minutes || '0' }}" \
-            -f web_429_circuit_breaker_min_pages="${{ inputs.web_429_circuit_breaker_min_pages || '4' }}" \
-            -f web_429_circuit_breaker_max_rate="${{ inputs.web_429_circuit_breaker_max_rate || '0.5' }}"

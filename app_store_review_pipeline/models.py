@@ -72,6 +72,8 @@ class ReviewPage:
     error_message: str | None
     terminal_reason: str | None
     overlap_review_count: int
+    http_429_attempt_count: int = 0
+    soft_retry_count: int = 0
 
 
 def make_review_key(app_id: str, country: str, review_id: str, *, source: str = SOURCE) -> str:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -26,6 +27,7 @@ from app_store_review_pipeline.notifications import (
     DEFAULT_NOTIFICATION_PREVIEW,
     DEFAULT_NOTIFICATION_RESULT,
     send_monitoring_email,
+    write_fallback_failure_report,
 )
 from app_store_review_pipeline.operating import (
     DEFAULT_OPERATING_JSON,
@@ -37,13 +39,17 @@ from app_store_review_pipeline.operating import (
     upsert_operating_ledger_run,
 )
 from app_store_review_pipeline.postgres_database import (
+    backfill_typed_timestamps_postgres,
+    finalize_execution_postgres,
     initialize_postgres,
     load_pipeline_run_postgres,
     mask_database_url,
+    record_run_scopes_postgres,
     record_web_catalog_pressure_result,
     review_counts_by_scope,
     sync_targets_postgres,
     trusted_existing_review_ids_by_scope,
+    upsert_execution_postgres,
     update_sync_states_postgres,
     validate_postgres,
     web_catalog_429_circuit_breaker_status,
@@ -78,6 +84,27 @@ def build_parser() -> argparse.ArgumentParser:
     init_postgres = subparsers.add_parser("init-postgres", help="Create or update the Postgres schema.")
     init_postgres.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
     init_postgres.set_defaults(func=command_init_postgres)
+
+    typed_timestamps = subparsers.add_parser(
+        "backfill-typed-timestamps",
+        help="Backfill typed timestamp columns in short committed batches.",
+    )
+    typed_timestamps.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
+    typed_timestamps.add_argument("--batch-size", type=int, default=5_000)
+    typed_timestamps.add_argument("--max-batches", type=int, default=0, help="Use 0 to continue until complete.")
+    typed_timestamps.set_defaults(func=command_backfill_typed_timestamps)
+
+    start_execution = subparsers.add_parser("start-execution", help="Create or update one ingestion execution row.")
+    start_execution.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
+    add_execution_arguments(start_execution, require_execution_id=True)
+    start_execution.set_defaults(func=command_start_execution)
+
+    finalize_execution = subparsers.add_parser("finalize-execution", help="Finalize one ingestion execution row.")
+    finalize_execution.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
+    finalize_execution.add_argument("--execution-id", required=True)
+    finalize_execution.add_argument("--status", choices=["healthy", "degraded", "failing", "cancelled"], required=True)
+    finalize_execution.add_argument("--completed-at")
+    finalize_execution.set_defaults(func=command_finalize_execution)
 
     web_429_breaker = subparsers.add_parser(
         "check-web-429-circuit-breaker",
@@ -196,6 +223,7 @@ def build_parser() -> argparse.ArgumentParser:
     monitor.add_argument("--github-run-url", default="")
     monitor.add_argument("--github-event-name", default="")
     monitor.add_argument("--github-run-attempt", type=int, default=1)
+    monitor.add_argument("--execution-id", default="")
     monitor.add_argument("--github-jobs-json", type=Path)
     monitor.add_argument("--github-runs-json", type=Path)
     monitor.add_argument("--markdown-output", type=Path, default=DEFAULT_MONITORING_MARKDOWN)
@@ -215,6 +243,20 @@ def build_parser() -> argparse.ArgumentParser:
     monitor_email.add_argument("--dry-run", action="store_true")
     monitor_email.add_argument("--force", action="store_true")
     monitor_email.set_defaults(func=command_send_monitoring_email)
+
+    fallback_monitor = subparsers.add_parser(
+        "fallback-monitoring-report",
+        help="Write a minimal failing report when the primary monitor cannot produce one.",
+    )
+    fallback_monitor.add_argument("--json-output", type=Path, default=DEFAULT_MONITORING_JSON)
+    fallback_monitor.add_argument("--failure-code", required=True)
+    fallback_monitor.add_argument("--failure-message", required=True)
+    fallback_monitor.add_argument("--github-run-id", default="")
+    fallback_monitor.add_argument("--github-run-url", default="")
+    fallback_monitor.add_argument("--github-event-name", default="")
+    fallback_monitor.add_argument("--github-run-attempt", type=int, default=1)
+    fallback_monitor.add_argument("--workflow-result", default="failure")
+    fallback_monitor.set_defaults(func=command_fallback_monitoring_report)
 
     daily_web_catalog = subparsers.add_parser(
         "daily-web-catalog",
@@ -238,9 +280,25 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Skip syncing repository targets because an upstream preflight already synced them.",
     )
+    add_execution_arguments(daily_web_catalog)
     daily_web_catalog.set_defaults(func=command_daily_web_catalog)
 
     return parser
+
+
+def add_execution_arguments(parser: argparse.ArgumentParser, *, require_execution_id: bool = False) -> None:
+    parser.add_argument("--execution-id", required=require_execution_id, default="")
+    parser.add_argument("--execution-started-at", default="")
+    parser.add_argument("--github-run-id", default="")
+    parser.add_argument("--github-run-attempt", type=int, default=1)
+    parser.add_argument("--github-workflow", default="")
+    parser.add_argument("--github-event-name", default="")
+    parser.add_argument("--git-sha", default="")
+    parser.add_argument("--worker-key", default="")
+    parser.add_argument("--scope-signature", default="")
+    parser.add_argument("--config-signature", default="")
+    parser.add_argument("--intended-target-count", type=int, default=0)
+    parser.add_argument("--intended-scope-count", type=int, default=0)
 
 
 def add_web_catalog_fetch_arguments(parser: argparse.ArgumentParser) -> None:
@@ -438,6 +496,48 @@ def command_init_postgres(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_backfill_typed_timestamps(args: argparse.Namespace) -> int:
+    result = backfill_typed_timestamps_postgres(
+        args.database_url,
+        batch_size=args.batch_size,
+        max_batches=args.max_batches,
+    )
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
+def command_start_execution(args: argparse.Namespace) -> int:
+    started_at = args.execution_started_at or utc_timestamp()
+    result = upsert_execution_postgres(
+        args.database_url,
+        execution_id=args.execution_id,
+        source=WEB_CATALOG_SOURCE,
+        started_at=started_at,
+        github_run_id=args.github_run_id,
+        github_run_attempt=args.github_run_attempt,
+        workflow_name=args.github_workflow,
+        event_name=args.github_event_name,
+        git_sha=args.git_sha,
+        scope_signature=args.scope_signature,
+        config_signature=args.config_signature,
+        intended_target_count=args.intended_target_count,
+        intended_scope_count=args.intended_scope_count,
+    )
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
+def command_finalize_execution(args: argparse.Namespace) -> int:
+    result = finalize_execution_postgres(
+        args.database_url,
+        execution_id=args.execution_id,
+        status=args.status,
+        completed_at=args.completed_at,
+    )
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
 def command_check_web_429_circuit_breaker(args: argparse.Namespace) -> int:
     status = web_catalog_429_circuit_breaker_status(
         args.database_url,
@@ -583,6 +683,7 @@ def command_monitoring_report(args: argparse.Namespace) -> int:
         github_run_url=args.github_run_url,
         github_event_name=args.github_event_name,
         github_run_attempt=args.github_run_attempt,
+        execution_id=getattr(args, "execution_id", ""),
         github_jobs_json=args.github_jobs_json,
         github_runs_json=args.github_runs_json,
         markdown_path=args.markdown_output,
@@ -621,8 +722,25 @@ def command_send_monitoring_email(args: argparse.Namespace) -> int:
         print(json.dumps(result, indent=2, sort_keys=True))
         return 1
     if result.get("status") == "not_configured":
-        print("::warning title=monitoring_email_not_configured::Failing email was eligible but SMTP secrets are missing.")
+        print("::error title=monitoring_email_not_configured::Failing email was eligible but SMTP secrets are missing.")
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return 1
     print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
+def command_fallback_monitoring_report(args: argparse.Namespace) -> int:
+    summary = write_fallback_failure_report(
+        args.json_output,
+        failure_code=args.failure_code,
+        failure_message=args.failure_message,
+        github_run_id=args.github_run_id,
+        github_run_url=args.github_run_url,
+        github_event_name=args.github_event_name,
+        github_run_attempt=args.github_run_attempt,
+        workflow_result=args.workflow_result,
+    )
+    print(json.dumps({"status": summary["status"], "json_path": str(args.json_output)}, indent=2, sort_keys=True))
     return 0
 
 
@@ -630,6 +748,11 @@ def select_target_window(targets: list, *, limit: int, offset: int = 0) -> list:
     start = max(0, offset)
     window = targets[start:]
     return window[:limit] if limit > 0 else window
+
+
+def stable_signature(value: object) -> str:
+    encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()[:20]
 
 
 def command_daily_web_catalog(args: argparse.Namespace) -> int:
@@ -656,6 +779,54 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         )
     targets = select_target_window(active_targets(load_targets(args.targets)), limit=args.limit, offset=args.target_offset)
     scopes = [(target.apple_app_id, country, args.sort_by) for target in targets for country in target.countries]
+    expected_scopes = [
+        {
+            "app_id": target.apple_app_id,
+            "app_name": target.app_name,
+            "country": country,
+            "sort_by": args.sort_by,
+        }
+        for target in targets
+        for country in target.countries
+    ]
+    github_run_id = str(getattr(args, "github_run_id", "") or "")
+    github_run_attempt = max(1, int(getattr(args, "github_run_attempt", 1) or 1))
+    execution_id = str(getattr(args, "execution_id", "") or f"local:{run_id}")
+    execution_started_at = str(getattr(args, "execution_started_at", "") or started_at)
+    scope_signature = str(getattr(args, "scope_signature", "") or stable_signature(scopes))
+    config_signature = str(
+        getattr(args, "config_signature", "")
+        or stable_signature(
+            {
+                "sort_by": args.sort_by,
+                "max_pages": args.max_pages_per_app_country,
+                "start_page": args.start_page,
+                "review_limit": args.review_limit,
+                "request_delay": args.request_delay_seconds,
+                "request_jitter": getattr(args, "request_delay_jitter_seconds", 0.0),
+                "scope_time_budget": args.web_scope_time_budget_seconds,
+                "overlap_stop": not getattr(args, "disable_overlap_stop", False),
+            }
+        )
+    )
+    intended_target_count = max(0, int(getattr(args, "intended_target_count", 0) or len(targets)))
+    intended_scope_count = max(0, int(getattr(args, "intended_scope_count", 0) or len(scopes)))
+    upsert_execution_postgres(
+        args.database_url,
+        execution_id=execution_id,
+        source=WEB_CATALOG_SOURCE,
+        started_at=execution_started_at,
+        github_run_id=github_run_id,
+        github_run_attempt=github_run_attempt,
+        workflow_name=str(getattr(args, "github_workflow", "") or "local"),
+        event_name=str(getattr(args, "github_event_name", "") or "local"),
+        git_sha=str(getattr(args, "git_sha", "") or ""),
+        scope_signature=scope_signature,
+        config_signature=config_signature,
+        intended_target_count=intended_target_count,
+        intended_scope_count=intended_scope_count,
+        initialize_schema=initialize_schema,
+    )
     use_overlap_stop = not getattr(args, "disable_overlap_stop", False)
     known_ids = (
         trusted_existing_review_ids_by_scope(
@@ -707,6 +878,11 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         args.database_url,
         raw_dir,
         args.targets,
+        execution_id=execution_id,
+        github_run_id=github_run_id or None,
+        github_run_attempt=github_run_attempt if github_run_id else None,
+        worker_key=str(getattr(args, "worker_key", "") or "local"),
+        selected_target_count=len(targets),
         initialize_schema=initialize_schema,
     )
     completed_at = utc_timestamp()
@@ -721,11 +897,25 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         source=WEB_CATALOG_SOURCE,
         initialize_schema=initialize_schema,
     )
+    scope_summary = record_run_scopes_postgres(
+        args.database_url,
+        run_id=run_id,
+        execution_id=execution_id,
+        source=WEB_CATALOG_SOURCE,
+        sort_by=args.sort_by,
+        started_at=started_at,
+        completed_at=completed_at,
+        expected_scopes=expected_scopes,
+        page_rows=fetch_report["page_reports"],
+        review_summary=load_summary,
+        initialize_schema=initialize_schema,
+    )
     validation_report = validate_postgres(args.database_url, run_id, initialize_schema=initialize_schema)
     validation_path = reports_dir / "validation_report.json"
     write_json(validation_path, validation_report)
     report = {
         "run_id": run_id,
+        "execution_id": execution_id,
         "started_at": started_at,
         "completed_at": completed_at,
         "targets_path": str(args.targets),
@@ -756,12 +946,24 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         "fetch_summary": summarize_fetch_cli(fetch_report),
         "load_summary": load_summary,
         "sync_summary": sync_summary,
+        "scope_summary": scope_summary,
         "validation_report_path": str(validation_path),
         "report_path": str(reports_dir / "daily_report.json"),
     }
     write_json(reports_dir / "daily_report.json", report)
     print(json.dumps(report, indent=2, sort_keys=True))
-    return 0
+    if not github_run_id:
+        local_status = "failing" if scope_summary["hard_failure_scope_count"] else (
+            "degraded" if scope_summary["backlogged_scope_count"] else "healthy"
+        )
+        finalize_execution_postgres(
+            args.database_url,
+            execution_id=execution_id,
+            status=local_status,
+            completed_at=completed_at,
+            initialize_schema=initialize_schema,
+        )
+    return 1 if scope_summary["hard_failure_scope_count"] else 0
 
 
 def main() -> int:

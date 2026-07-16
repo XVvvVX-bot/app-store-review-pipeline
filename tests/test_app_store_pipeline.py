@@ -30,6 +30,7 @@ from app_store_review_pipeline.cli import (
     command_check_web_429_cooldown,
     command_select_web_catalog_pressure,
     command_daily_web_catalog,
+    command_fallback_monitoring_report,
     command_monitoring_report,
     command_send_monitoring_email,
     command_operating_ledger_upsert_run,
@@ -46,6 +47,7 @@ from app_store_review_pipeline.monitoring import (
     evaluate_alerts,
     extract_jobs,
     extract_runs,
+    fetch_stale_apps,
     is_monitor_job,
     monitor_exit_code,
     overall_status,
@@ -56,6 +58,7 @@ from app_store_review_pipeline.notifications import (
     build_monitoring_notification,
     parse_recipients,
     send_monitoring_email,
+    write_fallback_failure_report,
 )
 from app_store_review_pipeline.operating import (
     build_aggregate_summary,
@@ -68,7 +71,13 @@ from app_store_review_pipeline.operating import (
     schedule_delay_minutes,
 )
 from app_store_review_pipeline import postgres_database
-from app_store_review_pipeline.postgres_database import infer_field_value, mask_database_url, scope_key
+from app_store_review_pipeline.postgres_database import (
+    infer_field_value,
+    mask_database_url,
+    review_changed_fields,
+    scope_key,
+    scope_outcome,
+)
 from app_store_review_pipeline.provider_apptweak import (
     apptweak_headers,
     build_apptweak_reviews_url,
@@ -200,9 +209,17 @@ def test_initialize_postgres_serializes_schema_creation(monkeypatch):
 
         def execute(self, query, params=None):
             calls.append((query, params))
+            return FakeResult(params[0] if params and "RETURNING version" in query else None)
 
         def commit(self):
             calls.append(("commit", None))
+
+    class FakeResult:
+        def __init__(self, version):
+            self.version = version
+
+        def fetchone(self):
+            return {"version": self.version} if self.version else None
 
     monkeypatch.setattr(postgres_database, "connect_postgres", lambda database_url: FakeConnection())
 
@@ -215,6 +232,101 @@ def test_initialize_postgres_serializes_schema_creation(monkeypatch):
     assert calls[1] == (postgres_database.POSTGRES_SCHEMA, None)
     assert any(call[0].startswith("ALTER TABLE app_store_pressure_state") for call in calls)
     assert calls[-1] == ("commit", None)
+
+
+def test_insert_pages_keeps_typed_timestamp_placeholders_aligned():
+    class FakeResult:
+        rowcount = 1
+
+    class FakeConnection:
+        def execute(self, query, params=None):
+            assert query.count("%s") == len(params or ())
+            return FakeResult()
+
+    row = {
+        "page_key": "run:source:123:us:recent:1",
+        "run_id": "run",
+        "platform": "apple_app_store",
+        "source": WEB_CATALOG_SOURCE,
+        "app_id": "123",
+        "app_name": "Fixture",
+        "country": "us",
+        "sort_by": "recent",
+        "page_number": 1,
+        "request_url": "https://example.test",
+        "status": "ok",
+        "status_code": 200,
+        "fetched_at": "2026-07-16T12:00:00Z",
+        "raw_json_path": "/tmp/page.json",
+        "review_count": 1,
+        "unique_review_count": 1,
+        "terminal_reason": "caught_up_to_existing_reviews",
+    }
+
+    postgres_database.insert_pages(FakeConnection(), [row])
+
+
+def test_sync_state_typed_timestamp_placeholders_are_aligned(monkeypatch):
+    class FakeResult:
+        def __init__(self, row=None):
+            self.row = row
+            self.rowcount = 1
+
+        def fetchone(self):
+            return self.row
+
+    class FakeConnection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def execute(self, query, params=None):
+            assert query.count("%s") == len(params or ())
+            if "SELECT complete_through_updated_epoch_seconds" in query:
+                return FakeResult(None)
+            if "SELECT COALESCE(MAX(updated_epoch_seconds)" in query:
+                return FakeResult({"high_water": 123})
+            return FakeResult()
+
+        def commit(self):
+            return None
+
+    monkeypatch.setattr(postgres_database, "connect_postgres", lambda database_url: FakeConnection())
+    result = postgres_database._update_sync_states_postgres_once(
+        "postgresql:///fixture",
+        {
+            ("123", "us", "recent"): [
+                {
+                    "app_id": "123",
+                    "country": "us",
+                    "sort_by": "recent",
+                    "terminal_reason": "caught_up_to_existing_reviews",
+                    "overlap_review_count": 1,
+                }
+            ]
+        },
+        {("123", "us", "recent"): [{"review_id": "1"}]},
+        run_id="run",
+        sort_by="recent",
+        started_at="2026-07-16T12:00:00Z",
+        completed_at="2026-07-16T12:01:00Z",
+        source=WEB_CATALOG_SOURCE,
+    )
+
+    assert result["scope_count"] == 1
+    assert result["scopes"][0]["high_water"] == 123
+
+
+def test_scope_outcome_and_review_change_fields_are_explicit():
+    assert scope_outcome(terminal_reason="caught_up_to_existing_reviews", page_count=1, fetch_errors=0, other_non_200_pages=0) == "caught_up"
+    assert scope_outcome(terminal_reason="page_cap", page_count=2, fetch_errors=0, other_non_200_pages=0) == "backlogged"
+    assert scope_outcome(terminal_reason=None, page_count=0, fetch_errors=0, other_non_200_pages=0) == "hard_failure"
+    assert review_changed_fields(
+        {"title": "Before", "content": "Same", "rating": 5},
+        {"title": "After", "content": "Same", "rating": 5},
+    ) == ["title"]
 
 
 def test_load_pipeline_run_postgres_retries_retryable_write_conflicts(monkeypatch, tmp_path):
@@ -410,6 +522,7 @@ def test_trusted_existing_review_ids_use_successful_frontier(monkeypatch):
     assert result == {("123456789", "us", "recent"): {"old-review"}}
     assert queries[0][1] == (
         "recent",
+        WEB_CATALOG_SOURCE,
         "123456789",
         "us",
         "recent",
@@ -1066,7 +1179,7 @@ def monitoring_alert_status(
         source_frontier=source_frontier or {},
         accounting=accounting or {"consistent": True},
         stale_apps=stale_apps or [],
-        history=history or {"median_inserted_per_app_run": 0.5},
+        history=history or {"median_inserted_per_execution": 0, "comparable_execution_count": 0},
         github=base_github,
         selected_count=selected_count,
         workflow_result=workflow_result,
@@ -1112,6 +1225,16 @@ def test_monitoring_http_429_thresholds_map_to_degraded_and_failing():
     assert status == "failing"
     assert "excessive_http_429" in alert_codes(alerts)
 
+    status, alerts = monitoring_alert_status(
+        run_metrics={
+            "http_429_pages": 0,
+            "http_429_attempts": 1,
+            "http_429_rate": 0.004,
+        }
+    )
+    assert status == "degraded"
+    assert "http_429_present" in alert_codes(alerts)
+
 
 def test_monitoring_429_does_not_duplicate_other_non_200_warning():
     status, alerts = monitoring_alert_status(
@@ -1155,7 +1278,7 @@ def test_monitoring_fetch_stale_duplicate_insert_and_backlog_alerts():
 
     status, alerts = monitoring_alert_status(
         run_metrics={"reviews_inserted": 2},
-        history={"median_inserted_per_app_run": 10},
+        history={"median_inserted_per_execution": 10, "comparable_execution_count": 3},
     )
     assert status == "degraded"
     assert "insert_drop" in alert_codes(alerts)
@@ -1163,6 +1286,57 @@ def test_monitoring_fetch_stale_duplicate_insert_and_backlog_alerts():
     status, alerts = monitoring_alert_status(run_metrics={"backlog_terminal_rate": 0.051})
     assert status == "failing"
     assert "backlog_terminal_rate" in alert_codes(alerts)
+
+    status, alerts = monitoring_alert_status(run_metrics={"missing_scope_count": 1})
+    assert status == "failing"
+    assert "missing_execution_scopes" in alert_codes(alerts)
+
+    status, alerts = monitoring_alert_status(run_metrics={"hard_failure_scope_count": 1})
+    assert status == "failing"
+    assert "hard_failure_scopes" in alert_codes(alerts)
+
+
+def test_monitoring_freshness_uses_latest_completed_attempt_not_catchup_frontier():
+    observed = {}
+
+    class Result:
+        def fetchall(self):
+            return []
+
+    class Connection:
+        def execute(self, query, params):
+            observed["query"] = query
+            observed["params"] = params
+            return Result()
+
+    generated_at = datetime(2026, 7, 16, 12, tzinfo=timezone.utc)
+
+    assert fetch_stale_apps(Connection(), source=WEB_CATALOG_SOURCE, generated_at=generated_at) == []
+    assert "COALESCE(s.last_attempt_completed_at, s.last_successful_at) AS freshness_at" in observed["query"]
+    assert "AS hours_since_successful_catchup" in observed["query"]
+    assert observed["params"] == (
+        generated_at,
+        generated_at,
+        "recent",
+        WEB_CATALOG_SOURCE,
+        generated_at,
+    )
+
+
+def test_monitoring_insert_drop_requires_three_comparable_complete_executions():
+    status, alerts = monitoring_alert_status(
+        run_metrics={"reviews_inserted": 1},
+        history={"median_inserted_per_execution": 100, "comparable_execution_count": 2},
+    )
+    assert status == "healthy"
+    assert "insert_drop" not in alert_codes(alerts)
+
+    status, alerts = monitoring_alert_status(
+        run_metrics={"reviews_inserted": 1},
+        history={"median_inserted_per_execution": 100, "comparable_execution_count": 3},
+    )
+    assert status == "degraded"
+    assert "insert_drop" in alert_codes(alerts)
 
 
 def test_monitoring_zero_insert_uses_frontier_and_accounting_evidence():
@@ -1279,6 +1453,7 @@ def test_monitoring_github_summary_excludes_monitor_only_failures():
     )
 
     assert is_monitor_job({"name": "monitor"}) is True
+    assert is_monitor_job({"name": "notify"}) is True
     assert github["job_failure"] == 0
     assert github["recent_failed_schedule_run_count"] == 1
     assert github["recent_median_runtime_minutes"] == 60
@@ -1346,6 +1521,57 @@ def test_monitoring_notification_is_short_scoped_and_failing_only():
     notification = build_monitoring_notification(summary)
     assert notification["affected_scopes"][0]["reason"] == "failure"
     assert "daily (6443467666, Love and Deepspace)" in notification["body"]
+
+
+def test_active_workflows_keep_watchdog_removed_and_backfill_hard_capped():
+    workflows = Path(__file__).resolve().parents[1] / ".github" / "workflows"
+    backfill = (workflows / "app-store-web-catalog-backfill.yml").read_text(encoding="utf-8")
+
+    assert not (workflows / "app-store-monitor.yml").exists()
+    assert 'integer("INPUT_LIMIT", 1, 5)' in backfill
+    assert 'integer("INPUT_MAX_PARALLEL", 1, 1)' in backfill
+    assert 'integer("INPUT_MAX_PAGES_PER_APP_COUNTRY", 1, 25)' in backfill
+    assert "I_UNDERSTAND_BACKFILL_PRESSURE" in backfill
+    assert "auto_continue" not in backfill
+
+
+def test_fallback_failure_report_remains_email_eligible_for_scheduled_run(tmp_path):
+    report_path = tmp_path / "fallback.json"
+
+    summary = write_fallback_failure_report(
+        report_path,
+        failure_code="monitor_report_unavailable",
+        failure_message="Self-hosted monitor did not produce a report.",
+        github_run_id="456",
+        github_run_url="https://github.com/example/repo/actions/runs/456",
+        github_event_name="schedule",
+        github_run_attempt=1,
+    )
+
+    assert report_path.exists()
+    assert summary["status"] == "failing"
+    assert summary["notification"]["eligible"] is True
+    assert summary["notification"]["primary_code"] == "monitor_report_unavailable"
+
+
+def test_command_fallback_monitoring_report_writes_machine_readable_failure(tmp_path, capsys):
+    output = tmp_path / "fallback.json"
+    args = argparse.Namespace(
+        json_output=output,
+        failure_code="workflow_failure",
+        failure_message="Required ingestion job failed.",
+        github_run_id="789",
+        github_run_url="https://github.com/example/repo/actions/runs/789",
+        github_event_name="schedule",
+        github_run_attempt=1,
+        workflow_result="failure",
+    )
+
+    assert command_fallback_monitoring_report(args) == 0
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["status"] == "failing"
+    assert payload["alerts"][0]["code"] == "workflow_failure"
+    assert json.loads(capsys.readouterr().out)["json_path"] == str(output)
 
 
 def test_send_monitoring_email_supports_dry_run_and_fake_smtp(tmp_path):
@@ -2210,7 +2436,36 @@ def test_fetch_web_catalog_targets_retries_malformed_json_soft_error(tmp_path):
     assert report["fetched_pages"] == 1
     assert report["review_count"] == 2
     assert report["page_reports"][0]["attempt_count"] == 2
+    assert report["page_reports"][0]["soft_retry_count"] == 1
+    assert report["page_reports"][0]["http_429_attempt_count"] == 0
     assert len(session.calls) == 2
+
+
+def test_fetch_web_catalog_targets_records_recovered_429_attempt(tmp_path):
+    session = FakeWebSession(
+        [
+            FakeWebResponse(429),
+            FakeWebResponse(200, payload=web_catalog_payload(start=1, count=2, has_next=False)),
+        ]
+    )
+
+    report = fetch_web_catalog_targets(
+        [fixture_target()],
+        tmp_path,
+        "run",
+        max_pages_per_app_country=1,
+        review_limit=2,
+        request_delay_seconds=0,
+        web_429_retries=1,
+        web_429_retry_seconds=0,
+        session=session,
+    )
+
+    page_report = report["page_reports"][0]
+    assert page_report["status_code"] == 200
+    assert page_report["attempt_count"] == 2
+    assert page_report["http_429_attempt_count"] == 1
+    assert page_report["soft_retry_count"] == 0
 
 
 def test_fetch_web_catalog_targets_continues_across_sparse_404(tmp_path):
@@ -2518,7 +2773,7 @@ def test_fetch_web_catalog_targets_can_start_from_deeper_page(tmp_path):
         tmp_path,
         "run",
         start_page=51,
-        max_pages_per_app_country=52,
+        max_pages_per_app_country=2,
         review_limit=20,
         request_delay_seconds=0,
         web_429_retries=0,
@@ -2598,6 +2853,18 @@ def test_daily_web_catalog_passes_start_page_to_fetcher(tmp_path, monkeypatch):
     monkeypatch.setattr("app_store_review_pipeline.cli.load_pipeline_run_postgres", lambda *args, **kwargs: {})
     monkeypatch.setattr("app_store_review_pipeline.cli.update_sync_states_postgres", lambda *args, **kwargs: {})
     monkeypatch.setattr("app_store_review_pipeline.cli.validate_postgres", lambda *args, **kwargs: {})
+    monkeypatch.setattr("app_store_review_pipeline.cli.upsert_execution_postgres", lambda *args, **kwargs: {})
+    monkeypatch.setattr(
+        "app_store_review_pipeline.cli.record_run_scopes_postgres",
+        lambda *args, **kwargs: {
+            "scope_count": 1,
+            "caught_up_scope_count": 1,
+            "backlogged_scope_count": 0,
+            "hard_failure_scope_count": 0,
+            "scopes": [],
+        },
+    )
+    monkeypatch.setattr("app_store_review_pipeline.cli.finalize_execution_postgres", lambda *args, **kwargs: {})
 
     args = argparse.Namespace(
         raw_root=tmp_path / "raw",
@@ -2674,6 +2941,18 @@ def test_daily_web_catalog_can_skip_matrix_postgres_init_and_target_sync(tmp_pat
     monkeypatch.setattr("app_store_review_pipeline.cli.load_pipeline_run_postgres", fake_load)
     monkeypatch.setattr("app_store_review_pipeline.cli.update_sync_states_postgres", fake_sync_states)
     monkeypatch.setattr("app_store_review_pipeline.cli.validate_postgres", fake_validate)
+    monkeypatch.setattr("app_store_review_pipeline.cli.upsert_execution_postgres", lambda *args, **kwargs: {})
+    monkeypatch.setattr(
+        "app_store_review_pipeline.cli.record_run_scopes_postgres",
+        lambda *args, **kwargs: {
+            "scope_count": 1,
+            "caught_up_scope_count": 1,
+            "backlogged_scope_count": 0,
+            "hard_failure_scope_count": 0,
+            "scopes": [],
+        },
+    )
+    monkeypatch.setattr("app_store_review_pipeline.cli.finalize_execution_postgres", lambda *args, **kwargs: {})
 
     args = argparse.Namespace(
         raw_root=tmp_path / "raw",
@@ -2744,6 +3023,18 @@ def test_daily_web_catalog_can_pass_rss_parity_targets_to_fetcher(tmp_path, monk
     monkeypatch.setattr("app_store_review_pipeline.cli.load_pipeline_run_postgres", lambda *args, **kwargs: {})
     monkeypatch.setattr("app_store_review_pipeline.cli.update_sync_states_postgres", lambda *args, **kwargs: {})
     monkeypatch.setattr("app_store_review_pipeline.cli.validate_postgres", lambda *args, **kwargs: {})
+    monkeypatch.setattr("app_store_review_pipeline.cli.upsert_execution_postgres", lambda *args, **kwargs: {})
+    monkeypatch.setattr(
+        "app_store_review_pipeline.cli.record_run_scopes_postgres",
+        lambda *args, **kwargs: {
+            "scope_count": 1,
+            "caught_up_scope_count": 1,
+            "backlogged_scope_count": 0,
+            "hard_failure_scope_count": 0,
+            "scopes": [],
+        },
+    )
+    monkeypatch.setattr("app_store_review_pipeline.cli.finalize_execution_postgres", lambda *args, **kwargs: {})
 
     args = argparse.Namespace(
         raw_root=tmp_path / "raw",
@@ -3037,7 +3328,7 @@ def test_fetch_targets_stops_after_empty_page_threshold(tmp_path):
 
 def test_database_helpers():
     assert mask_database_url("postgresql://user:secret@localhost:5432/app_store_reviews") == "postgresql://user:***@localhost:5432/app_store_reviews"
-    assert scope_key("123", "US") == "123:us:mostrecent"
+    assert scope_key("123", "US") == "apple_itunes_customerreviews_rss:123:us:mostrecent"
 
 
 def test_web_probe_url_helpers():

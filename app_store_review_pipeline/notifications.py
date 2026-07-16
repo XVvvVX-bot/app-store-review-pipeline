@@ -7,12 +7,62 @@ import re
 import smtplib
 import ssl
 from email.message import EmailMessage
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
 
 DEFAULT_NOTIFICATION_RESULT = Path("data/reports/monitoring/notification_result.json")
 DEFAULT_NOTIFICATION_PREVIEW = Path("data/reports/monitoring/notification_preview.eml")
+
+
+def write_fallback_failure_report(
+    path: Path,
+    *,
+    failure_code: str,
+    failure_message: str,
+    github_run_id: str,
+    github_run_url: str,
+    github_event_name: str,
+    github_run_attempt: int,
+    workflow_result: str = "failure",
+) -> dict[str, Any]:
+    generated_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    summary: dict[str, Any] = {
+        "metadata": {
+            "generated_at": generated_at,
+            "source": "apple_app_store_web_catalog_reviews",
+            "since": generated_at,
+            "selected_count": 0,
+            "workflow_result": workflow_result,
+            "github_run_id": str(github_run_id or ""),
+            "github_run_url": str(github_run_url or ""),
+            "github_event_name": str(github_event_name or ""),
+            "github_run_attempt": max(1, int(github_run_attempt or 1)),
+            "execution_id": "",
+        },
+        "status": "failing",
+        "alerts": [{"severity": "failing", "code": failure_code, "message": failure_message}],
+        "github": {"workflow_result": workflow_result, "job_total": 0, "job_success": 0, "job_failure": 1},
+        "run_metrics": {
+            "page_count": 0,
+            "review_rows": 0,
+            "reviews_inserted": 0,
+            "reviews_updated": 0,
+            "duplicates_skipped": 0,
+            "http_429_pages": 0,
+            "http_429_attempts": 0,
+            "soft_retry_count": 0,
+            "other_non_200_pages": 0,
+            "fetch_errors": 0,
+        },
+        "app_metrics": {"pressure_scopes": []},
+        "stale_apps": [],
+    }
+    summary["notification"] = build_monitoring_notification(summary)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return summary
 
 
 def build_monitoring_notification(summary: dict[str, Any]) -> dict[str, Any]:
@@ -33,10 +83,16 @@ def build_monitoring_notification(summary: dict[str, Any]) -> dict[str, Any]:
         "pages": int(run.get("page_count") or 0),
         "rows": int(run.get("review_rows") or 0),
         "inserted": int(run.get("reviews_inserted") or 0),
+        "updated": int(run.get("reviews_updated") or 0),
         "duplicates": int(run.get("duplicates_skipped") or 0),
-        "http_429": int(run.get("http_429_pages") or 0),
+        "http_429_attempts": int(run.get("http_429_attempts") or run.get("http_429_pages") or 0),
+        "final_http_429_pages": int(run.get("http_429_pages") or 0),
         "other_non_200": int(run.get("other_non_200_pages") or 0),
         "fetch_errors": int(run.get("fetch_errors") or 0),
+        "completed_scopes": int(run.get("completed_scope_count") or 0),
+        "backlogged_scopes": int(run.get("backlogged_scope_count") or 0),
+        "hard_failure_scopes": int(run.get("hard_failure_scope_count") or 0),
+        "missing_scopes": int(run.get("missing_scope_count") or 0),
     }
     body = render_notification_body(
         primary_code=primary_code,
@@ -97,7 +153,13 @@ def select_affected_scopes(summary: dict[str, Any], *, limit: int = 3) -> list[d
             }
             for row in summary.get("stale_apps", [])[:limit]
         ]
-    pressure_codes = {"excessive_http_429", "fetch_error_rate", "backlog_terminal_rate"}
+    pressure_codes = {
+        "excessive_http_429",
+        "fetch_error_rate",
+        "backlog_terminal_rate",
+        "hard_failure_scopes",
+        "missing_execution_scopes",
+    }
     if not failing_codes & pressure_codes:
         return []
     return [
@@ -107,7 +169,8 @@ def select_affected_scopes(summary: dict[str, Any], *, limit: int = 3) -> list[d
             "country": row.get("country"),
             "reason": row.get("terminal_reason") or "source_pressure",
             "pages": row.get("page_count"),
-            "http_429": row.get("http_429_pages"),
+            "http_429_attempts": row.get("http_429_attempts") or row.get("http_429_pages"),
+            "final_http_429_pages": row.get("http_429_pages"),
             "fetch_errors": row.get("fetch_error_pages"),
         }
         for row in (summary.get("app_metrics") or {}).get("pressure_scopes", [])[:limit]

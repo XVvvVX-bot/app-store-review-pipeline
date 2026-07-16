@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import math
-from collections.abc import Iterable
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -381,6 +380,8 @@ def build_eda_summary(database_url: str, *, source: str = WEB_CATALOG_SOURCE) ->
                 COUNT(*) FILTER (WHERE review_count = 0 AND has_next_link = 1)::bigint AS empty_pages_with_next_link,
                 COUNT(*) FILTER (WHERE review_count = 0 AND has_next_link = 0)::bigint AS empty_pages_without_next_link,
                 COUNT(*) FILTER (WHERE status_code = 429)::bigint AS http_429_pages,
+                COALESCE(SUM(http_429_attempt_count), 0)::bigint AS http_429_attempts,
+                COALESCE(SUM(soft_retry_count), 0)::bigint AS soft_retries,
                 COUNT(*) FILTER (WHERE status_code IS NOT NULL AND status_code <> 200)::bigint AS final_non_200_pages,
                 COUNT(*) FILTER (WHERE attempt_count > 1)::bigint AS retried_pages,
                 COUNT(*) FILTER (WHERE status = 'error')::bigint AS error_pages
@@ -401,10 +402,12 @@ def build_eda_summary(database_url: str, *, source: str = WEB_CATALOG_SOURCE) ->
                     COUNT(*)::bigint AS page_count,
                     SUM(p.review_count)::bigint AS page_review_rows,
                     COUNT(*) FILTER (WHERE p.status_code = 429)::bigint AS http_429_pages,
+                    COALESCE(SUM(p.http_429_attempt_count), 0)::bigint AS http_429_attempts,
+                    COALESCE(SUM(p.soft_retry_count), 0)::bigint AS soft_retries,
                     COUNT(*) FILTER (WHERE p.status_code IS NOT NULL AND p.status_code <> 200)::bigint AS final_non_200_pages,
                     COUNT(*) FILTER (WHERE p.attempt_count > 1)::bigint AS retried_pages,
-                    MIN(p.fetched_at)::text AS first_page_at,
-                    MAX(p.fetched_at)::text AS last_page_at
+                    MIN(p.fetched_at_ts) AS first_page_at,
+                    MAX(p.fetched_at_ts) AS last_page_at
                 FROM app_store_review_pages p
                 LEFT JOIN app_store_targets t ON t.app_id = p.app_id
                 WHERE p.source = %s
@@ -418,10 +421,12 @@ def build_eda_summary(database_url: str, *, source: str = WEB_CATALOG_SOURCE) ->
                 SUM(page_count)::bigint AS page_count,
                 SUM(page_review_rows)::bigint AS page_review_rows,
                 SUM(http_429_pages)::bigint AS http_429_pages,
+                SUM(http_429_attempts)::bigint AS http_429_attempts,
+                SUM(soft_retries)::bigint AS soft_retries,
                 SUM(final_non_200_pages)::bigint AS final_non_200_pages,
                 SUM(retried_pages)::bigint AS retried_pages,
-                ROUND(AVG(EXTRACT(EPOCH FROM (last_page_at::timestamptz - first_page_at::timestamptz)) / 60.0)::numeric, 2) AS avg_run_page_window_minutes,
-                ROUND(MAX(EXTRACT(EPOCH FROM (last_page_at::timestamptz - first_page_at::timestamptz)) / 60.0)::numeric, 2) AS max_run_page_window_minutes
+                ROUND(AVG(EXTRACT(EPOCH FROM (last_page_at - first_page_at)) / 60.0)::numeric, 2) AS avg_run_page_window_minutes,
+                ROUND(MAX(EXTRACT(EPOCH FROM (last_page_at - first_page_at)) / 60.0)::numeric, 2) AS max_run_page_window_minutes
             FROM app_runs
             GROUP BY app_id
             ORDER BY page_count DESC, app_name
@@ -561,8 +566,9 @@ def render_eda_markdown(summary: dict[str, Any]) -> str:
             f"**{fmt_pct(concentration.get('top_10_share'))}**."
         ),
         (
-            f"Operationally, the stored page history includes **{fmt_int(page_health.get('http_429_pages'))}** "
-            f"HTTP 429 pages, **{fmt_int(page_health.get('retried_pages'))}** retried pages, and "
+            f"Operationally, the stored page history includes **{fmt_int(page_health.get('http_429_attempts'))}** "
+            f"HTTP 429 attempts (**{fmt_int(page_health.get('http_429_pages'))}** final 429 pages), "
+            f"**{fmt_int(page_health.get('retried_pages'))}** retried pages, and "
             f"**{fmt_int(page_health.get('final_non_200_pages'))}** final non-200 pages."
         ),
         "",
@@ -690,7 +696,9 @@ def render_eda_markdown(summary: dict[str, Any]) -> str:
             "empty_pages",
             "empty_pages_with_next_link",
             "empty_pages_without_next_link",
+            "http_429_attempts",
             "http_429_pages",
+            "soft_retries",
             "final_non_200_pages",
             "retried_pages",
             "error_pages",
@@ -706,7 +714,9 @@ def render_eda_markdown(summary: dict[str, Any]) -> str:
                 "run_count",
                 "page_count",
                 "page_review_rows",
+                "http_429_attempts",
                 "http_429_pages",
+                "soft_retries",
                 "final_non_200_pages",
                 "retried_pages",
                 "avg_run_page_window_minutes",
@@ -1092,7 +1102,7 @@ def render_eda_html(summary: dict[str, Any]) -> str:
         ["Reviews", fmtInt(primary.review_count), `${fmtInt(primary.app_count)} apps, ${fmtInt(primary.category_count)} categories`],
         ["Top 10 Share", fmtPct(concentration.top_10_share), `HHI ${fmtDecimal(concentration.hhi, 3)}`],
         ["Last 30 Days", fmtInt(summary.volume.by_category.reduce((a, r) => a + value(r, "reviews_last_30_days"), 0)), "recent review rows"],
-        ["HTTP 429 Pages", fmtInt(page.http_429_pages), `${fmtInt(page.retried_pages)} retried pages`],
+        ["HTTP 429 Attempts", fmtInt(page.http_429_attempts), `${fmtInt(page.http_429_pages)} final 429 pages; ${fmtInt(page.retried_pages)} retried pages`],
         ["Short Reviews", fmtPct(value(low, "content_1_to_20_chars") / Math.max(value(low, "review_count"), 1)), "1 to 20 characters"]
       ];
       byId("kpis").innerHTML = items.map(([label, main, note]) => `
@@ -1508,7 +1518,8 @@ def render_eda_html(summary: dict[str, Any]) -> str:
         ["app_name", "App"],
         ["page_count", "Pages", fmtInt],
         ["page_review_rows", "Rows", fmtInt],
-        ["http_429_pages", "429", fmtInt],
+        ["http_429_attempts", "429 tries", fmtInt],
+        ["http_429_pages", "Final 429", fmtInt],
         ["retried_pages", "Retries", fmtInt],
         ["max_run_page_window_minutes", "Max min", v => fmtDecimal(v, 1)]
       ]);

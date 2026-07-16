@@ -31,7 +31,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: python -m pip install -r requirements.txt
+        run: python -m pip install -r requirements.lock
 
       - name: Build controlled test report
         run: |
@@ -65,6 +65,7 @@ jobs:
                   "reviews_updated": 0,
                   "duplicates_skipped": 1990,
                   "http_429_pages": 3,
+                  "http_429_attempts": 3,
                   "http_429_rate": 0.03,
                   "other_non_200_pages": 0,
                   "fetch_errors": 0,
@@ -83,6 +84,7 @@ jobs:
                           "page_count": 3,
                           "page_share": 0.03,
                           "http_429_pages": 3,
+                          "http_429_attempts": 3,
                           "http_429_share": 1.0,
                           "fetch_error_pages": 0,
                           "terminal_reason": "simulated_http_429",
@@ -95,7 +97,7 @@ jobs:
                   source_frontier={},
                   accounting={"consistent": True},
                   stale_apps=[],
-                  history={"median_inserted_per_app_run": 0},
+                  history={"median_inserted_per_execution": 0, "comparable_execution_count": 0},
                   github={
                       "job_failure": 0,
                       "recent_schedule_run_count": 1,
