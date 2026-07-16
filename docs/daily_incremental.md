@@ -118,7 +118,8 @@ Automated monitoring is now the primary run-health surface:
 
 - Command: `python app_store_pipeline.py monitoring-report`
 - Daily workflow monitor job: `.github/workflows/app-store-daily-pipeline.yml`
-- Scheduled watchdog workflow: `.github/workflows/app-store-monitor.yml`
+- Failing-only email command: `python app_store_pipeline.py send-monitoring-email`
+- Optional missing-run detection: external dead-man heartbeat through `APP_STORE_HEARTBEAT_URL`
 - Detailed design and runbook: `docs/monitoring.md`
 
 For each scheduled run, the monitor checks:
@@ -132,7 +133,7 @@ For each scheduled run, the monitor checks:
 - App-country freshness from `app_store_sync_state`.
 - Database row counts and table sizes.
 
-The monitor appends a Markdown health summary to the GitHub Actions run summary and uploads both Markdown and JSON artifacts. It classifies the run as `healthy`, `degraded`, or `failing`; only `failing` status fails the monitor job in v1.
+The monitor appends a Markdown health summary to the GitHub Actions run summary and uploads both Markdown and JSON artifacts. It classifies the run as `healthy`, `degraded`, or `failing`; only `failing` status fails the monitor job and sends an external email. Healthy and degraded results remain in GitHub. The optional external heartbeat detects a scheduled workflow that never starts, which an in-workflow monitor cannot observe.
 
 Manual SQL checks remain useful for investigation:
 

@@ -22,6 +22,11 @@ from app_store_review_pipeline.monitoring import (
     emit_github_annotations,
     generate_monitoring_report,
 )
+from app_store_review_pipeline.notifications import (
+    DEFAULT_NOTIFICATION_PREVIEW,
+    DEFAULT_NOTIFICATION_RESULT,
+    send_monitoring_email,
+)
 from app_store_review_pipeline.operating import (
     DEFAULT_OPERATING_JSON,
     DEFAULT_OPERATING_LEDGER,
@@ -189,14 +194,27 @@ def build_parser() -> argparse.ArgumentParser:
     monitor.add_argument("--workflow-result", required=True)
     monitor.add_argument("--github-run-id", default="")
     monitor.add_argument("--github-run-url", default="")
+    monitor.add_argument("--github-event-name", default="")
+    monitor.add_argument("--github-run-attempt", type=int, default=1)
     monitor.add_argument("--github-jobs-json", type=Path)
     monitor.add_argument("--github-runs-json", type=Path)
     monitor.add_argument("--markdown-output", type=Path, default=DEFAULT_MONITORING_MARKDOWN)
     monitor.add_argument("--json-output", type=Path, default=DEFAULT_MONITORING_JSON)
     monitor.add_argument("--fail-on", choices=["never", "degraded", "failing"], default="failing")
     monitor.add_argument("--require-recent-scheduled-run", action="store_true")
-    monitor.add_argument("--schedule-lookback-minutes", type=int, default=180)
+    monitor.add_argument("--schedule-lookback-minutes", type=int, default=2160)
     monitor.set_defaults(func=command_monitoring_report)
+
+    monitor_email = subparsers.add_parser(
+        "send-monitoring-email",
+        help="Send a short SMTP email for an eligible failing monitoring report.",
+    )
+    monitor_email.add_argument("--report-json", type=Path, required=True)
+    monitor_email.add_argument("--result-json", type=Path, default=DEFAULT_NOTIFICATION_RESULT)
+    monitor_email.add_argument("--preview-output", type=Path, default=DEFAULT_NOTIFICATION_PREVIEW)
+    monitor_email.add_argument("--dry-run", action="store_true")
+    monitor_email.add_argument("--force", action="store_true")
+    monitor_email.set_defaults(func=command_send_monitoring_email)
 
     daily_web_catalog = subparsers.add_parser(
         "daily-web-catalog",
@@ -563,6 +581,8 @@ def command_monitoring_report(args: argparse.Namespace) -> int:
         workflow_result=args.workflow_result,
         github_run_id=args.github_run_id,
         github_run_url=args.github_run_url,
+        github_event_name=args.github_event_name,
+        github_run_attempt=args.github_run_attempt,
         github_jobs_json=args.github_jobs_json,
         github_runs_json=args.github_runs_json,
         markdown_path=args.markdown_output,
@@ -575,6 +595,35 @@ def command_monitoring_report(args: argparse.Namespace) -> int:
     emit_github_annotations(summary)
     print(json.dumps(result, indent=2, sort_keys=True))
     return int(result["exit_code"])
+
+
+def command_send_monitoring_email(args: argparse.Namespace) -> int:
+    try:
+        result = send_monitoring_email(
+            args.report_json,
+            result_path=args.result_json,
+            preview_path=args.preview_output,
+            dry_run=args.dry_run,
+            force=args.force,
+        )
+    except Exception as exc:
+        if args.result_json.exists():
+            result = json.loads(args.result_json.read_text(encoding="utf-8"))
+        else:
+            result = {
+                "status": "failed",
+                "reason": "notification_generation_failed",
+                "error_type": type(exc).__name__,
+            }
+            args.result_json.parent.mkdir(parents=True, exist_ok=True)
+            args.result_json.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        print("::error title=monitoring_email_delivery_failed::SMTP delivery failed; inspect notification_result.json.")
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return 1
+    if result.get("status") == "not_configured":
+        print("::warning title=monitoring_email_not_configured::Failing email was eligible but SMTP secrets are missing.")
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
 
 
 def select_target_window(targets: list, *, limit: int, offset: int = 0) -> list:

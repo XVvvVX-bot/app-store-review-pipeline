@@ -180,6 +180,24 @@ jobs:
           print(f"max_parallel={max_parallel}")
           PY
 
+      - name: Send external schedule heartbeat
+        if: ${{ github.event_name == 'schedule' }}
+        continue-on-error: true
+        env:
+          APP_STORE_HEARTBEAT_URL: ${{ secrets.APP_STORE_HEARTBEAT_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${APP_STORE_HEARTBEAT_URL:-}" ]; then
+            echo "::notice title=external_heartbeat_not_configured::APP_STORE_HEARTBEAT_URL is not configured; missing-run detection is external and currently inactive."
+            exit 0
+          fi
+          curl --fail --silent --show-error \
+            --max-time 20 \
+            --retry 2 \
+            --retry-all-errors \
+            "$APP_STORE_HEARTBEAT_URL" \
+            >/dev/null
+
   preflight:
     needs: prepare-matrix
     runs-on: [self-hosted, macOS, ARM64]
@@ -455,35 +473,75 @@ jobs:
           import json
           import os
           import subprocess
+          import time
           from pathlib import Path
 
           repo = os.environ["GITHUB_REPOSITORY"]
           run_id = os.environ["GITHUB_RUN_ID"]
-          jobs = []
-          page = 1
-          while True:
-              result = subprocess.run(
-                  ["gh", "api", f"repos/{repo}/actions/runs/{run_id}/jobs?per_page=100&page={page}"],
-                  check=True,
-                  capture_output=True,
-                  text=True,
-              )
-              payload = json.loads(result.stdout)
-              batch = payload.get("jobs") or []
-              jobs.extend(batch)
-              if len(batch) < 100:
-                  break
-              page += 1
 
-          runs = subprocess.run(
-              ["gh", "api", f"repos/{repo}/actions/workflows/app-store-daily-pipeline.yml/runs?per_page=20"],
-              check=True,
-              capture_output=True,
-              text=True,
+          def run_gh_api(endpoint):
+              last_error = None
+              for attempt in range(1, 4):
+                  try:
+                      return subprocess.run(
+                          ["gh", "api", endpoint],
+                          check=True,
+                          capture_output=True,
+                          text=True,
+                      )
+                  except subprocess.CalledProcessError as exc:
+                      last_error = exc
+                      if attempt < 3:
+                          time.sleep(attempt * 3)
+              raise last_error
+
+          def fetch_jobs(target_run_id):
+              jobs = []
+              page = 1
+              while True:
+                  result = run_gh_api(
+                      f"repos/{repo}/actions/runs/{target_run_id}/jobs?per_page=100&page={page}"
+                  )
+                  payload = json.loads(result.stdout)
+                  batch = payload.get("jobs") or []
+                  jobs.extend(batch)
+                  if len(batch) < 100:
+                      break
+                  page += 1
+              return jobs
+
+          jobs = fetch_jobs(run_id)
+          runs_result = run_gh_api(
+              f"repos/{repo}/actions/workflows/app-store-daily-pipeline.yml/runs?per_page=20"
           )
+          runs_payload = json.loads(runs_result.stdout)
+          enriched = 0
+          for run in runs_payload.get("workflow_runs") or []:
+              if run.get("event") != "schedule" or run.get("status") != "completed":
+                  continue
+              if enriched >= 4:
+                  break
+              historical_jobs = fetch_jobs(run["id"])
+              required_jobs = [
+                  job
+                  for job in historical_jobs
+                  if str(job.get("name") or "").strip().lower() != "monitor"
+                  and not str(job.get("name") or "").strip().lower().startswith("monitor ")
+              ]
+              failed = any(
+                  str(job.get("conclusion") or "").lower() in {"failure", "cancelled", "timed_out"}
+                  for job in required_jobs
+              )
+              run["required_job_failure_count"] = sum(
+                  str(job.get("conclusion") or "").lower() in {"failure", "cancelled", "timed_out"}
+                  for job in required_jobs
+              )
+              run["ingestion_conclusion"] = "failure" if failed else "success"
+              enriched += 1
+
           output = Path("data/reports/monitoring")
           (output / "github_jobs.json").write_text(json.dumps({"jobs": jobs}, indent=2), encoding="utf-8")
-          (output / "github_runs.json").write_text(runs.stdout, encoding="utf-8")
+          (output / "github_runs.json").write_text(json.dumps(runs_payload, indent=2), encoding="utf-8")
           PY
 
       - name: Generate monitoring report
@@ -521,6 +579,8 @@ jobs:
             --workflow-result "$workflow_result" \
             --github-run-id "$GITHUB_RUN_ID" \
             --github-run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --github-event-name "$GITHUB_EVENT_NAME" \
+            --github-run-attempt "$GITHUB_RUN_ATTEMPT" \
             --github-jobs-json data/reports/monitoring/github_jobs.json \
             --github-runs-json data/reports/monitoring/github_runs.json \
             --markdown-output data/reports/monitoring/current_run_health.md \
@@ -530,6 +590,25 @@ jobs:
           set -e
           cat data/reports/monitoring/current_run_health.md >> "$GITHUB_STEP_SUMMARY"
           exit "$report_code"
+
+      - name: Send failing monitoring email
+        if: ${{ always() && !cancelled() }}
+        env:
+          APP_STORE_ALERT_SMTP_HOST: ${{ vars.APP_STORE_ALERT_SMTP_HOST }}
+          APP_STORE_ALERT_SMTP_PORT: ${{ vars.APP_STORE_ALERT_SMTP_PORT }}
+          APP_STORE_ALERT_SMTP_USERNAME: ${{ secrets.APP_STORE_ALERT_SMTP_USERNAME }}
+          APP_STORE_ALERT_SMTP_APP_PASSWORD: ${{ secrets.APP_STORE_ALERT_SMTP_APP_PASSWORD }}
+          APP_STORE_ALERT_EMAIL_FROM: ${{ secrets.APP_STORE_ALERT_EMAIL_FROM }}
+          APP_STORE_ALERT_EMAIL_TO: ${{ secrets.APP_STORE_ALERT_EMAIL_TO }}
+        run: |
+          set -euo pipefail
+          if [ ! -f data/reports/monitoring/current_run_health.json ]; then
+            echo "::warning title=monitoring_email_skipped::Monitoring JSON was not generated."
+            exit 0
+          fi
+          .venv/bin/python app_store_pipeline.py send-monitoring-email \
+            --report-json data/reports/monitoring/current_run_health.json \
+            --result-json data/reports/monitoring/notification_result.json
 
       - name: Upload monitoring report
         if: ${{ always() && !cancelled() }}
@@ -544,3 +623,4 @@ jobs:
             data/reports/monitoring/current_run_health.json
             data/reports/monitoring/github_jobs.json
             data/reports/monitoring/github_runs.json
+            data/reports/monitoring/notification_result.json

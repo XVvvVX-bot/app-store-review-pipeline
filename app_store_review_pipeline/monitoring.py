@@ -7,6 +7,7 @@ from typing import Any
 
 from app_store_review_pipeline.config import DEFAULT_DATABASE_URL, WEB_CATALOG_SORT_BY, WEB_CATALOG_SOURCE
 from app_store_review_pipeline.eda import convert_json, markdown_table
+from app_store_review_pipeline.notifications import build_monitoring_notification
 from app_store_review_pipeline.operating import fetch_all, fetch_one, parse_utc
 from app_store_review_pipeline.postgres_database import connect_postgres, mask_database_url
 
@@ -41,6 +42,8 @@ def generate_monitoring_report(
     workflow_result: str,
     github_run_id: str = "",
     github_run_url: str = "",
+    github_event_name: str = "",
+    github_run_attempt: int = 1,
     github_jobs_json: Path | None = None,
     github_runs_json: Path | None = None,
     markdown_path: Path = DEFAULT_MONITORING_MARKDOWN,
@@ -59,6 +62,8 @@ def generate_monitoring_report(
         workflow_result=workflow_result,
         github_run_id=github_run_id,
         github_run_url=github_run_url,
+        github_event_name=github_event_name,
+        github_run_attempt=github_run_attempt,
         jobs_payload=jobs_payload,
         runs_payload=runs_payload,
         require_recent_scheduled_run=require_recent_scheduled_run,
@@ -104,6 +109,8 @@ def build_monitoring_summary(
     workflow_result: str,
     github_run_id: str,
     github_run_url: str,
+    github_event_name: str,
+    github_run_attempt: int,
     jobs_payload: Any,
     runs_payload: Any,
     require_recent_scheduled_run: bool,
@@ -115,8 +122,15 @@ def build_monitoring_summary(
         raise ValueError(f"Invalid --since timestamp: {since!r}")
 
     with connect_postgres(database_url) as connection:
-        run_metrics = fetch_run_metrics(connection, source=source, since=since_dt)
-        app_metrics = fetch_app_metrics(connection, source=source, since=since_dt)
+        run_metrics = fetch_run_metrics(connection, source=source, since=since_dt, until=generated_at)
+        app_metrics = fetch_app_metrics(connection, source=source, since=since_dt, until=generated_at)
+        source_frontier = fetch_source_frontier_comparison(
+            connection,
+            source=source,
+            since=since_dt,
+            until=generated_at,
+        )
+        accounting = fetch_change_accounting(connection, source=source, since=since_dt, until=generated_at)
         stale_apps = fetch_stale_apps(connection, source=source, generated_at=generated_at)
         database_snapshot = fetch_database_snapshot(connection)
         history = fetch_recent_history(connection, source=source, before=since_dt)
@@ -131,6 +145,8 @@ def build_monitoring_summary(
     alerts = evaluate_alerts(
         run_metrics=run_metrics,
         app_metrics=app_metrics,
+        source_frontier=source_frontier,
+        accounting=accounting,
         stale_apps=stale_apps,
         history=history,
         github=github,
@@ -139,8 +155,7 @@ def build_monitoring_summary(
         require_recent_scheduled_run=require_recent_scheduled_run,
     )
     status = overall_status(alerts)
-    return convert_json(
-        {
+    summary = {
             "metadata": {
                 "generated_at": generated_at.isoformat().replace("+00:00", "Z"),
                 "database_url": mask_database_url(database_url),
@@ -150,20 +165,25 @@ def build_monitoring_summary(
                 "workflow_result": workflow_result,
                 "github_run_id": str(github_run_id or ""),
                 "github_run_url": str(github_run_url or ""),
+                "github_event_name": str(github_event_name or ""),
+                "github_run_attempt": max(1, int(github_run_attempt or 1)),
             },
             "status": status,
             "alerts": alerts,
             "github": github,
             "run_metrics": run_metrics,
             "app_metrics": app_metrics,
+            "source_frontier": source_frontier,
+            "accounting": accounting,
             "stale_apps": stale_apps,
             "history": history,
             "database_snapshot": database_snapshot,
         }
-    )
+    summary["notification"] = build_monitoring_notification(summary)
+    return convert_json(summary)
 
 
-def fetch_run_metrics(connection: Any, *, source: str, since: datetime) -> dict[str, Any]:
+def fetch_run_metrics(connection: Any, *, source: str, since: datetime, until: datetime) -> dict[str, Any]:
     page = fetch_one(
         connection,
         """
@@ -188,8 +208,9 @@ def fetch_run_metrics(connection: Any, *, source: str, since: datetime) -> dict[
         WHERE source = %s
             AND fetched_at IS NOT NULL
             AND fetched_at::timestamptz >= %s
+            AND fetched_at::timestamptz <= %s
         """,
-        (list(BACKLOG_TERMINAL_REASONS), list(SUCCESS_TERMINAL_REASONS), source, since),
+        (list(BACKLOG_TERMINAL_REASONS), list(SUCCESS_TERMINAL_REASONS), source, since, until),
     )
     load = fetch_one(
         connection,
@@ -206,8 +227,9 @@ def fetch_run_metrics(connection: Any, *, source: str, since: datetime) -> dict[
         FROM app_store_runs
         WHERE source = %s
             AND loaded_at::timestamptz >= %s
+            AND loaded_at::timestamptz <= %s
         """,
-        (source, since),
+        (source, since, until),
     )
     terminal_reasons = fetch_all(
         connection,
@@ -218,11 +240,12 @@ def fetch_run_metrics(connection: Any, *, source: str, since: datetime) -> dict[
         WHERE source = %s
             AND fetched_at IS NOT NULL
             AND fetched_at::timestamptz >= %s
+            AND fetched_at::timestamptz <= %s
         GROUP BY COALESCE(NULLIF(terminal_reason, ''), 'none')
         ORDER BY page_count DESC, terminal_reason
         LIMIT 12
         """,
-        (source, since),
+        (source, since, until),
     )
     attempt_counts = fetch_all(
         connection,
@@ -232,10 +255,11 @@ def fetch_run_metrics(connection: Any, *, source: str, since: datetime) -> dict[
         WHERE source = %s
             AND fetched_at IS NOT NULL
             AND fetched_at::timestamptz >= %s
+            AND fetched_at::timestamptz <= %s
         GROUP BY attempt_count
         ORDER BY attempt_count
         """,
-        (source, since),
+        (source, since, until),
     )
     output = {**page, **load}
     page_count = int(output.get("page_count") or 0)
@@ -249,6 +273,9 @@ def fetch_run_metrics(connection: Any, *, source: str, since: datetime) -> dict[
         round((int(output.get("http_429_pages") or 0) + int(output.get("other_non_200_pages") or 0)) / page_count, 4)
         if page_count
         else 0
+    )
+    output["other_non_200_rate"] = (
+        round(int(output.get("other_non_200_pages") or 0) / page_count, 4) if page_count else 0
     )
     output["retry_rate"] = round(int(output.get("retried_pages") or 0) / page_count, 4) if page_count else 0
     output["fetch_error_rate"] = round(int(output.get("fetch_errors") or 0) / page_count, 4) if page_count else 0
@@ -268,7 +295,7 @@ def fetch_run_metrics(connection: Any, *, source: str, since: datetime) -> dict[
     return output
 
 
-def fetch_app_metrics(connection: Any, *, source: str, since: datetime) -> dict[str, Any]:
+def fetch_app_metrics(connection: Any, *, source: str, since: datetime, until: datetime) -> dict[str, Any]:
     long_tail = fetch_all(
         connection,
         """
@@ -286,11 +313,12 @@ def fetch_app_metrics(connection: Any, *, source: str, since: datetime) -> dict[
         WHERE p.source = %s
             AND p.fetched_at IS NOT NULL
             AND p.fetched_at::timestamptz >= %s
+            AND p.fetched_at::timestamptz <= %s
         GROUP BY p.app_id
         ORDER BY page_count DESC, review_rows DESC, app_name
         LIMIT 15
         """,
-        (source, since),
+        (source, since, until),
     )
     top_inserted = fetch_all(
         connection,
@@ -306,6 +334,7 @@ def fetch_app_metrics(connection: Any, *, source: str, since: datetime) -> dict[
                 ON r.review_key = c.review_key
             WHERE r.source = %s
                 AND c.changed_at::timestamptz >= %s
+                AND c.changed_at::timestamptz <= %s
             GROUP BY c.app_id
         ),
         page_counts AS (
@@ -316,6 +345,7 @@ def fetch_app_metrics(connection: Any, *, source: str, since: datetime) -> dict[
             WHERE source = %s
                 AND fetched_at IS NOT NULL
                 AND fetched_at::timestamptz >= %s
+                AND fetched_at::timestamptz <= %s
             GROUP BY app_id
         )
         SELECT
@@ -330,9 +360,151 @@ def fetch_app_metrics(connection: Any, *, source: str, since: datetime) -> dict[
         ORDER BY c.inserted DESC, page_count DESC, c.app_name
         LIMIT 15
         """,
-        (source, since, source, since),
+        (source, since, until, source, since, until),
     )
-    return {"long_tail_apps": long_tail, "top_inserted_apps": top_inserted}
+    pressure_scopes = fetch_all(
+        connection,
+        """
+        SELECT
+            p.app_id,
+            MAX(p.app_name) AS app_name,
+            p.country,
+            p.sort_by,
+            COUNT(*)::bigint AS page_count,
+            COUNT(*) FILTER (WHERE p.status_code = 429)::bigint AS http_429_pages,
+            COUNT(*) FILTER (WHERE p.status_code IS NOT NULL AND p.status_code <> 200 AND p.status_code <> 429)::bigint
+                AS other_non_200_pages,
+            COUNT(*) FILTER (WHERE p.terminal_reason = 'fetch_error')::bigint AS fetch_error_pages,
+            COUNT(*) FILTER (WHERE p.attempt_count > 1)::bigint AS retried_pages,
+            MAX(COALESCE(NULLIF(p.terminal_reason, ''), 'none')) AS terminal_reason,
+            ROUND(COUNT(*)::numeric / NULLIF(SUM(COUNT(*)) OVER (), 0), 4) AS page_share,
+            COALESCE(
+                ROUND(
+                    COUNT(*) FILTER (WHERE p.status_code = 429)::numeric
+                    / NULLIF(SUM(COUNT(*) FILTER (WHERE p.status_code = 429)) OVER (), 0),
+                    4
+                ),
+                0
+            ) AS http_429_share
+        FROM app_store_review_pages p
+        WHERE p.source = %s
+            AND p.fetched_at IS NOT NULL
+            AND p.fetched_at::timestamptz >= %s
+            AND p.fetched_at::timestamptz <= %s
+        GROUP BY p.app_id, p.country, p.sort_by
+        ORDER BY http_429_pages DESC, fetch_error_pages DESC, page_count DESC, app_name
+        LIMIT 15
+        """,
+        (source, since, until),
+    )
+    return {
+        "long_tail_apps": long_tail,
+        "top_inserted_apps": top_inserted,
+        "pressure_scopes": pressure_scopes,
+    }
+
+
+def fetch_source_frontier_comparison(
+    connection: Any,
+    *,
+    source: str,
+    since: datetime,
+    until: datetime,
+) -> dict[str, Any]:
+    result = fetch_one(
+        connection,
+        """
+        WITH current_frontier AS (
+            SELECT DISTINCT ON (app_id, country, sort_by)
+                app_id,
+                country,
+                sort_by,
+                max_updated_epoch_seconds,
+                fetched_at::timestamptz AS fetched_at
+            FROM app_store_review_pages
+            WHERE source = %s
+                AND page_number = 1
+                AND fetched_at::timestamptz >= %s
+                AND fetched_at::timestamptz <= %s
+            ORDER BY app_id, country, sort_by, fetched_at::timestamptz DESC
+        ),
+        previous_frontier AS (
+            SELECT DISTINCT ON (p.app_id, p.country, p.sort_by)
+                p.app_id,
+                p.country,
+                p.sort_by,
+                p.max_updated_epoch_seconds,
+                p.fetched_at::timestamptz AS fetched_at
+            FROM app_store_review_pages p
+            JOIN current_frontier c USING (app_id, country, sort_by)
+            WHERE p.source = %s
+                AND p.page_number = 1
+                AND p.fetched_at::timestamptz < %s
+            ORDER BY p.app_id, p.country, p.sort_by, p.fetched_at::timestamptz DESC
+        )
+        SELECT
+            COUNT(*)::bigint AS current_scopes,
+            COUNT(p.app_id)::bigint AS comparable_scopes,
+            COUNT(*) FILTER (
+                WHERE c.max_updated_epoch_seconds IS NOT DISTINCT FROM p.max_updated_epoch_seconds
+                    AND p.app_id IS NOT NULL
+            )::bigint AS unchanged_scopes,
+            COUNT(*) FILTER (WHERE c.max_updated_epoch_seconds > p.max_updated_epoch_seconds)::bigint AS advanced_scopes,
+            COUNT(*) FILTER (WHERE c.max_updated_epoch_seconds < p.max_updated_epoch_seconds)::bigint AS regressed_scopes,
+            COUNT(*) FILTER (WHERE p.app_id IS NULL)::bigint AS missing_previous_scopes
+        FROM current_frontier c
+        LEFT JOIN previous_frontier p USING (app_id, country, sort_by)
+        """,
+        (source, since, until, source, since),
+    )
+    comparable = int(result.get("comparable_scopes") or 0)
+    unchanged = int(result.get("unchanged_scopes") or 0)
+    result["unchanged_rate"] = round(unchanged / comparable, 4) if comparable else 0
+    return result
+
+
+def fetch_change_accounting(
+    connection: Any,
+    *,
+    source: str,
+    since: datetime,
+    until: datetime,
+) -> dict[str, Any]:
+    result = fetch_one(
+        connection,
+        """
+        SELECT
+            (SELECT COALESCE(SUM(reviews_inserted), 0)::bigint
+                FROM app_store_runs
+                WHERE source = %s
+                    AND loaded_at::timestamptz >= %s
+                    AND loaded_at::timestamptz <= %s) AS reported_inserts,
+            (SELECT COALESCE(SUM(reviews_updated), 0)::bigint
+                FROM app_store_runs
+                WHERE source = %s
+                    AND loaded_at::timestamptz >= %s
+                    AND loaded_at::timestamptz <= %s) AS reported_updates,
+            (SELECT COUNT(*)::bigint
+                FROM app_store_review_changes c
+                JOIN app_store_reviews r ON r.review_key = c.review_key
+                WHERE r.source = %s
+                    AND c.change_type = 'inserted'
+                    AND c.changed_at::timestamptz >= %s
+                    AND c.changed_at::timestamptz <= %s) AS recorded_inserts,
+            (SELECT COUNT(*)::bigint
+                FROM app_store_review_changes c
+                JOIN app_store_reviews r ON r.review_key = c.review_key
+                WHERE r.source = %s
+                    AND c.change_type = 'updated'
+                    AND c.changed_at::timestamptz >= %s
+                    AND c.changed_at::timestamptz <= %s) AS recorded_updates
+        """,
+        (source, since, until, source, since, until, source, since, until, source, since, until),
+    )
+    result["insert_delta"] = int(result.get("reported_inserts") or 0) - int(result.get("recorded_inserts") or 0)
+    result["update_delta"] = int(result.get("reported_updates") or 0) - int(result.get("recorded_updates") or 0)
+    result["consistent"] = result["insert_delta"] == 0 and result["update_delta"] == 0
+    return result
 
 
 def fetch_stale_apps(connection: Any, *, source: str, generated_at: datetime) -> list[dict[str, Any]]:
@@ -437,9 +609,10 @@ def summarize_github_payloads(
 ) -> dict[str, Any]:
     jobs = extract_jobs(jobs_payload)
     runs = extract_runs(runs_payload)
+    required_jobs = [job for job in jobs if not is_monitor_job(job)]
     failed_jobs = [
         job
-        for job in jobs
+        for job in required_jobs
         if str(job.get("conclusion") or "").lower() in {"failure", "cancelled", "timed_out"}
     ]
     scheduled_runs = [
@@ -453,16 +626,31 @@ def summarize_github_payloads(
     recent_failed_schedule = [
         run
         for run in recent_completed_schedule
-        if str(run.get("conclusion") or "").lower() not in {"success", "skipped"}
+        if str(run.get("ingestion_conclusion") or "").lower() in {"failure", "cancelled", "timed_out"}
     ]
+    current_started = [parse_utc(job.get("started_at")) for job in required_jobs]
+    current_completed = [parse_utc(job.get("completed_at")) for job in required_jobs]
+    current_started = [value for value in current_started if value is not None]
+    current_completed = [value for value in current_completed if value is not None]
+    current_runtime = (
+        (max(current_completed) - min(current_started)).total_seconds() / 60.0
+        if current_started and current_completed and max(current_completed) >= min(current_started)
+        else 0.0
+    )
+    recent_runtimes = []
+    for run in recent_completed_schedule:
+        created_at = parse_utc(run.get("createdAt") or run.get("created_at"))
+        updated_at = parse_utc(run.get("updatedAt") or run.get("updated_at"))
+        if created_at and updated_at and updated_at >= created_at:
+            recent_runtimes.append((updated_at - created_at).total_seconds() / 60.0)
     last_scheduled_at = max(
         (parse_utc(run.get("createdAt") or run.get("created_at")) for run in scheduled_runs),
         default=None,
     )
     return {
         "workflow_result": workflow_result,
-        "job_total": len(jobs),
-        "job_success": sum(1 for job in jobs if job.get("conclusion") == "success"),
+        "job_total": len(required_jobs),
+        "job_success": sum(1 for job in required_jobs if job.get("conclusion") == "success"),
         "job_failure": len(failed_jobs),
         "failed_jobs": [
             {"name": job.get("name"), "conclusion": job.get("conclusion"), "url": job.get("html_url") or job.get("url")}
@@ -470,8 +658,15 @@ def summarize_github_payloads(
         ],
         "recent_schedule_run_count": len(scheduled_runs),
         "recent_failed_schedule_run_count": len(recent_failed_schedule),
+        "current_runtime_minutes": round(current_runtime, 2),
+        "recent_median_runtime_minutes": median(recent_runtimes),
         "last_scheduled_run_at": last_scheduled_at.isoformat().replace("+00:00", "Z") if last_scheduled_at else "",
     }
+
+
+def is_monitor_job(job: dict[str, Any]) -> bool:
+    name = str(job.get("name") or "").strip().lower()
+    return name == "monitor" or name.startswith("monitor ")
 
 
 def extract_jobs(payload: Any) -> list[dict[str, Any]]:
@@ -498,6 +693,8 @@ def evaluate_alerts(
     *,
     run_metrics: dict[str, Any],
     app_metrics: dict[str, Any],
+    source_frontier: dict[str, Any],
+    accounting: dict[str, Any],
     stale_apps: list[dict[str, Any]],
     history: dict[str, Any],
     github: dict[str, Any],
@@ -509,13 +706,14 @@ def evaluate_alerts(
     page_count = int(run_metrics.get("page_count") or 0)
     inserted = int(run_metrics.get("reviews_inserted") or 0)
     http_429 = int(run_metrics.get("http_429_pages") or 0)
-    non_200 = http_429 + int(run_metrics.get("other_non_200_pages") or 0)
+    other_non_200 = int(run_metrics.get("other_non_200_pages") or 0)
     fetch_error_rate = float(run_metrics.get("fetch_error_rate") or 0)
     retry_rate = float(run_metrics.get("retry_rate") or 0)
     duplicate_rate = float(run_metrics.get("duplicate_rate") or 0)
     backlog_terminal_rate = float(run_metrics.get("backlog_terminal_rate") or 0)
     median_inserted = float(history.get("median_inserted_per_app_run") or 0)
-    runtime_minutes = float(run_metrics.get("runtime_minutes") or 0)
+    runtime_minutes = float(github.get("current_runtime_minutes") or run_metrics.get("runtime_minutes") or 0)
+    recent_runtime_median = float(github.get("recent_median_runtime_minutes") or 0)
     workflow_failed = str(workflow_result or "").lower() in {"failure", "cancelled", "timed_out"}
 
     if workflow_failed or int(github.get("job_failure") or 0) > 0:
@@ -530,8 +728,8 @@ def evaluate_alerts(
         add_alert(alerts, "failing", "excessive_http_429", "HTTP 429 volume or rate crossed the failing threshold.")
     elif http_429 > 0:
         add_alert(alerts, "degraded", "http_429_present", "HTTP 429 occurred but stayed below the failing threshold.")
-    if non_200 > 0 and http_429 < 3 and float(run_metrics.get("non_200_rate") or 0) < 0.005:
-        add_alert(alerts, "degraded", "non_200_present", "Non-200 responses occurred but stayed below the failing threshold.")
+    if other_non_200 > 0:
+        add_alert(alerts, "degraded", "other_non_200_present", "One or more non-429 error responses occurred.")
     if fetch_error_rate >= 0.01:
         add_alert(alerts, "failing", "fetch_error_rate", "Fetch error rate crossed the 1% failing threshold.")
     if retry_rate > 0.10:
@@ -541,16 +739,56 @@ def evaluate_alerts(
         add_alert(alerts, "failing", "stale_apps_36h", "At least one active app has not completed successfully in 36 hours.")
     elif stale_apps:
         add_alert(alerts, "degraded", "stale_apps_24h", "At least one active app has not completed successfully in 24 hours.")
-    if runtime_minutes > 90:
-        add_alert(alerts, "degraded", "long_runtime", "Current run runtime estimate exceeded 90 minutes.")
+    if runtime_minutes > 90 or (recent_runtime_median > 0 and runtime_minutes > 2 * recent_runtime_median):
+        add_alert(alerts, "degraded", "long_runtime", "Current run runtime exceeded 90 minutes or twice the recent median.")
     if int(selected_count or 0) >= 100 and page_count > 100 and inserted == 0:
-        add_alert(alerts, "failing", "zero_inserts_full_scope", "Full-scope-sized run fetched more than 100 pages but inserted zero reviews.")
+        comparable = int(source_frontier.get("comparable_scopes") or 0)
+        unchanged_rate = float(source_frontier.get("unchanged_rate") or 0)
+        enough_comparisons = comparable >= max(1, int(0.8 * int(selected_count or 0)))
+        if enough_comparisons and unchanged_rate >= 0.95:
+            add_alert(
+                alerts,
+                "degraded",
+                "source_snapshot_unchanged",
+                "The full-scope run inserted zero reviews because at least 95% of comparable page-one frontiers were unchanged.",
+            )
+        else:
+            add_alert(
+                alerts,
+                "degraded",
+                "zero_inserts_full_scope",
+                "The full-scope run inserted zero reviews; source-frontier evidence did not prove a storage failure.",
+            )
+    if page_count > 0 and not bool(accounting.get("consistent", True)):
+        add_alert(
+            alerts,
+            "failing",
+            "change_accounting_mismatch",
+            "Run insert/update totals do not match the persisted review-change ledger.",
+        )
     if backlog_terminal_rate > 0.05:
         add_alert(alerts, "failing", "backlog_terminal_rate", "More than 5% of pages ended with backlog-style terminal reasons.")
     if page_count > 0 and duplicate_rate >= 0.95:
         add_alert(alerts, "degraded", "high_duplicate_rate", "Duplicate rate is at or above 95% for the current run.")
-    if median_inserted > 0 and inserted < 0.30 * median_inserted:
-        add_alert(alerts, "degraded", "insert_drop", "Inserted reviews are below 30% of recent app-run median.")
+    inserted_per_scope = inserted / max(1, int(selected_count or 0))
+    if median_inserted > 0 and inserted_per_scope < 0.30 * median_inserted:
+        add_alert(alerts, "degraded", "insert_drop", "Inserted reviews per selected scope are below 30% of the recent per-scope median.")
+    pressure_scopes = (app_metrics or {}).get("pressure_scopes") or []
+    if pressure_scopes:
+        top_scope = pressure_scopes[0]
+        if (
+            float(top_scope.get("page_share") or 0) >= 0.25
+            or (
+                int(top_scope.get("http_429_pages") or 0) > 0
+                and float(top_scope.get("http_429_share") or 0) >= 0.50
+            )
+        ):
+            add_alert(
+                alerts,
+                "degraded",
+                "dominant_backlogged_scope",
+                f"{top_scope.get('app_name') or top_scope.get('app_id')} dominated recent page or HTTP 429 volume.",
+            )
     if not alerts:
         add_alert(alerts, "healthy", "all_clear", "No monitoring thresholds were tripped.")
     return alerts
@@ -587,6 +825,7 @@ def render_monitoring_markdown(summary: dict[str, Any]) -> str:
         f"Source: `{metadata['source']}`",
         f"Run window since: `{metadata['since']}`",
         f"GitHub run: `{metadata.get('github_run_id') or 'n/a'}`",
+        f"GitHub event: `{metadata.get('github_event_name') or 'n/a'}`",
         "",
         "## Health",
         "",
@@ -612,7 +851,7 @@ def render_monitoring_markdown(summary: dict[str, Any]) -> str:
                     "duplicates": run.get("duplicates_skipped"),
                     "duplicate_rate": run.get("duplicate_rate"),
                     "http_429": run.get("http_429_pages"),
-                    "non_200_rate": run.get("non_200_rate"),
+                    "other_non_200": run.get("other_non_200_pages"),
                     "retried_pages": run.get("retried_pages"),
                     "fetch_errors": run.get("fetch_errors"),
                 }
@@ -631,7 +870,7 @@ def render_monitoring_markdown(summary: dict[str, Any]) -> str:
                 "duplicates",
                 "duplicate_rate",
                 "http_429",
-                "non_200_rate",
+                "other_non_200",
                 "retried_pages",
                 "fetch_errors",
             ],
@@ -646,6 +885,41 @@ def render_monitoring_markdown(summary: dict[str, Any]) -> str:
         markdown_table(
             summary.get("app_metrics", {}).get("long_tail_apps", []),
             ["app_name", "page_count", "review_rows", "overlap_rows", "retried_pages", "http_429_pages", "terminal_reason"],
+        ),
+        "",
+        "## Source-Pressure Scopes",
+        "",
+        markdown_table(
+            summary.get("app_metrics", {}).get("pressure_scopes", []),
+            [
+                "app_name",
+                "country",
+                "page_count",
+                "page_share",
+                "http_429_pages",
+                "http_429_share",
+                "fetch_error_pages",
+                "terminal_reason",
+            ],
+        ),
+        "",
+        "## Source Frontier And Change Accounting",
+        "",
+        markdown_table(
+            [summary.get("source_frontier", {})],
+            [
+                "current_scopes",
+                "comparable_scopes",
+                "unchanged_scopes",
+                "advanced_scopes",
+                "regressed_scopes",
+                "unchanged_rate",
+            ],
+        ),
+        "",
+        markdown_table(
+            [summary.get("accounting", {})],
+            ["reported_inserts", "recorded_inserts", "reported_updates", "recorded_updates", "consistent"],
         ),
         "",
         "## Top Inserted Apps",
@@ -685,7 +959,7 @@ def escape_annotation(value: str) -> str:
     return value.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A").replace(":", "%3A").replace(",", "%2C")
 
 
-def median(values: list[int]) -> float:
+def median(values: list[int | float]) -> float:
     if not values:
         return 0.0
     ordered = sorted(values)

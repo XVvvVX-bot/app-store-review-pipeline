@@ -31,6 +31,7 @@ from app_store_review_pipeline.cli import (
     command_select_web_catalog_pressure,
     command_daily_web_catalog,
     command_monitoring_report,
+    command_send_monitoring_email,
     command_operating_ledger_upsert_run,
     command_operating_report,
     select_target_window,
@@ -45,9 +46,16 @@ from app_store_review_pipeline.monitoring import (
     evaluate_alerts,
     extract_jobs,
     extract_runs,
+    is_monitor_job,
     monitor_exit_code,
     overall_status,
     render_monitoring_markdown,
+    summarize_github_payloads,
+)
+from app_store_review_pipeline.notifications import (
+    build_monitoring_notification,
+    parse_recipients,
+    send_monitoring_email,
 )
 from app_store_review_pipeline.operating import (
     build_aggregate_summary,
@@ -1025,6 +1033,9 @@ def monitoring_alert_status(
     stale_apps: list[dict] | None = None,
     history: dict | None = None,
     github: dict | None = None,
+    source_frontier: dict | None = None,
+    accounting: dict | None = None,
+    app_metrics: dict | None = None,
     selected_count: int = 200,
     workflow_result: str = "success",
     require_recent_scheduled_run: bool = False,
@@ -1051,9 +1062,11 @@ def monitoring_alert_status(
     base_github.update(github or {})
     alerts = evaluate_alerts(
         run_metrics=base_run_metrics,
-        app_metrics={},
+        app_metrics=app_metrics or {},
+        source_frontier=source_frontier or {},
+        accounting=accounting or {"consistent": True},
         stale_apps=stale_apps or [],
-        history=history or {"median_inserted_per_app_run": 10},
+        history=history or {"median_inserted_per_app_run": 0.5},
         github=base_github,
         selected_count=selected_count,
         workflow_result=workflow_result,
@@ -1100,6 +1113,29 @@ def test_monitoring_http_429_thresholds_map_to_degraded_and_failing():
     assert "excessive_http_429" in alert_codes(alerts)
 
 
+def test_monitoring_429_does_not_duplicate_other_non_200_warning():
+    status, alerts = monitoring_alert_status(
+        run_metrics={
+            "http_429_pages": 1,
+            "http_429_rate": 0.004,
+            "other_non_200_pages": 0,
+            "other_non_200_rate": 0,
+        }
+    )
+
+    assert status == "degraded"
+    assert alert_codes(alerts) == {"http_429_present"}
+
+
+def test_monitoring_any_other_non_200_is_degraded():
+    status, alerts = monitoring_alert_status(
+        run_metrics={"other_non_200_pages": 2, "other_non_200_rate": 0.02}
+    )
+
+    assert status == "degraded"
+    assert "other_non_200_present" in alert_codes(alerts)
+
+
 def test_monitoring_fetch_stale_duplicate_insert_and_backlog_alerts():
     status, alerts = monitoring_alert_status(run_metrics={"fetch_error_rate": 0.01})
     assert status == "failing"
@@ -1127,6 +1163,41 @@ def test_monitoring_fetch_stale_duplicate_insert_and_backlog_alerts():
     status, alerts = monitoring_alert_status(run_metrics={"backlog_terminal_rate": 0.051})
     assert status == "failing"
     assert "backlog_terminal_rate" in alert_codes(alerts)
+
+
+def test_monitoring_zero_insert_uses_frontier_and_accounting_evidence():
+    status, alerts = monitoring_alert_status(
+        run_metrics={"page_count": 200, "reviews_inserted": 0, "duplicate_rate": 1.0},
+        source_frontier={"comparable_scopes": 200, "unchanged_scopes": 200, "unchanged_rate": 1.0},
+        accounting={"consistent": True},
+    )
+    assert status == "degraded"
+    assert "source_snapshot_unchanged" in alert_codes(alerts)
+    assert "zero_inserts_full_scope" not in alert_codes(alerts)
+
+    status, alerts = monitoring_alert_status(accounting={"consistent": False})
+    assert status == "failing"
+    assert "change_accounting_mismatch" in alert_codes(alerts)
+
+
+def test_monitoring_dominant_scope_is_visible_but_not_failing():
+    status, alerts = monitoring_alert_status(
+        app_metrics={
+            "pressure_scopes": [
+                {
+                    "app_id": "6443467666",
+                    "app_name": "Love and Deepspace",
+                    "country": "us",
+                    "page_share": 0.30,
+                    "http_429_pages": 1,
+                    "http_429_share": 1.0,
+                }
+            ]
+        }
+    )
+
+    assert status == "degraded"
+    assert "dominant_backlogged_scope" in alert_codes(alerts)
 
 
 def test_monitoring_markdown_and_json_helpers_render_expected_fields():
@@ -1174,6 +1245,199 @@ def test_monitoring_markdown_and_json_helpers_render_expected_fields():
     assert monitor_exit_code("failing", "failing") == 1
 
 
+def test_monitoring_github_summary_excludes_monitor_only_failures():
+    github = summarize_github_payloads(
+        jobs_payload={
+            "jobs": [
+                {"name": "daily 0 Fixture", "conclusion": "success"},
+                {"name": "monitor", "conclusion": "failure"},
+            ]
+        },
+        runs_payload={
+            "workflow_runs": [
+                {
+                    "event": "schedule",
+                    "status": "completed",
+                    "conclusion": "failure",
+                    "ingestion_conclusion": "success",
+                    "createdAt": "2026-07-01T00:00:00Z",
+                    "updatedAt": "2026-07-01T01:00:00Z",
+                },
+                {
+                    "event": "schedule",
+                    "status": "completed",
+                    "conclusion": "failure",
+                    "ingestion_conclusion": "failure",
+                    "createdAt": "2026-06-30T12:00:00Z",
+                    "updatedAt": "2026-06-30T13:00:00Z",
+                },
+            ]
+        },
+        workflow_result="success",
+        generated_at=datetime(2026, 7, 1, 2, tzinfo=timezone.utc),
+        schedule_lookback_minutes=2160,
+    )
+
+    assert is_monitor_job({"name": "monitor"}) is True
+    assert github["job_failure"] == 0
+    assert github["recent_failed_schedule_run_count"] == 1
+    assert github["recent_median_runtime_minutes"] == 60
+
+
+def failing_monitoring_summary() -> dict:
+    summary = {
+        "metadata": {
+            "generated_at": "2026-07-16T00:00:00Z",
+            "github_run_id": "123",
+            "github_run_url": "https://github.com/example/repo/actions/runs/123",
+            "github_event_name": "schedule",
+            "github_run_attempt": 1,
+        },
+        "status": "failing",
+        "alerts": [
+            {"severity": "failing", "code": "excessive_http_429", "message": "HTTP 429 threshold crossed."}
+        ],
+        "run_metrics": {
+            "page_count": 200,
+            "review_rows": 4000,
+            "reviews_inserted": 20,
+            "duplicates_skipped": 3980,
+            "http_429_pages": 3,
+            "other_non_200_pages": 0,
+            "fetch_errors": 1,
+        },
+        "app_metrics": {
+            "pressure_scopes": [
+                {
+                    "app_id": "6443467666",
+                    "app_name": "Love and Deepspace",
+                    "country": "us",
+                    "page_count": 100,
+                    "http_429_pages": 3,
+                    "fetch_error_pages": 1,
+                    "terminal_reason": "fetch_error",
+                }
+            ]
+        },
+        "stale_apps": [],
+    }
+    summary["notification"] = build_monitoring_notification(summary)
+    return summary
+
+
+def test_monitoring_notification_is_short_scoped_and_failing_only():
+    summary = failing_monitoring_summary()
+    notification = summary["notification"]
+
+    assert notification["eligible"] is True
+    assert notification["primary_code"] == "excessive_http_429"
+    assert "Love and Deepspace" in notification["body"]
+    assert summary["metadata"]["github_run_url"] in notification["body"]
+
+    summary["status"] = "degraded"
+    summary["alerts"][0]["severity"] = "degraded"
+    assert build_monitoring_notification(summary)["eligible"] is False
+
+    summary = failing_monitoring_summary()
+    summary["alerts"] = [{"severity": "failing", "code": "workflow_failure", "message": "job failed"}]
+    summary["github"] = {
+        "failed_jobs": [{"name": "daily (6443467666, Love and Deepspace)", "conclusion": "failure"}]
+    }
+    notification = build_monitoring_notification(summary)
+    assert notification["affected_scopes"][0]["reason"] == "failure"
+    assert "daily (6443467666, Love and Deepspace)" in notification["body"]
+
+
+def test_send_monitoring_email_supports_dry_run_and_fake_smtp(tmp_path):
+    report_path = tmp_path / "monitor.json"
+    result_path = tmp_path / "result.json"
+    preview_path = tmp_path / "preview.eml"
+    report_path.write_text(json.dumps(failing_monitoring_summary()), encoding="utf-8")
+    env = {
+        "APP_STORE_ALERT_SMTP_USERNAME": "alerts@example.com",
+        "APP_STORE_ALERT_SMTP_APP_PASSWORD": "fixture-password",
+        "APP_STORE_ALERT_EMAIL_FROM": "alerts@example.com",
+        "APP_STORE_ALERT_EMAIL_TO": "victor@example.com; john@example.com",
+    }
+
+    dry_run = send_monitoring_email(
+        report_path,
+        result_path=result_path,
+        preview_path=preview_path,
+        dry_run=True,
+        environ=env,
+    )
+    assert dry_run["status"] == "dry_run"
+    assert dry_run["recipient_count"] == 2
+    assert preview_path.exists()
+    assert parse_recipients("a@example.com,b@example.com; c@example.com") == [
+        "a@example.com",
+        "b@example.com",
+        "c@example.com",
+    ]
+
+    class FakeSmtp:
+        sent = []
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def ehlo(self):
+            pass
+
+        def starttls(self, **kwargs):
+            pass
+
+        def login(self, username, password):
+            assert username == "alerts@example.com"
+            assert password == "fixture-password"
+
+        def send_message(self, message):
+            self.sent.append(message)
+
+    sent = send_monitoring_email(
+        report_path,
+        result_path=result_path,
+        environ=env,
+        smtp_factory=FakeSmtp,
+    )
+    assert sent["status"] == "sent"
+    assert len(FakeSmtp.sent) == 1
+    assert "victor@example.com" not in result_path.read_text(encoding="utf-8")
+
+
+def test_command_send_monitoring_email_writes_preview_and_result(tmp_path, monkeypatch, capsys):
+    report_path = tmp_path / "monitor.json"
+    result_path = tmp_path / "notification.json"
+    preview_path = tmp_path / "notification.eml"
+    report_path.write_text(json.dumps(failing_monitoring_summary()), encoding="utf-8")
+    monkeypatch.setenv("APP_STORE_ALERT_SMTP_USERNAME", "alerts@example.com")
+    monkeypatch.setenv("APP_STORE_ALERT_SMTP_APP_PASSWORD", "fixture-password")
+    monkeypatch.setenv("APP_STORE_ALERT_EMAIL_FROM", "alerts@example.com")
+    monkeypatch.setenv("APP_STORE_ALERT_EMAIL_TO", "operator@example.com")
+    args = argparse.Namespace(
+        report_json=report_path,
+        result_json=result_path,
+        preview_output=preview_path,
+        dry_run=True,
+        force=False,
+    )
+
+    assert command_send_monitoring_email(args) == 0
+    result = json.loads(result_path.read_text(encoding="utf-8"))
+    assert result["status"] == "dry_run"
+    assert result["recipient_count"] == 1
+    assert preview_path.exists()
+    assert "operator@example.com" not in result_path.read_text(encoding="utf-8")
+    assert '"status": "dry_run"' in capsys.readouterr().out
+
+
 def test_command_monitoring_report_writes_outputs(tmp_path, monkeypatch, capsys):
     observed = {}
 
@@ -1201,6 +1465,8 @@ def test_command_monitoring_report_writes_outputs(tmp_path, monkeypatch, capsys)
         workflow_result="success",
         github_run_id="123",
         github_run_url="https://github.com/example/repo/actions/runs/123",
+        github_event_name="schedule",
+        github_run_attempt=1,
         github_jobs_json=tmp_path / "jobs.json",
         github_runs_json=tmp_path / "runs.json",
         markdown_output=tmp_path / "monitor.md",
