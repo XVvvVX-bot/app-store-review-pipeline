@@ -1,23 +1,25 @@
 # App Store Review Pipeline Monitoring And Email Alerts
 
-This document describes the operational monitoring and failing-only email layer for Apple App Store daily incremental ingestion.
+This document defines the production monitoring contract for Apple App Store daily incremental ingestion.
 
 ## Architecture
 
-GitHub remains the complete evidence surface:
+GitHub remains the complete operational evidence surface, while Postgres remains the ingestion source of truth.
 
-- Postgres is the source of truth for pages, runs, review changes, sync state, and database growth.
-- GitHub Actions provides required-job status, runtime, logs, summaries, and downloadable artifacts.
-- `python app_store_pipeline.py monitoring-report` classifies a completed run as `healthy`, `degraded`, or `failing`.
-- `python app_store_pipeline.py send-monitoring-email` reads the JSON report and sends a short email only for an eligible `failing` scheduled run.
+1. `prepare-matrix` selects the intended targets and app-country scopes, computes stable scope/config signatures, and assigns an execution ID based on the GitHub run and attempt.
+2. `preflight` creates the `app_store_executions` row before any app worker starts.
+3. Every matrix worker attaches its `app_store_runs`, pages, reviews, changes, and `app_store_run_scopes` outcome to that execution.
+4. `monitor` queries the exact execution ID, rather than an approximate time window, writes Markdown/JSON artifacts, persists one `app_store_monitor_snapshots` row, and finalizes the execution health status.
+5. The independent GitHub-hosted `notify` job runs with `if: always()`. It downloads the primary report or creates a minimal failing fallback report when the self-hosted monitor never produced one.
+6. Email is sent only for an eligible failing scheduled run. Healthy and degraded evidence stays in GitHub.
 
-The former GitHub-scheduled watchdog was removed. It depended on the same delayed GitHub cron as ingestion and could evaluate a still-running daily job. Missing-run detection is now an optional external dead-man heartbeat: each scheduled workflow pings `APP_STORE_HEARTBEAT_URL` when it starts. The external service should expect a ping every 12 hours with a 6-hour grace period.
+The monitor never changes review facts or page outcomes. It does update monitoring metadata: the execution status/counts and the execution's monitor snapshot.
 
-The monitor does not mutate ingestion data. SMTP delivery and heartbeat checks are operational side effects only.
+The former GitHub-scheduled watchdog was removed. A watchdog driven by the same delayed GitHub scheduler cannot reliably detect a missing scheduled run and can race a still-running ingestion. Missing-run detection is delegated to an optional external dead-man heartbeat.
 
 ## Commands
 
-Generate a report:
+Generate an exact-execution report:
 
 ```bash
 python app_store_pipeline.py monitoring-report \
@@ -30,6 +32,7 @@ python app_store_pipeline.py monitoring-report \
   --github-run-url https://github.com/example/repo/actions/runs/123456789 \
   --github-event-name schedule \
   --github-run-attempt 1 \
+  --execution-id github:123456789:1:apple-web-catalog \
   --github-jobs-json data/reports/monitoring/github_jobs.json \
   --github-runs-json data/reports/monitoring/github_runs.json \
   --markdown-output data/reports/monitoring/current_run_health.md \
@@ -37,7 +40,7 @@ python app_store_pipeline.py monitoring-report \
   --fail-on failing
 ```
 
-Preview a failing email without sending it:
+Preview a synthetic email without sending it:
 
 ```bash
 python app_store_pipeline.py send-monitoring-email \
@@ -50,109 +53,129 @@ python app_store_pipeline.py send-monitoring-email \
 
 ## Evidence And Metrics
 
-The report includes:
+Each report contains:
 
-- Required GitHub job outcomes, excluding the final monitor job from ingestion-failure counts.
-- Pages, apps, fetched rows, inserts, updates, duplicates, retries, HTTP status, fetch errors, and terminal reasons.
-- App-country source-pressure scopes, including page share, HTTP 429 share, and fetch-error pages.
-- Page-one frontier movement compared with the preceding fetch for the same scope.
-- Insert/update totals cross-checked against `app_store_review_changes`.
-- Active-scope freshness and relation row/size snapshots.
+- intended, completed, caught-up, backlogged, hard-failure, and missing scope counts;
+- required GitHub job outcomes, excluding `monitor` and `notify` from ingestion-job failure counts;
+- fetched pages/rows, inserted and updated reviews, skipped duplicates, and change-ledger reconciliation;
+- final HTTP status counts and attempt-level pressure signals;
+- final 429 pages, all 429 attempts including recovered attempts, soft retries, retried pages, and maximum attempts;
+- terminal reasons and exact per-scope outcomes;
+- page-one frontier movement compared with the previous fetch for each scope;
+- active app-country data freshness based on the most recent completed page-fetch attempt, with successful catch-up age and backlog shown separately;
+- database row counts, relation sizes, and growth compared with prior monitor snapshots;
+- high-volume, high-pressure, and long-tail app scopes.
+
+`http_429_pages` counts pages whose final response remained 429. `http_429_attempts` counts every 429 inside the retry chain, including a page that later recovered to 200. The alert rate is `http_429_attempts / fetched_pages`; final non-200 rate remains a separate metric.
 
 ## Health And Alert Logic
 
-Failing conditions:
+### Failing
 
-- A required `prepare-matrix`, `preflight`, or `daily` job fails.
-- Two or more recent scheduled runs have actual ingestion-job failures; monitor-only failures do not count.
-- A non-empty selected target set produces zero fetched pages.
-- HTTP 429 pages are at least 3, or the HTTP 429 rate is at least 0.5%.
-- Fetch error rate is at least 1%.
-- Any active app-country scope has not completed in 36 hours.
-- More than 5% of pages end with backlog-style terminal reasons.
-- `app_store_runs` insert/update totals disagree with the persisted review-change ledger.
+- A required prepare, preflight, or daily matrix job fails.
+- Two or more recent scheduled ingestion runs fail.
+- A non-empty target set produces zero pages.
+- Any intended scope has no persisted scope outcome.
+- Any scope ends in `hard_failure`.
+- HTTP 429 attempts are at least 3, or attempts per fetched page are at least 0.5%.
+- Fetch-error scopes are at least 1% of completed scopes.
+- Any active app-country-source scope has no completed collection attempt in 36 hours.
+- More than 5% of completed scopes remain backlogged.
+- Run insert/update totals disagree with `app_store_review_changes`.
 
-Degraded conditions:
+### Degraded
 
-- Any HTTP 429 occurs below the failing threshold.
-- Any non-429 non-200 response occurs. A 429 does not also create this warning; fetch errors still escalate separately at 1%.
-- Runtime exceeds 90 minutes or twice the recent comparable GitHub-run median.
-- Retry rate exceeds 10%.
-- Duplicate rate is at least 95%.
-- Inserts per selected scope fall below 30% of the recent per-scope median.
-- Any active app-country scope is between 24 and 36 hours stale.
-- One scope supplies at least 25% of fetched pages or at least 50% of observed HTTP 429 pages.
-- A full-scope run inserts zero rows. If at least 95% of comparable page-one frontiers are unchanged, the report records `source_snapshot_unchanged` instead of treating it as a storage failure.
+- Any HTTP 429 attempt occurs below the failing threshold.
+- Any non-429 final non-200 response occurs.
+- Retried pages exceed 10% of fetched pages.
+- Runtime exceeds 90 minutes or twice the recent comparable median.
+- A full-scale run has at least 95% duplicates.
+- Inserts fall below 30% of the median only after at least three comparable completed executions exist.
+- Any active scope has no completed collection attempt for 24 to 36 hours.
+- One or more scopes remain backlogged but the rate is no more than 5%.
+- A full-scope run inserts zero rows; source-frontier evidence distinguishes an unchanged Apple snapshot from an unexplained zero-insert run.
+- A scope dominates at least 25% of page volume or at least 50% of 429 attempts in a run with at least 10 selected targets.
+- Database growth exceeds 100 MiB and three times the recent snapshot median.
 
-`healthy` means no degraded or failing threshold is present. Database growth remains informational in this version.
+`healthy` means no degraded or failing condition is present.
 
 ## Email Behavior
 
-Email is a thin alert, not a replacement for GitHub evidence. It contains:
+Email is a short failing alert, not the evidence archive. It includes the primary reason, affected scopes, key metrics, and the GitHub Actions run link.
 
-- The primary failing code and short reason.
-- Up to three affected app-country scopes.
-- Pages, fetched rows, inserts, duplicates, HTTP 429s, other non-200s, and fetch errors.
-- A link to the GitHub Actions run containing the complete report and artifacts.
+Automatic email requires all of the following:
 
-Email is sent only when all conditions hold:
+- report status is `failing`;
+- event is `schedule`;
+- GitHub run attempt is `1`.
 
-- Report status is `failing`.
-- The workflow event is `schedule`.
-- This is GitHub run attempt 1.
+Healthy and degraded runs do not send email. Manual runs and reruns do not send unless an operator deliberately supplies `--force`.
 
-Healthy and degraded reports never send email. Manual dispatches and reruns do not send unless an operator explicitly uses `--force`. Missing SMTP configuration records `not_configured` and emits a GitHub warning without exposing secrets or failing an otherwise completed workflow.
+The `notify` job runs on GitHub-hosted Ubuntu and is independent of the self-hosted ingestion runners. If the primary report is missing, it creates a fallback `monitor_report_unavailable` or `workflow_failure` report and still attempts notification. For an eligible failing scheduled report, missing or invalid SMTP configuration fails the notify job; silently losing the only external alert is not treated as success.
 
-Configure these repository secrets:
+Required repository secrets:
 
 - `APP_STORE_ALERT_SMTP_USERNAME`
 - `APP_STORE_ALERT_SMTP_APP_PASSWORD`
 - `APP_STORE_ALERT_EMAIL_FROM`
-- `APP_STORE_ALERT_EMAIL_TO` as a comma- or semicolon-separated list
+- `APP_STORE_ALERT_EMAIL_TO`, comma- or semicolon-separated
 
-Optional repository variables are `APP_STORE_ALERT_SMTP_HOST` and `APP_STORE_ALERT_SMTP_PORT`; defaults are Gmail SMTP at `smtp.gmail.com:587` with STARTTLS. For Gmail, use an App Password rather than an account password.
+Optional variables:
 
-The workflow uploads `notification_result.json`, which contains delivery status, recipient count, subject, and alert fingerprint, but no addresses or credentials.
+- `APP_STORE_ALERT_SMTP_HOST`, default `smtp.gmail.com`
+- `APP_STORE_ALERT_SMTP_PORT`, default `587`
+
+Gmail requires a 16-character App Password, not the account password. `notification_result.json` stores delivery status, recipient count, subject, and alert fingerprint, but never addresses or credentials.
 
 ### Controlled SMTP Test
 
-Use `.github/workflows/app-store-alert-email-test.yml` after first-time setup or credential rotation. It is manual-only and supports two modes: `smtp_connectivity` sends a synthetic report with `--force`, while `automatic_failure` simulates three HTTP 429 pages, requires the normal threshold and eligibility logic to classify the report as failing, and sends without `--force`. Both modes use a `[TEST]` subject and do not start ingestion or read or modify Postgres. The workflow summary and seven-day artifact record the delivery result without storing email addresses or credentials.
+Run `.github/workflows/app-store-alert-email-test.yml` manually after initial setup or credential rotation:
 
-## Missing Scheduled Runs
+- `smtp_connectivity` sends a synthetic test with `--force`.
+- `automatic_failure` simulates threshold-crossing 429 pressure and exercises normal eligibility without `--force`.
 
-Set `APP_STORE_HEARTBEAT_URL` to a secret ping URL from an external dead-man service. Configure the check for:
+The test does not run ingestion or mutate Postgres. Its summary and seven-day artifact preserve the non-secret delivery result.
 
-- Expected interval: 12 hours.
-- Grace period: 6 hours, covering observed GitHub cron delay plus normal runtime.
-- Alert channel: email.
-- Evidence link: the repository Actions page.
+## External Dead-Man Heartbeat
 
-The heartbeat runs at workflow start, so ingestion failures remain the responsibility of the daily monitor and SMTP email. If the secret is absent, ingestion continues and GitHub records that missing-run detection is not configured.
+Set the `APP_STORE_HEARTBEAT_URL` repository secret to the base ping URL of a service that supports start/success/fail lifecycle pings.
 
-## Simulated Failure Coverage
+For scheduled runs the workflow calls:
 
-Automated fixtures cover:
+- `${APP_STORE_HEARTBEAT_URL}/start` after matrix preparation;
+- `${APP_STORE_HEARTBEAT_URL}` after a healthy or degraded completion;
+- `${APP_STORE_HEARTBEAT_URL}/fail` after a failing completion.
 
-- Missing scheduled-run evidence.
-- Repeated actual ingestion failures with monitor-only failures excluded.
-- Active-scope/Postgres staleness at 24-hour and 36-hour thresholds.
-- HTTP 429 and fetch-error rates below and above failing thresholds.
-- Zero inserts with unchanged source frontiers.
-- Change-ledger accounting mismatch.
-- Dominant source-pressure scope identification.
-- Healthy/degraded reports skipping SMTP, failing reports producing a short message, dry-run `.eml` output, and fake-SMTP delivery.
+Configure the external check for a 12-hour expected interval and an initial 6-hour grace period. This detects a workflow that never starts, a workflow that starts but never reaches notification, and an explicitly failing monitor. The heartbeat is best-effort and never blocks ingestion; email remains the direct failing-status alert.
+
+## Failure Simulation Coverage
+
+Automated tests cover:
+
+- missing and repeated failed scheduled runs;
+- missing intended scopes and hard-failure scope outcomes;
+- staleness at 24-hour and 36-hour thresholds;
+- final and recovered 429 pressure below and above thresholds;
+- fetch-error, retry, duplicate, insert-drop, and backlog thresholds;
+- unchanged source frontiers and change-ledger mismatches;
+- monitor-job exclusion from ingestion failure counts;
+- fallback reports, dry-run email, fake SMTP delivery, and missing configuration behavior;
+- Markdown and JSON rendering.
 
 ## Runbook
 
-For degraded runs, inspect the alert table and source-pressure scopes before changing concurrency or cadence. `source_snapshot_unchanged` means Apple exposed no new page-one frontier; it is not evidence of a Postgres failure.
-
-For failing runs, follow the email link, inspect required failed jobs first, then review accounting, HTTP/fetch-error metrics, stale scopes, and terminal reasons. Email delivery failures are reported separately in `notification_result.json`.
+1. Open the failing email's GitHub run link.
+2. Check `prepare-matrix`, `preflight`, and failed `daily (...)` jobs before the monitor/notify jobs.
+3. Compare intended, completed, hard-failure, backlogged, and missing scope counts.
+4. Inspect 429 attempts, final non-200 pages, retries, fetch errors, and the pressure-scope table.
+5. Check latest-attempt data freshness, then inspect `last_successful_at` and backlog separately for catch-up completeness.
+6. Do not restart deep backfill as a first response. Correct the fault, then use a one-app manual incremental smoke run.
+7. Follow `docs/operations_recovery.md` for migration, rollback, and validation commands.
 
 ## Known Limitations
 
-- GitHub scheduled start time is not deterministic. The external heartbeat detects absence but does not make GitHub start on time.
-- The heartbeat service must be configured separately before missing-run email detection is active.
-- SMTP secrets are intentionally not stored in the repository.
-- Runtime comparison uses GitHub job/run timestamps; page-fetch runtime remains visible separately.
-- Source-frontier equality proves that the visible page-one timestamp did not move, not that Apple has no unpublished reviews.
-- Historical completeness is separate from incremental freshness.
+- GitHub cron start time is not deterministic; the external heartbeat detects absence but cannot start the job.
+- The heartbeat service and its email destination are configured outside this repository.
+- Runtime comparison depends on GitHub timestamps; source-fetch duration remains separately visible through page timestamps.
+- A stable page-one frontier proves only that Apple's visible snapshot did not advance.
+- Historical completeness remains separate from incremental freshness.

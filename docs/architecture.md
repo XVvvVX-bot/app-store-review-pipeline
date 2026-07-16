@@ -34,10 +34,13 @@ Postgres is the cumulative store:
 
 - `app_store_targets`: app metadata and active flag.
 - `app_store_runs`: run-level load metrics.
+- `app_store_executions`: one GitHub/local orchestration attempt and its intended scope/config signatures.
+- `app_store_run_scopes`: one explicit caught-up, backlogged, or hard-failure outcome per run scope.
 - `app_store_review_pages`: one row per fetched page.
 - `app_store_reviews`: one row per unique review key.
 - `app_store_review_changes`: inserted/updated review audit rows.
 - `app_store_sync_state`: app-country incremental state.
+- `app_store_monitor_snapshots`: immutable-per-execution monitoring and database-growth evidence.
 - `app_store_pressure_state`: safe/candidate pressure settings and cooldown state.
 
 Review identity is:
@@ -61,7 +64,7 @@ Weaker stop reasons include `page_cap`, `caught_up_to_existing_reviews`, `time_b
 
 ## Operations
 
-GitHub Actions uses self-hosted Mac runners because local Postgres is the development store. The active workflows are CI, scheduled/dispatchable daily ingestion, and manual web-catalog backfill. The current operating focus is full-scope daily incremental testing across all active targets; historical backfill is paused unless we deliberately resume depth testing.
+GitHub Actions uses self-hosted Mac runners because local Postgres is the development store. The active operational workflows are CI, scheduled/dispatchable daily ingestion with integrated monitoring/notification, and a controlled email test. The web-catalog backfill workflow is retained but manually disabled. The former GitHub-scheduled watchdog was removed because the same delayed scheduler cannot reliably detect its own missed runs; optional external heartbeat monitoring covers that failure mode.
 
 The daily incremental workflow uses:
 
@@ -77,12 +80,13 @@ The scheduled daily cadence is 08:07 and 20:07 America/Los_Angeles during PDT, r
 
 The current daily incremental operating mode and full-scope run evidence are documented in `docs/daily_incremental.md`.
 
-The backfill workflow remains available for historical depth testing and uses:
+If an operator deliberately re-enables the guarded backfill workflow for historical depth testing, it requires:
 
-- local Postgres initialization before every job
-- global writer concurrency through GitHub Actions
+- the exact confirmation phrase `I_UNDERSTAND_BACKFILL_PRESSURE`
+- one runner, 1-5 apps, and 1-25 pages per scope
+- an explicit numeric start page
 - optional HTTP 429 pre-run cooldown and current-run circuit breaker checks
-- per-app time budgets
+- conservative enforced delay, retry, cooldown, and time-budget bounds
 - retry tracking and page-level status recording
 
 ## Reporting

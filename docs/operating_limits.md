@@ -1,6 +1,6 @@
 # Apple Review Pipeline Operating Limits
 
-Generated at: `2026-07-01T11:02:51+00:00`
+Generated at: `2026-07-16T13:18:49+00:00`
 Database: `postgresql:///app_store_reviews`
 Source: `apple_app_store_web_catalog_reviews`
 Ledger: `docs/experiments/operating_model_run_ledger.json`
@@ -141,10 +141,10 @@ Segments are computed from successful ledger runs by app-level inserted rows and
 
 | table_name | row_count | total_size | total_bytes |
 | --- | --- | --- | --- |
-| app_store_review_changes | 2,270,819 | 1159 MB | 1,215,479,808 |
-| app_store_review_pages | 117,954 | 84 MB | 88,514,560 |
-| app_store_reviews | 2,270,748 | 2465 MB | 2,585,239,552 |
-| app_store_runs | 4,658 | 1528 kB | 1,564,672 |
+| app_store_review_changes | 2,363,030 | 1833 MB | 1,921,646,592 |
+| app_store_review_pages | 129,446 | 184 MB | 193,060,864 |
+| app_store_reviews | 2,362,752 | 4091 MB | 4,289,331,200 |
+| app_store_runs | 10,458 | 10 MB | 10,846,208 |
 
 ## Planned Controlled Tests
 

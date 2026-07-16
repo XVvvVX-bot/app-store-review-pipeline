@@ -5,18 +5,18 @@
       "category_count": 26,
       "country_count": 1,
       "first_collected_at": "2026-06-18T19:26:37.978751+00:00",
-      "last_collected_at": "2026-06-22T20:44:14.144680+00:00",
-      "max_updated_epoch_seconds": 1781920486,
-      "min_updated_epoch_seconds": 1289776286,
-      "review_count": 1259204
+      "last_collected_at": "2026-07-16T07:07:31.326499+00:00",
+      "max_updated_epoch_seconds": 1784082973,
+      "min_updated_epoch_seconds": 1289674307,
+      "review_count": 2295799
     },
     "rows_by_source": [
       {
         "app_count": 200,
         "country_count": 1,
-        "max_updated_epoch_seconds": 1781920486,
-        "min_updated_epoch_seconds": 1289776286,
-        "review_count": 1259204,
+        "max_updated_epoch_seconds": 1784082973,
+        "min_updated_epoch_seconds": 1289674307,
+        "review_count": 2295799,
         "source": "apple_app_store_web_catalog_reviews"
       },
       {
@@ -31,20 +31,72 @@
     "target_snapshot": {
       "active_by_category": [
         {
-          "app_count": 5,
+          "app_count": 52,
+          "category": "games"
+        },
+        {
+          "app_count": 27,
           "category": "entertainment"
         },
         {
-          "app_count": 5,
-          "category": "travel"
+          "app_count": 15,
+          "category": "shopping"
         },
         {
-          "app_count": 4,
+          "app_count": 11,
+          "category": "social_networking"
+        },
+        {
+          "app_count": 10,
+          "category": "productivity"
+        },
+        {
+          "app_count": 9,
           "category": "finance"
         },
         {
+          "app_count": 8,
+          "category": "lifestyle"
+        },
+        {
+          "app_count": 8,
+          "category": "travel"
+        },
+        {
+          "app_count": 7,
+          "category": "business"
+        },
+        {
+          "app_count": 7,
+          "category": "photo_and_video"
+        },
+        {
+          "app_count": 7,
+          "category": "sports"
+        },
+        {
+          "app_count": 7,
+          "category": "utilities"
+        },
+        {
+          "app_count": 5,
+          "category": "education"
+        },
+        {
+          "app_count": 5,
+          "category": "health_and_fitness"
+        },
+        {
+          "app_count": 4,
+          "category": "music"
+        },
+        {
           "app_count": 3,
-          "category": "shopping"
+          "category": "news"
+        },
+        {
+          "app_count": 2,
+          "category": "food_and_drink"
         },
         {
           "app_count": 2,
@@ -52,7 +104,15 @@
         },
         {
           "app_count": 2,
+          "category": "navigation"
+        },
+        {
+          "app_count": 2,
           "category": "social"
+        },
+        {
+          "app_count": 2,
+          "category": "weather"
         },
         {
           "app_count": 1,
@@ -60,7 +120,11 @@
         },
         {
           "app_count": 1,
-          "category": "education"
+          "category": "books"
+        },
+        {
+          "app_count": 1,
+          "category": "graphics_and_design"
         },
         {
           "app_count": 1,
@@ -68,28 +132,24 @@
         },
         {
           "app_count": 1,
-          "category": "productivity"
+          "category": "medical"
         }
       ],
       "counts": [
         {
           "active": 1,
-          "app_count": 25
-        },
-        {
-          "active": 0,
-          "app_count": 175
+          "app_count": 200
         }
       ]
     }
   },
   "metadata": {
     "database_url": "postgresql:///app_store_reviews",
-    "generated_at": "2026-06-22T23:32:32+00:00",
+    "generated_at": "2026-07-16T13:15:18+00:00",
     "source": "apple_app_store_web_catalog_reviews"
   },
   "missingness": {
-    "missing_author_name": 0,
+    "missing_author_name": 1,
     "missing_author_name_rate": 0.0,
     "missing_content": 0,
     "missing_content_rate": 0.0,
@@ -101,24 +161,24 @@
     "missing_updated_at_rate": 0.0,
     "missing_updated_epoch_seconds": 0,
     "missing_updated_epoch_seconds_rate": 0.0,
-    "review_count": 1259204
+    "review_count": 2295799
   },
   "pipeline_behavior": {
     "attempt_counts": [
       {
         "attempt_count": 1,
-        "page_count": 62006,
-        "review_rows": 1236518
+        "page_count": 123483,
+        "review_rows": 2450007
       },
       {
         "attempt_count": 2,
-        "page_count": 1543,
-        "review_rows": 30519
+        "page_count": 3045,
+        "review_rows": 57682
       },
       {
         "attempt_count": 3,
-        "page_count": 319,
-        "review_rows": 6160
+        "page_count": 424,
+        "review_rows": 8060
       },
       {
         "attempt_count": 4,
@@ -140,722 +200,839 @@
       {
         "app_id": "297606951",
         "app_name": "Amazon Shopping",
-        "avg_run_page_window_minutes": 18.65,
+        "avg_run_page_window_minutes": 9.38,
         "category": "shopping",
-        "final_non_200_pages": 5,
-        "http_429_pages": 3,
+        "final_non_200_pages": 10,
+        "http_429_attempts": 18,
+        "http_429_pages": 7,
         "max_run_page_window_minutes": 59.97,
-        "page_count": 3686,
-        "page_review_rows": 73580,
-        "retried_pages": 44,
-        "run_count": 32
+        "page_count": 5236,
+        "page_review_rows": 104480,
+        "retried_pages": 76,
+        "run_count": 94,
+        "soft_retries": 0
       },
       {
         "app_id": "338137227",
         "app_name": "Walmart",
-        "avg_run_page_window_minutes": 20.93,
+        "avg_run_page_window_minutes": 9.85,
         "category": "shopping",
-        "final_non_200_pages": 3,
-        "http_429_pages": 2,
+        "final_non_200_pages": 8,
+        "http_429_attempts": 16,
+        "http_429_pages": 6,
         "max_run_page_window_minutes": 59.99,
-        "page_count": 3495,
-        "page_review_rows": 69800,
-        "retried_pages": 37,
-        "run_count": 27
-      },
-      {
-        "app_id": "297430070",
-        "app_name": "Target",
-        "avg_run_page_window_minutes": 20.64,
-        "category": "shopping",
-        "final_non_200_pages": 3,
-        "http_429_pages": 2,
-        "max_run_page_window_minutes": 59.97,
-        "page_count": 3011,
-        "page_review_rows": 60120,
-        "retried_pages": 31,
-        "run_count": 24
+        "page_count": 5179,
+        "page_review_rows": 103380,
+        "retried_pages": 72,
+        "run_count": 90,
+        "soft_retries": 0
       },
       {
         "app_id": "368677368",
         "app_name": "Uber",
-        "avg_run_page_window_minutes": 19.11,
+        "avg_run_page_window_minutes": 8.68,
         "category": "travel",
-        "final_non_200_pages": 4,
-        "http_429_pages": 3,
+        "final_non_200_pages": 10,
+        "http_429_attempts": 22,
+        "http_429_pages": 9,
         "max_run_page_window_minutes": 59.85,
-        "page_count": 2595,
-        "page_review_rows": 51800,
-        "retried_pages": 37,
-        "run_count": 22
+        "page_count": 4186,
+        "page_review_rows": 83500,
+        "retried_pages": 69,
+        "run_count": 85,
+        "soft_retries": 0
       },
       {
         "app_id": "529379082",
         "app_name": "Lyft",
-        "avg_run_page_window_minutes": 16.52,
+        "avg_run_page_window_minutes": 7.43,
         "category": "travel",
-        "final_non_200_pages": 2,
-        "http_429_pages": 2,
+        "final_non_200_pages": 6,
+        "http_429_attempts": 16,
+        "http_429_pages": 6,
         "max_run_page_window_minutes": 30,
-        "page_count": 1901,
-        "page_review_rows": 37960,
-        "retried_pages": 22,
-        "run_count": 17
-      },
-      {
-        "app_id": "351727428",
-        "app_name": "Venmo",
-        "avg_run_page_window_minutes": 16.4,
-        "category": "finance",
-        "final_non_200_pages": 2,
-        "http_429_pages": 2,
-        "max_run_page_window_minutes": 29.96,
-        "page_count": 1806,
-        "page_review_rows": 36080,
-        "retried_pages": 20,
-        "run_count": 16
-      },
-      {
-        "app_id": "427916203",
-        "app_name": "Expedia",
-        "avg_run_page_window_minutes": 18.46,
-        "category": "travel",
-        "final_non_200_pages": 2,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.98,
-        "page_count": 1780,
-        "page_review_rows": 35560,
-        "retried_pages": 18,
-        "run_count": 14
-      },
-      {
-        "app_id": "363590051",
-        "app_name": "Netflix",
-        "avg_run_page_window_minutes": 17.44,
-        "category": "entertainment",
-        "final_non_200_pages": 1,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.98,
-        "page_count": 1744,
-        "page_review_rows": 34860,
-        "retried_pages": 23,
-        "run_count": 15
-      },
-      {
-        "app_id": "1508186374",
-        "app_name": "Peacock TV: Stream TV & Movies",
-        "avg_run_page_window_minutes": 19.89,
-        "category": "entertainment",
-        "final_non_200_pages": 1,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.96,
-        "page_count": 1735,
-        "page_review_rows": 34680,
-        "retried_pages": 26,
-        "run_count": 13
-      },
-      {
-        "app_id": "1058959277",
-        "app_name": "Uber Eats",
-        "avg_run_page_window_minutes": 17.39,
-        "category": "food_delivery",
-        "final_non_200_pages": 2,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.98,
-        "page_count": 1734,
-        "page_review_rows": 34640,
-        "retried_pages": 25,
-        "run_count": 15
-      },
-      {
-        "app_id": "719972451",
-        "app_name": "DoorDash",
-        "avg_run_page_window_minutes": 17.44,
-        "category": "food_delivery",
-        "final_non_200_pages": 1,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.94,
-        "page_count": 1733,
-        "page_review_rows": 34620,
-        "retried_pages": 26,
-        "run_count": 15
+        "page_count": 3554,
+        "page_review_rows": 70940,
+        "retried_pages": 59,
+        "run_count": 79,
+        "soft_retries": 0
       },
       {
         "app_id": "6448311069",
         "app_name": "ChatGPT",
-        "avg_run_page_window_minutes": 18.52,
+        "avg_run_page_window_minutes": 9.09,
         "category": "ai_tools",
-        "final_non_200_pages": 1,
-        "http_429_pages": 1,
+        "final_non_200_pages": 4,
+        "http_429_attempts": 12,
+        "http_429_pages": 4,
         "max_run_page_window_minutes": 29.98,
-        "page_count": 1720,
-        "page_review_rows": 34380,
-        "retried_pages": 28,
-        "run_count": 14
+        "page_count": 3388,
+        "page_review_rows": 67680,
+        "retried_pages": 58,
+        "run_count": 71,
+        "soft_retries": 0
       },
       {
         "app_id": "570060128",
         "app_name": "Duolingo",
-        "avg_run_page_window_minutes": 18.46,
+        "avg_run_page_window_minutes": 8.33,
         "category": "education",
-        "final_non_200_pages": 1,
-        "http_429_pages": 1,
+        "final_non_200_pages": 5,
+        "http_429_attempts": 12,
+        "http_429_pages": 4,
         "max_run_page_window_minutes": 29.98,
-        "page_count": 1715,
-        "page_review_rows": 34260,
-        "retried_pages": 24,
-        "run_count": 14
-      },
-      {
-        "app_id": "341232718",
-        "app_name": "MyFitnessPal",
-        "avg_run_page_window_minutes": 18.41,
-        "category": "health",
-        "final_non_200_pages": 1,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.97,
-        "page_count": 1712,
-        "page_review_rows": 34200,
-        "retried_pages": 24,
-        "run_count": 14
-      },
-      {
-        "app_id": "283646709",
-        "app_name": "PayPal",
-        "avg_run_page_window_minutes": 16.21,
-        "category": "finance",
-        "final_non_200_pages": 2,
-        "http_429_pages": 2,
-        "max_run_page_window_minutes": 29.92,
-        "page_count": 1702,
-        "page_review_rows": 34000,
-        "retried_pages": 30,
-        "run_count": 16
-      },
-      {
-        "app_id": "711923939",
-        "app_name": "Cash App",
-        "avg_run_page_window_minutes": 15.27,
-        "category": "finance",
-        "final_non_200_pages": 2,
-        "http_429_pages": 2,
-        "max_run_page_window_minutes": 29.98,
-        "page_count": 1701,
-        "page_review_rows": 33980,
-        "retried_pages": 20,
-        "run_count": 16
-      },
-      {
-        "app_id": "367003839",
-        "app_name": "Booking.com",
-        "avg_run_page_window_minutes": 18.52,
-        "category": "travel",
-        "final_non_200_pages": 2,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 30,
-        "page_count": 1696,
-        "page_review_rows": 33880,
-        "retried_pages": 26,
-        "run_count": 14
-      },
-      {
-        "app_id": "835599320",
-        "app_name": "TikTok",
-        "avg_run_page_window_minutes": 17.38,
-        "category": "social",
-        "final_non_200_pages": 4,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.99,
-        "page_count": 1607,
-        "page_review_rows": 32040,
-        "retried_pages": 26,
-        "run_count": 15
+        "page_count": 3322,
+        "page_review_rows": 66320,
+        "retried_pages": 55,
+        "run_count": 73,
+        "soft_retries": 0
       },
       {
         "app_id": "324684580",
         "app_name": "Spotify",
-        "avg_run_page_window_minutes": 16.6,
+        "avg_run_page_window_minutes": 9.4,
         "category": "entertainment",
-        "final_non_200_pages": 3,
-        "http_429_pages": 2,
-        "max_run_page_window_minutes": 29.92,
-        "page_count": 1423,
-        "page_review_rows": 28400,
-        "retried_pages": 27,
-        "run_count": 14
+        "final_non_200_pages": 8,
+        "http_429_attempts": 14,
+        "http_429_pages": 5,
+        "max_run_page_window_minutes": 38.42,
+        "page_count": 3281,
+        "page_review_rows": 65460,
+        "retried_pages": 67,
+        "run_count": 74,
+        "soft_retries": 0
       },
       {
-        "app_id": "401626263",
-        "app_name": "Airbnb",
-        "avg_run_page_window_minutes": 11.97,
-        "category": "travel",
-        "final_non_200_pages": 10,
-        "http_429_pages": 1,
+        "app_id": "351727428",
+        "app_name": "Venmo",
+        "avg_run_page_window_minutes": 6.89,
+        "category": "finance",
+        "final_non_200_pages": 5,
+        "http_429_attempts": 13,
+        "http_429_pages": 5,
+        "max_run_page_window_minutes": 29.96,
+        "page_count": 3234,
+        "page_review_rows": 64580,
+        "retried_pages": 38,
+        "run_count": 74,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "6443467666",
+        "app_name": "Love and Deepspace",
+        "avg_run_page_window_minutes": 36.26,
+        "category": "games",
+        "final_non_200_pages": 20,
+        "http_429_attempts": 29,
+        "http_429_pages": 19,
+        "max_run_page_window_minutes": 59.55,
+        "page_count": 3223,
+        "page_review_rows": 64060,
+        "retried_pages": 169,
+        "run_count": 45,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "719972451",
+        "app_name": "DoorDash",
+        "avg_run_page_window_minutes": 7.07,
+        "category": "food_delivery",
+        "final_non_200_pages": 8,
+        "http_429_attempts": 19,
+        "http_429_pages": 7,
         "max_run_page_window_minutes": 29.94,
-        "page_count": 1235,
-        "page_review_rows": 24475,
-        "retried_pages": 14,
-        "run_count": 14
+        "page_count": 3190,
+        "page_review_rows": 63620,
+        "retried_pages": 49,
+        "run_count": 76,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "711923939",
+        "app_name": "Cash App",
+        "avg_run_page_window_minutes": 6.64,
+        "category": "finance",
+        "final_non_200_pages": 4,
+        "http_429_attempts": 12,
+        "http_429_pages": 4,
+        "max_run_page_window_minutes": 29.98,
+        "page_count": 3131,
+        "page_review_rows": 62540,
+        "retried_pages": 34,
+        "run_count": 74,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "367003839",
+        "app_name": "Booking.com",
+        "avg_run_page_window_minutes": 7.08,
+        "category": "travel",
+        "final_non_200_pages": 5,
+        "http_429_attempts": 12,
+        "http_429_pages": 4,
+        "max_run_page_window_minutes": 30,
+        "page_count": 3123,
+        "page_review_rows": 62360,
+        "retried_pages": 45,
+        "run_count": 72,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "1058959277",
+        "app_name": "Uber Eats",
+        "avg_run_page_window_minutes": 6.97,
+        "category": "food_delivery",
+        "final_non_200_pages": 6,
+        "http_429_attempts": 15,
+        "http_429_pages": 5,
+        "max_run_page_window_minutes": 29.98,
+        "page_count": 3122,
+        "page_review_rows": 62320,
+        "retried_pages": 44,
+        "run_count": 73,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "363590051",
+        "app_name": "Netflix",
+        "avg_run_page_window_minutes": 6.63,
+        "category": "entertainment",
+        "final_non_200_pages": 3,
+        "http_429_attempts": 10,
+        "http_429_pages": 3,
+        "max_run_page_window_minutes": 29.98,
+        "page_count": 3112,
+        "page_review_rows": 62180,
+        "retried_pages": 32,
+        "run_count": 75,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "297430070",
+        "app_name": "Target",
+        "avg_run_page_window_minutes": 6.45,
+        "category": "shopping",
+        "final_non_200_pages": 24,
+        "http_429_attempts": 8,
+        "http_429_pages": 2,
+        "max_run_page_window_minutes": 59.97,
+        "page_count": 3111,
+        "page_review_rows": 61581,
+        "retried_pages": 32,
+        "run_count": 78,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "835599320",
+        "app_name": "TikTok",
+        "avg_run_page_window_minutes": 7.82,
+        "category": "social",
+        "final_non_200_pages": 10,
+        "http_429_attempts": 11,
+        "http_429_pages": 4,
+        "max_run_page_window_minutes": 29.99,
+        "page_count": 3076,
+        "page_review_rows": 61300,
+        "retried_pages": 52,
+        "run_count": 73,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "283646709",
+        "app_name": "PayPal",
+        "avg_run_page_window_minutes": 6.67,
+        "category": "finance",
+        "final_non_200_pages": 6,
+        "http_429_attempts": 13,
+        "http_429_pages": 5,
+        "max_run_page_window_minutes": 29.92,
+        "page_count": 3005,
+        "page_review_rows": 59980,
+        "retried_pages": 54,
+        "run_count": 74,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "341232718",
+        "app_name": "MyFitnessPal",
+        "avg_run_page_window_minutes": 6.53,
+        "category": "health",
+        "final_non_200_pages": 4,
+        "http_429_attempts": 10,
+        "http_429_pages": 3,
+        "max_run_page_window_minutes": 29.97,
+        "page_count": 2903,
+        "page_review_rows": 57960,
+        "retried_pages": 37,
+        "run_count": 71,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "427916203",
+        "app_name": "Expedia",
+        "avg_run_page_window_minutes": 4.48,
+        "category": "travel",
+        "final_non_200_pages": 17,
+        "http_429_attempts": 6,
+        "http_429_pages": 1,
+        "max_run_page_window_minutes": 29.98,
+        "page_count": 2043,
+        "page_review_rows": 40436,
+        "retried_pages": 22,
+        "run_count": 66,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "1508186374",
+        "app_name": "Peacock TV: Stream TV & Movies",
+        "avg_run_page_window_minutes": 4.62,
+        "category": "entertainment",
+        "final_non_200_pages": 19,
+        "http_429_attempts": 6,
+        "http_429_pages": 1,
+        "max_run_page_window_minutes": 29.96,
+        "page_count": 1997,
+        "page_review_rows": 39533,
+        "retried_pages": 28,
+        "run_count": 64,
+        "soft_retries": 0
       },
       {
         "app_id": "389801252",
         "app_name": "Instagram",
-        "avg_run_page_window_minutes": 14.28,
+        "avg_run_page_window_minutes": 4.51,
         "category": "social",
-        "final_non_200_pages": 37,
-        "http_429_pages": 1,
+        "final_non_200_pages": 132,
+        "http_429_attempts": 12,
+        "http_429_pages": 4,
         "max_run_page_window_minutes": 19.94,
-        "page_count": 1150,
-        "page_review_rows": 22240,
-        "retried_pages": 30,
-        "run_count": 15
-      },
-      {
-        "app_id": "6477489729",
-        "app_name": "Google Gemini",
-        "avg_run_page_window_minutes": 19.95,
-        "category": "productivity",
-        "final_non_200_pages": 1,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 30,
-        "page_count": 752,
-        "page_review_rows": 15020,
-        "retried_pages": 10,
-        "run_count": 4
-      },
-      {
-        "app_id": "284815942",
-        "app_name": "Google",
-        "avg_run_page_window_minutes": 19.94,
-        "category": "utilities",
-        "final_non_200_pages": 1,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.95,
-        "page_count": 734,
-        "page_review_rows": 14660,
-        "retried_pages": 10,
-        "run_count": 4
-      },
-      {
-        "app_id": "6446901002",
-        "app_name": "Threads",
-        "avg_run_page_window_minutes": 19.97,
-        "category": "social_networking",
-        "final_non_200_pages": 1,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.97,
-        "page_count": 729,
-        "page_review_rows": 14560,
-        "retried_pages": 12,
-        "run_count": 4
-      },
-      {
-        "app_id": "1500855883",
-        "app_name": "CapCut: Photo & Video Editor",
-        "avg_run_page_window_minutes": 19.97,
-        "category": "photo_and_video",
-        "final_non_200_pages": 1,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.99,
-        "page_count": 713,
-        "page_review_rows": 14240,
-        "retried_pages": 16,
-        "run_count": 4
+        "page_count": 1572,
+        "page_review_rows": 28780,
+        "retried_pages": 46,
+        "run_count": 74,
+        "soft_retries": 0
       },
       {
         "app_id": "310633997",
         "app_name": "WhatsApp Messenger",
-        "avg_run_page_window_minutes": 19.97,
+        "avg_run_page_window_minutes": 4.17,
         "category": "social_networking",
         "final_non_200_pages": 1,
+        "http_429_attempts": 6,
         "http_429_pages": 1,
         "max_run_page_window_minutes": 29.98,
-        "page_count": 669,
-        "page_review_rows": 13360,
-        "retried_pages": 18,
-        "run_count": 4
+        "page_count": 1408,
+        "page_review_rows": 28140,
+        "retried_pages": 27,
+        "run_count": 53,
+        "soft_retries": 0
       },
       {
-        "app_id": "1488269261",
-        "app_name": "Whatnot: Shop, Sell, Connect",
-        "avg_run_page_window_minutes": 23.62,
-        "category": "shopping",
-        "final_non_200_pages": 0,
-        "http_429_pages": 0,
-        "max_run_page_window_minutes": 29.95,
-        "page_count": 492,
-        "page_review_rows": 9837,
-        "retried_pages": 6,
-        "run_count": 2
-      },
-      {
-        "app_id": "407558537",
-        "app_name": "Capital One Mobile",
-        "avg_run_page_window_minutes": 16.65,
-        "category": "finance",
-        "final_non_200_pages": 1,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.94,
-        "page_count": 301,
-        "page_review_rows": 6000,
-        "retried_pages": 16,
-        "run_count": 3
-      },
-      {
-        "app_id": "6473753684",
-        "app_name": "Claude by Anthropic",
-        "avg_run_page_window_minutes": 3.22,
-        "category": "productivity",
-        "final_non_200_pages": 18,
-        "http_429_pages": 0,
-        "max_run_page_window_minutes": 24.31,
-        "page_count": 300,
-        "page_review_rows": 5547,
-        "retried_pages": 2,
-        "run_count": 9
-      },
-      {
-        "app_id": "6670324846",
-        "app_name": "Grok - AI Chat & Video",
-        "avg_run_page_window_minutes": 16.41,
-        "category": "productivity",
-        "final_non_200_pages": 1,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.25,
-        "page_count": 300,
-        "page_review_rows": 5960,
-        "retried_pages": 18,
-        "run_count": 3
-      },
-      {
-        "app_id": "384830320",
-        "app_name": "Life360: Family Safety & GPS",
-        "avg_run_page_window_minutes": 7.34,
-        "category": "social_networking",
-        "final_non_200_pages": 2,
-        "http_429_pages": 2,
-        "max_run_page_window_minutes": 29.1,
-        "page_count": 282,
-        "page_review_rows": 5580,
-        "retried_pages": 21,
-        "run_count": 7
-      },
-      {
-        "app_id": "500003565",
-        "app_name": "Ticketmaster\uff0dBuy, Sell Tickets",
-        "avg_run_page_window_minutes": 16.62,
-        "category": "entertainment",
-        "final_non_200_pages": 1,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.93,
-        "page_count": 274,
-        "page_review_rows": 5460,
-        "retried_pages": 20,
-        "run_count": 3
-      },
-      {
-        "app_id": "1111876388",
-        "app_name": "T-Life",
-        "avg_run_page_window_minutes": 16.59,
-        "category": "lifestyle",
-        "final_non_200_pages": 1,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.93,
-        "page_count": 273,
-        "page_review_rows": 5440,
-        "retried_pages": 19,
-        "run_count": 3
-      },
-      {
-        "app_id": "897446215",
-        "app_name": "Canva: AI Video & Photo Editor",
-        "avg_run_page_window_minutes": 16.62,
+        "app_id": "1500855883",
+        "app_name": "CapCut: Photo & Video Editor",
+        "avg_run_page_window_minutes": 3.66,
         "category": "photo_and_video",
-        "final_non_200_pages": 1,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.94,
-        "page_count": 266,
-        "page_review_rows": 5300,
-        "retried_pages": 22,
-        "run_count": 3
-      },
-      {
-        "app_id": "951937596",
-        "app_name": "Microsoft Outlook",
-        "avg_run_page_window_minutes": 16.6,
-        "category": "productivity",
-        "final_non_200_pages": 1,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.95,
-        "page_count": 265,
-        "page_review_rows": 5280,
-        "retried_pages": 17,
-        "run_count": 3
-      },
-      {
-        "app_id": "530168168",
-        "app_name": "Paramount+",
-        "avg_run_page_window_minutes": 11.95,
-        "category": "entertainment",
-        "final_non_200_pages": 2,
+        "final_non_200_pages": 3,
+        "http_429_attempts": 8,
         "http_429_pages": 2,
-        "max_run_page_window_minutes": 28.27,
-        "page_count": 260,
-        "page_review_rows": 5120,
-        "retried_pages": 21,
-        "run_count": 4
-      },
-      {
-        "app_id": "985746746",
-        "app_name": "Discord - Talk, Play, Hang Out",
-        "avg_run_page_window_minutes": 16.64,
-        "category": "social_networking",
-        "final_non_200_pages": 1,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.93,
-        "page_count": 256,
-        "page_review_rows": 5100,
-        "retried_pages": 20,
-        "run_count": 3
-      },
-      {
-        "app_id": "429047995",
-        "app_name": "Pinterest",
-        "avg_run_page_window_minutes": 16.63,
-        "category": "lifestyle",
-        "final_non_200_pages": 1,
-        "http_429_pages": 1,
         "max_run_page_window_minutes": 29.99,
-        "page_count": 249,
-        "page_review_rows": 4960,
-        "retried_pages": 23,
-        "run_count": 3
+        "page_count": 1399,
+        "page_review_rows": 27920,
+        "retried_pages": 20,
+        "run_count": 55,
+        "soft_retries": 0
       },
       {
-        "app_id": "284882215",
-        "app_name": "Facebook",
-        "avg_run_page_window_minutes": 8.23,
-        "category": "social_networking",
-        "final_non_200_pages": 2,
-        "http_429_pages": 2,
-        "max_run_page_window_minutes": 29.93,
-        "page_count": 240,
-        "page_review_rows": 4740,
-        "retried_pages": 17,
-        "run_count": 6
-      },
-      {
-        "app_id": "1089294040",
-        "app_name": "Capital One Shopping: Save Now",
-        "avg_run_page_window_minutes": 16.57,
-        "category": "shopping",
-        "final_non_200_pages": 1,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.74,
-        "page_count": 234,
-        "page_review_rows": 4620,
-        "retried_pages": 18,
-        "run_count": 3
-      },
-      {
-        "app_id": "535886823",
-        "app_name": "Google Chrome",
-        "avg_run_page_window_minutes": 12.48,
+        "app_id": "284815942",
+        "app_name": "Google",
+        "avg_run_page_window_minutes": 3.23,
         "category": "utilities",
-        "final_non_200_pages": 2,
+        "final_non_200_pages": 3,
+        "http_429_attempts": 11,
+        "http_429_pages": 3,
+        "max_run_page_window_minutes": 29.95,
+        "page_count": 1317,
+        "page_review_rows": 26280,
+        "retried_pages": 16,
+        "run_count": 54,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "401626263",
+        "app_name": "Airbnb",
+        "avg_run_page_window_minutes": 2.59,
+        "category": "travel",
+        "final_non_200_pages": 32,
+        "http_429_attempts": 8,
         "http_429_pages": 2,
-        "max_run_page_window_minutes": 29.96,
-        "page_count": 233,
-        "page_review_rows": 4620,
-        "retried_pages": 22,
-        "run_count": 4
+        "max_run_page_window_minutes": 29.94,
+        "page_count": 1308,
+        "page_review_rows": 25387,
+        "retried_pages": 16,
+        "run_count": 66,
+        "soft_retries": 0
       },
       {
-        "app_id": "6751921248",
-        "app_name": "Rips by Triumph",
-        "avg_run_page_window_minutes": 12.8,
-        "category": "shopping",
+        "app_id": "6446901002",
+        "app_name": "Threads",
+        "avg_run_page_window_minutes": 3,
+        "category": "social_networking",
         "final_non_200_pages": 1,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.04,
-        "page_count": 233,
-        "page_review_rows": 4620,
-        "retried_pages": 19,
-        "run_count": 4
-      },
-      {
-        "app_id": "545519333",
-        "app_name": "Amazon Prime Video",
-        "avg_run_page_window_minutes": 16.61,
-        "category": "entertainment",
-        "final_non_200_pages": 1,
+        "http_429_attempts": 6,
         "http_429_pages": 1,
         "max_run_page_window_minutes": 29.97,
-        "page_count": 230,
-        "page_review_rows": 4580,
+        "page_count": 1182,
+        "page_review_rows": 23602,
         "retried_pages": 20,
-        "run_count": 3
+        "run_count": 52,
+        "soft_retries": 0
       },
       {
-        "app_id": "686449807",
-        "app_name": "Telegram Messenger",
-        "avg_run_page_window_minutes": 16.61,
+        "app_id": "444553167",
+        "app_name": "ADP Mobile Solutions",
+        "avg_run_page_window_minutes": 3.69,
+        "category": "business",
+        "final_non_200_pages": 1,
+        "http_429_attempts": 6,
+        "http_429_pages": 1,
+        "max_run_page_window_minutes": 19.97,
+        "page_count": 1149,
+        "page_review_rows": 22940,
+        "retried_pages": 15,
+        "run_count": 54,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "436672029",
+        "app_name": "AliExpress - Shopping App",
+        "avg_run_page_window_minutes": 3.89,
+        "category": "shopping",
+        "final_non_200_pages": 1,
+        "http_429_attempts": 6,
+        "http_429_pages": 1,
+        "max_run_page_window_minutes": 19.88,
+        "page_count": 1114,
+        "page_review_rows": 22260,
+        "retried_pages": 18,
+        "run_count": 53,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "1064216828",
+        "app_name": "Reddit",
+        "avg_run_page_window_minutes": 3.28,
+        "category": "news",
+        "final_non_200_pages": 1,
+        "http_429_attempts": 6,
+        "http_429_pages": 1,
+        "max_run_page_window_minutes": 19.87,
+        "page_count": 1069,
+        "page_review_rows": 21360,
+        "retried_pages": 12,
+        "run_count": 55,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "922103212",
+        "app_name": "McDonald's",
+        "avg_run_page_window_minutes": 3.4,
+        "category": "food_and_drink",
+        "final_non_200_pages": 2,
+        "http_429_attempts": 9,
+        "http_429_pages": 2,
+        "max_run_page_window_minutes": 19.85,
+        "page_count": 1057,
+        "page_review_rows": 21100,
+        "retried_pages": 16,
+        "run_count": 55,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "298867247",
+        "app_name": "Chase Mobile\u00ae: Bank & Invest",
+        "avg_run_page_window_minutes": 3.37,
+        "category": "finance",
+        "final_non_200_pages": 1,
+        "http_429_attempts": 6,
+        "http_429_pages": 1,
+        "max_run_page_window_minutes": 19.99,
+        "page_count": 1047,
+        "page_review_rows": 20920,
+        "retried_pages": 16,
+        "run_count": 55,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "1123582513",
+        "app_name": "Cashman Casino Slots Games",
+        "avg_run_page_window_minutes": 3.18,
+        "category": "games",
+        "final_non_200_pages": 1,
+        "http_429_attempts": 6,
+        "http_429_pages": 1,
+        "max_run_page_window_minutes": 19.58,
+        "page_count": 1026,
+        "page_review_rows": 20500,
+        "retried_pages": 16,
+        "run_count": 55,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "1096918571",
+        "app_name": "Google Meet",
+        "avg_run_page_window_minutes": 3.15,
         "category": "social_networking",
         "final_non_200_pages": 1,
+        "http_429_attempts": 6,
         "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.98,
-        "page_count": 230,
-        "page_review_rows": 4580,
-        "retried_pages": 22,
-        "run_count": 3
+        "max_run_page_window_minutes": 19.94,
+        "page_count": 1017,
+        "page_review_rows": 20320,
+        "retried_pages": 18,
+        "run_count": 56,
+        "soft_retries": 0
       },
       {
-        "app_id": "482066631",
-        "app_name": "The Roku App (Official)",
-        "avg_run_page_window_minutes": 16.63,
+        "app_id": "546505307",
+        "app_name": "Zoom Workplace",
+        "avg_run_page_window_minutes": 3.3,
+        "category": "business",
+        "final_non_200_pages": 1,
+        "http_429_attempts": 6,
+        "http_429_pages": 1,
+        "max_run_page_window_minutes": 19.56,
+        "page_count": 1017,
+        "page_review_rows": 20300,
+        "retried_pages": 20,
+        "run_count": 53,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "507874739",
+        "app_name": "Google Drive",
+        "avg_run_page_window_minutes": 3.13,
+        "category": "productivity",
+        "final_non_200_pages": 2,
+        "http_429_attempts": 7,
+        "http_429_pages": 2,
+        "max_run_page_window_minutes": 19.56,
+        "page_count": 1014,
+        "page_review_rows": 20220,
+        "retried_pages": 14,
+        "run_count": 56,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "1446075923",
+        "app_name": "Disney+",
+        "avg_run_page_window_minutes": 3.31,
         "category": "entertainment",
-        "final_non_200_pages": 1,
-        "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.96,
-        "page_count": 220,
-        "page_review_rows": 4380,
-        "retried_pages": 20,
-        "run_count": 3
+        "final_non_200_pages": 2,
+        "http_429_attempts": 7,
+        "http_429_pages": 2,
+        "max_run_page_window_minutes": 19.9,
+        "page_count": 1013,
+        "page_review_rows": 20220,
+        "retried_pages": 19,
+        "run_count": 53,
+        "soft_retries": 0
       },
       {
-        "app_id": "544007664",
-        "app_name": "YouTube",
-        "avg_run_page_window_minutes": 12.92,
+        "app_id": "460177396",
+        "app_name": "Twitch: Live Streaming",
+        "avg_run_page_window_minutes": 3.14,
         "category": "photo_and_video",
-        "final_non_200_pages": 1,
+        "final_non_200_pages": 2,
+        "http_429_attempts": 8,
+        "http_429_pages": 2,
+        "max_run_page_window_minutes": 19.62,
+        "page_count": 971,
+        "page_review_rows": 19360,
+        "retried_pages": 16,
+        "run_count": 53,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "585027354",
+        "app_name": "Google Maps",
+        "avg_run_page_window_minutes": 3.1,
+        "category": "navigation",
+        "final_non_200_pages": 3,
+        "http_429_attempts": 18,
+        "http_429_pages": 3,
+        "max_run_page_window_minutes": 27.19,
+        "page_count": 942,
+        "page_review_rows": 18760,
+        "retried_pages": 27,
+        "run_count": 54,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "1054033219",
+        "app_name": "VIZIO | WatchFree+",
+        "avg_run_page_window_minutes": 2.77,
+        "category": "entertainment",
+        "final_non_200_pages": 8,
+        "http_429_attempts": 6,
         "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.34,
-        "page_count": 219,
-        "page_review_rows": 4340,
-        "retried_pages": 20,
-        "run_count": 4
+        "max_run_page_window_minutes": 19.98,
+        "page_count": 925,
+        "page_review_rows": 18334,
+        "retried_pages": 12,
+        "run_count": 57,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "344542975",
+        "app_name": "Southwest Airlines: Travel App",
+        "avg_run_page_window_minutes": 2.86,
+        "category": "travel",
+        "final_non_200_pages": 1,
+        "http_429_attempts": 6,
+        "http_429_pages": 1,
+        "max_run_page_window_minutes": 19.81,
+        "page_count": 913,
+        "page_review_rows": 18240,
+        "retried_pages": 13,
+        "run_count": 55,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "6477489729",
+        "app_name": "Google Gemini",
+        "avg_run_page_window_minutes": 2.42,
+        "category": "productivity",
+        "final_non_200_pages": 10,
+        "http_429_attempts": 6,
+        "http_429_pages": 1,
+        "max_run_page_window_minutes": 30,
+        "page_count": 900,
+        "page_review_rows": 17785,
+        "retried_pages": 15,
+        "run_count": 54,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "382698565",
+        "app_name": "American Airlines",
+        "avg_run_page_window_minutes": 2.66,
+        "category": "travel",
+        "final_non_200_pages": 4,
+        "http_429_attempts": 6,
+        "http_429_pages": 1,
+        "max_run_page_window_minutes": 19.84,
+        "page_count": 856,
+        "page_review_rows": 17022,
+        "retried_pages": 17,
+        "run_count": 55,
+        "soft_retries": 0
       },
       {
         "app_id": "422689480",
         "app_name": "Gmail - Email by Google",
-        "avg_run_page_window_minutes": 9.67,
+        "avg_run_page_window_minutes": 2.76,
         "category": "productivity",
         "final_non_200_pages": 3,
+        "http_429_attempts": 18,
         "http_429_pages": 3,
         "max_run_page_window_minutes": 28.55,
-        "page_count": 217,
-        "page_review_rows": 4260,
-        "retried_pages": 23,
-        "run_count": 5
+        "page_count": 830,
+        "page_review_rows": 16520,
+        "retried_pages": 26,
+        "run_count": 53,
+        "soft_retries": 0
       },
       {
-        "app_id": "983156458",
-        "app_name": "Microsoft Authenticator",
-        "avg_run_page_window_minutes": 12.44,
-        "category": "productivity",
-        "final_non_200_pages": 2,
-        "http_429_pages": 2,
-        "max_run_page_window_minutes": 29.92,
-        "page_count": 215,
-        "page_review_rows": 4260,
-        "retried_pages": 24,
-        "run_count": 4
-      },
-      {
-        "app_id": "1673567402",
-        "app_name": "Freecash - Get Paid Real Money",
-        "avg_run_page_window_minutes": 12.85,
-        "category": "entertainment",
-        "final_non_200_pages": 1,
+        "app_id": "535509415",
+        "app_name": "Costco",
+        "avg_run_page_window_minutes": 2.48,
+        "category": "shopping",
+        "final_non_200_pages": 5,
+        "http_429_attempts": 6,
         "http_429_pages": 1,
-        "max_run_page_window_minutes": 29.21,
-        "page_count": 212,
-        "page_review_rows": 4200,
-        "retried_pages": 21,
-        "run_count": 4
+        "max_run_page_window_minutes": 19.91,
+        "page_count": 811,
+        "page_review_rows": 16104,
+        "retried_pages": 9,
+        "run_count": 55,
+        "soft_retries": 0
       },
       {
-        "app_id": "1113153706",
-        "app_name": "Microsoft Teams",
-        "avg_run_page_window_minutes": 12.23,
-        "category": "business",
+        "app_id": "1193350206",
+        "app_name": "YouTube TV",
+        "avg_run_page_window_minutes": 2.04,
+        "category": "entertainment",
+        "final_non_200_pages": 11,
+        "http_429_attempts": 6,
+        "http_429_pages": 1,
+        "max_run_page_window_minutes": 19.88,
+        "page_count": 635,
+        "page_review_rows": 12440,
+        "retried_pages": 12,
+        "run_count": 53,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "1488269261",
+        "app_name": "Whatnot: Shop, Sell, Connect",
+        "avg_run_page_window_minutes": 1.07,
+        "category": "shopping",
+        "final_non_200_pages": 12,
+        "http_429_attempts": 0,
+        "http_429_pages": 0,
+        "max_run_page_window_minutes": 29.95,
+        "page_count": 579,
+        "page_review_rows": 11267,
+        "retried_pages": 9,
+        "run_count": 51,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "544007664",
+        "app_name": "YouTube",
+        "avg_run_page_window_minutes": 4.6,
+        "category": "photo_and_video",
+        "final_non_200_pages": 1,
+        "http_429_attempts": 6,
+        "http_429_pages": 1,
+        "max_run_page_window_minutes": 47.49,
+        "page_count": 569,
+        "page_review_rows": 11340,
+        "retried_pages": 39,
+        "run_count": 47,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "6475757306",
+        "app_name": "Disney Solitaire",
+        "avg_run_page_window_minutes": 3.87,
+        "category": "games",
+        "final_non_200_pages": 4,
+        "http_429_attempts": 9,
+        "http_429_pages": 4,
+        "max_run_page_window_minutes": 19.84,
+        "page_count": 457,
+        "page_review_rows": 9060,
+        "retried_pages": 37,
+        "run_count": 50,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "623592465",
+        "app_name": "Heads Up!",
+        "avg_run_page_window_minutes": 1.47,
+        "category": "games",
+        "final_non_200_pages": 16,
+        "http_429_attempts": 6,
+        "http_429_pages": 1,
+        "max_run_page_window_minutes": 19.98,
+        "page_count": 447,
+        "page_review_rows": 8530,
+        "retried_pages": 12,
+        "run_count": 53,
+        "soft_retries": 0
+      },
+      {
+        "app_id": "284882215",
+        "app_name": "Facebook",
+        "avg_run_page_window_minutes": 2.33,
+        "category": "social_networking",
         "final_non_200_pages": 2,
+        "http_429_attempts": 12,
         "http_429_pages": 2,
-        "max_run_page_window_minutes": 29.03,
-        "page_count": 209,
-        "page_review_rows": 4120,
-        "retried_pages": 21,
-        "run_count": 4
+        "max_run_page_window_minutes": 29.93,
+        "page_count": 439,
+        "page_review_rows": 8720,
+        "retried_pages": 23,
+        "run_count": 49,
+        "soft_retries": 0
       }
     ],
     "empty_and_error_pages": {
-      "empty_pages": 392,
+      "empty_pages": 1230,
       "empty_pages_with_next_link": 0,
-      "empty_pages_without_next_link": 392,
-      "error_pages": 392,
-      "final_non_200_pages": 344,
-      "http_429_pages": 221,
-      "retried_pages": 2171
+      "empty_pages_without_next_link": 1230,
+      "error_pages": 1230,
+      "final_non_200_pages": 1180,
+      "http_429_attempts": 1596,
+      "http_429_pages": 410,
+      "retried_pages": 3778,
+      "soft_retries": 0
     },
     "runs_summary": {
-      "capped_scopes": 38,
-      "fetch_errors": 392,
+      "capped_scopes": 46,
+      "fetch_errors": 1230,
       "first_loaded_at": "2026-06-18T19:00:24.473852+00:00",
-      "last_loaded_at": "2026-06-22T20:44:24.366383+00:00",
-      "page_count": 64177,
-      "raw_review_rows": 1275137,
-      "reviews_inserted": 1259204,
-      "reviews_updated": 1,
-      "run_count": 823,
-      "target_count_sum": 124875
+      "last_loaded_at": "2026-07-16T07:07:46.383691+00:00",
+      "page_count": 127261,
+      "raw_review_rows": 2517689,
+      "reviews_inserted": 2295799,
+      "reviews_updated": 228,
+      "run_count": 10444,
+      "target_count_sum": 10444
     },
     "status_codes": [
       {
-        "page_count": 63785,
-        "review_rows": 1275137,
+        "page_count": 126031,
+        "review_rows": 2517689,
         "status_code": "200"
       },
       {
-        "page_count": 221,
-        "review_rows": 0,
-        "status_code": "429"
-      },
-      {
-        "page_count": 123,
+        "page_count": 766,
         "review_rows": 0,
         "status_code": "404"
       },
       {
-        "page_count": 48,
+        "page_count": 410,
+        "review_rows": 0,
+        "status_code": "429"
+      },
+      {
+        "page_count": 50,
         "review_rows": 0,
         "status_code": "null"
+      },
+      {
+        "page_count": 2,
+        "review_rows": 0,
+        "status_code": "502"
+      },
+      {
+        "page_count": 2,
+        "review_rows": 0,
+        "status_code": "504"
       }
     ],
     "terminal_reasons": [
       {
-        "page_count": 63779,
-        "review_rows": 1273677,
+        "page_count": 117624,
+        "review_rows": 2339575,
         "terminal_reason": "none"
       },
       {
-        "page_count": 282,
+        "page_count": 8798,
+        "review_rows": 175936,
+        "terminal_reason": "caught_up_to_existing_reviews"
+      },
+      {
+        "page_count": 477,
         "review_rows": 0,
         "terminal_reason": "fetch_error"
       },
       {
-        "page_count": 38,
-        "review_rows": 728,
-        "terminal_reason": "page_cap"
+        "page_count": 213,
+        "review_rows": 0,
+        "terminal_reason": "sparse_fetch_error_threshold"
       },
       {
-        "page_count": 31,
-        "review_rows": 296,
+        "page_count": 71,
+        "review_rows": 650,
         "terminal_reason": "no_next_href"
       },
       {
-        "page_count": 24,
-        "review_rows": 0,
-        "terminal_reason": "sparse_fetch_error_threshold"
+        "page_count": 46,
+        "review_rows": 888,
+        "terminal_reason": "page_cap"
       },
       {
         "page_count": 21,
@@ -863,9 +1040,14 @@
         "terminal_reason": "target_review_count_reached"
       },
       {
+        "page_count": 9,
+        "review_rows": 180,
+        "terminal_reason": "time_budget_retry_window_exceeded"
+      },
+      {
         "page_count": 2,
-        "review_rows": 16,
-        "terminal_reason": "caught_up_to_existing_reviews"
+        "review_rows": 40,
+        "terminal_reason": "time_budget_exceeded"
       }
     ]
   },
@@ -874,1481 +1056,1481 @@
       {
         "app_id": "297606951",
         "app_name": "Amazon Shopping",
-        "avg_rating": 2.959,
+        "avg_rating": 2.819,
         "category": "shopping",
-        "rating_1": 27950,
-        "rating_5": 27903,
-        "review_count": 72303
+        "rating_1": 41675,
+        "rating_5": 35159,
+        "review_count": 102264
       },
       {
         "app_id": "338137227",
         "app_name": "Walmart",
-        "avg_rating": 3.746,
+        "avg_rating": 3.636,
         "category": "shopping",
-        "rating_1": 14546,
-        "rating_5": 39685,
-        "review_count": 68776
-      },
-      {
-        "app_id": "297430070",
-        "app_name": "Target",
-        "avg_rating": 3.918,
-        "category": "shopping",
-        "rating_1": 10897,
-        "rating_5": 37272,
-        "review_count": 59905
+        "rating_1": 24487,
+        "rating_5": 55978,
+        "review_count": 101299
       },
       {
         "app_id": "368677368",
         "app_name": "Uber",
-        "avg_rating": 4.052,
+        "avg_rating": 4.15,
         "category": "travel",
-        "rating_1": 9887,
-        "rating_5": 36615,
-        "review_count": 50433
+        "rating_1": 13991,
+        "rating_5": 60819,
+        "review_count": 81082
       },
       {
         "app_id": "529379082",
         "app_name": "Lyft",
-        "avg_rating": 3.778,
+        "avg_rating": 3.755,
         "category": "travel",
-        "rating_1": 8927,
-        "rating_5": 23794,
-        "review_count": 37592
-      },
-      {
-        "app_id": "427916203",
-        "app_name": "Expedia",
-        "avg_rating": 2.882,
-        "category": "travel",
-        "rating_1": 15967,
-        "rating_5": 13990,
-        "review_count": 35301
-      },
-      {
-        "app_id": "351727428",
-        "app_name": "Venmo",
-        "avg_rating": 1.845,
-        "category": "finance",
-        "rating_1": 25062,
-        "rating_5": 5487,
-        "review_count": 35290
-      },
-      {
-        "app_id": "1508186374",
-        "app_name": "Peacock TV: Stream TV & Movies",
-        "avg_rating": 2.444,
-        "category": "entertainment",
-        "rating_1": 16844,
-        "rating_5": 8420,
-        "review_count": 34471
-      },
-      {
-        "app_id": "363590051",
-        "app_name": "Netflix",
-        "avg_rating": 3.569,
-        "category": "entertainment",
-        "rating_1": 9056,
-        "rating_5": 18336,
-        "review_count": 34466
-      },
-      {
-        "app_id": "1058959277",
-        "app_name": "Uber Eats",
-        "avg_rating": 2.303,
-        "category": "food_delivery",
-        "rating_1": 20496,
-        "rating_5": 9122,
-        "review_count": 34348
-      },
-      {
-        "app_id": "341232718",
-        "app_name": "MyFitnessPal",
-        "avg_rating": 2.866,
-        "category": "health",
-        "rating_1": 12500,
-        "rating_5": 11171,
-        "review_count": 33960
-      },
-      {
-        "app_id": "719972451",
-        "app_name": "DoorDash",
-        "avg_rating": 2.672,
-        "category": "food_delivery",
-        "rating_1": 16560,
-        "rating_5": 11449,
-        "review_count": 33911
-      },
-      {
-        "app_id": "283646709",
-        "app_name": "PayPal",
-        "avg_rating": 2.795,
-        "category": "finance",
-        "rating_1": 15606,
-        "rating_5": 12428,
-        "review_count": 33744
-      },
-      {
-        "app_id": "711923939",
-        "app_name": "Cash App",
-        "avg_rating": 3.223,
-        "category": "finance",
-        "rating_1": 12425,
-        "rating_5": 16254,
-        "review_count": 33685
-      },
-      {
-        "app_id": "367003839",
-        "app_name": "Booking.com",
-        "avg_rating": 4.155,
-        "category": "travel",
-        "rating_1": 5908,
-        "rating_5": 24653,
-        "review_count": 33634
-      },
-      {
-        "app_id": "570060128",
-        "app_name": "Duolingo",
-        "avg_rating": 4.093,
-        "category": "education",
-        "rating_1": 4035,
-        "rating_5": 20911,
-        "review_count": 33317
+        "rating_1": 16977,
+        "rating_5": 43665,
+        "review_count": 69648
       },
       {
         "app_id": "6448311069",
         "app_name": "ChatGPT",
-        "avg_rating": 3.731,
+        "avg_rating": 3.896,
         "category": "ai_tools",
-        "rating_1": 8952,
-        "rating_5": 20946,
-        "review_count": 33204
+        "rating_1": 14638,
+        "rating_5": 43568,
+        "review_count": 65386
       },
       {
-        "app_id": "835599320",
-        "app_name": "TikTok",
-        "avg_rating": 2.312,
-        "category": "social",
-        "rating_1": 17101,
-        "rating_5": 6458,
-        "review_count": 31513
+        "app_id": "570060128",
+        "app_name": "Duolingo",
+        "avg_rating": 4.022,
+        "category": "education",
+        "rating_1": 8670,
+        "rating_5": 39023,
+        "review_count": 64236
+      },
+      {
+        "app_id": "351727428",
+        "app_name": "Venmo",
+        "avg_rating": 2.224,
+        "category": "finance",
+        "rating_1": 38745,
+        "rating_5": 15442,
+        "review_count": 62932
+      },
+      {
+        "app_id": "719972451",
+        "app_name": "DoorDash",
+        "avg_rating": 2.754,
+        "category": "food_delivery",
+        "rating_1": 28818,
+        "rating_5": 22002,
+        "review_count": 61759
+      },
+      {
+        "app_id": "711923939",
+        "app_name": "Cash App",
+        "avg_rating": 3.195,
+        "category": "finance",
+        "rating_1": 22892,
+        "rating_5": 29084,
+        "review_count": 61431
+      },
+      {
+        "app_id": "367003839",
+        "app_name": "Booking.com",
+        "avg_rating": 4.377,
+        "category": "travel",
+        "rating_1": 7299,
+        "rating_5": 47823,
+        "review_count": 61268
+      },
+      {
+        "app_id": "1058959277",
+        "app_name": "Uber Eats",
+        "avg_rating": 2.354,
+        "category": "food_delivery",
+        "rating_1": 35419,
+        "rating_5": 16679,
+        "review_count": 61130
+      },
+      {
+        "app_id": "363590051",
+        "app_name": "Netflix",
+        "avg_rating": 3.089,
+        "category": "entertainment",
+        "rating_1": 21914,
+        "rating_5": 23862,
+        "review_count": 60946
       },
       {
         "app_id": "324684580",
         "app_name": "Spotify",
-        "avg_rating": 3.922,
+        "avg_rating": 3.911,
         "category": "entertainment",
-        "rating_1": 4630,
-        "rating_5": 16447,
-        "review_count": 26893
+        "rating_1": 10703,
+        "rating_5": 37043,
+        "review_count": 60682
       },
       {
-        "app_id": "401626263",
-        "app_name": "Airbnb",
-        "avg_rating": 2.607,
+        "app_id": "297430070",
+        "app_name": "Target",
+        "avg_rating": 3.922,
+        "category": "shopping",
+        "rating_1": 10979,
+        "rating_5": 37781,
+        "review_count": 60655
+      },
+      {
+        "app_id": "835599320",
+        "app_name": "TikTok",
+        "avg_rating": 2.726,
+        "category": "social",
+        "rating_1": 26846,
+        "rating_5": 18675,
+        "review_count": 59839
+      },
+      {
+        "app_id": "283646709",
+        "app_name": "PayPal",
+        "avg_rating": 2.972,
+        "category": "finance",
+        "rating_1": 24507,
+        "rating_5": 24089,
+        "review_count": 58690
+      },
+      {
+        "app_id": "341232718",
+        "app_name": "MyFitnessPal",
+        "avg_rating": 2.908,
+        "category": "health",
+        "rating_1": 20287,
+        "rating_5": 18660,
+        "review_count": 56798
+      },
+      {
+        "app_id": "427916203",
+        "app_name": "Expedia",
+        "avg_rating": 2.96,
         "category": "travel",
-        "rating_1": 11957,
-        "rating_5": 7283,
-        "review_count": 24318
+        "rating_1": 17050,
+        "rating_5": 16319,
+        "review_count": 39493
+      },
+      {
+        "app_id": "1508186374",
+        "app_name": "Peacock TV: Stream TV & Movies",
+        "avg_rating": 2.413,
+        "category": "entertainment",
+        "rating_1": 19146,
+        "rating_5": 9125,
+        "review_count": 38643
       },
       {
         "app_id": "389801252",
         "app_name": "Instagram",
-        "avg_rating": 2.459,
+        "avg_rating": 2.444,
         "category": "social",
-        "rating_1": 11414,
-        "rating_5": 5963,
-        "review_count": 21669
-      },
-      {
-        "app_id": "6477489729",
-        "app_name": "Google Gemini",
-        "avg_rating": 3.844,
-        "category": "productivity",
-        "rating_1": 3335,
-        "rating_5": 9514,
-        "review_count": 14947
-      },
-      {
-        "app_id": "284815942",
-        "app_name": "Google",
-        "avg_rating": 3.365,
-        "category": "utilities",
-        "rating_1": 4881,
-        "rating_5": 7525,
-        "review_count": 14614
-      },
-      {
-        "app_id": "6446901002",
-        "app_name": "Threads",
-        "avg_rating": 2.877,
-        "category": "social_networking",
-        "rating_1": 6646,
-        "rating_5": 5796,
-        "review_count": 14532
-      },
-      {
-        "app_id": "1500855883",
-        "app_name": "CapCut: Photo & Video Editor",
-        "avg_rating": 2.641,
-        "category": "photo_and_video",
-        "rating_1": 5918,
-        "rating_5": 3262,
-        "review_count": 14185
+        "rating_1": 14649,
+        "rating_5": 7512,
+        "review_count": 27588
       },
       {
         "app_id": "310633997",
         "app_name": "WhatsApp Messenger",
-        "avg_rating": 3.303,
+        "avg_rating": 3.044,
         "category": "social_networking",
-        "rating_1": 4260,
-        "rating_5": 6233,
-        "review_count": 13302
+        "rating_1": 10667,
+        "rating_5": 11210,
+        "review_count": 27404
       },
       {
-        "app_id": "1488269261",
-        "app_name": "Whatnot: Shop, Sell, Connect",
-        "avg_rating": 3.17,
-        "category": "shopping",
-        "rating_1": 3766,
-        "rating_5": 4618,
-        "review_count": 9825
-      },
-      {
-        "app_id": "407558537",
-        "app_name": "Capital One Mobile",
-        "avg_rating": 3.552,
-        "category": "finance",
-        "rating_1": 1708,
-        "rating_5": 3404,
-        "review_count": 5974
-      },
-      {
-        "app_id": "6670324846",
-        "app_name": "Grok - AI Chat & Video",
-        "avg_rating": 3.695,
-        "category": "productivity",
-        "rating_1": 1504,
-        "rating_5": 3528,
-        "review_count": 5917
-      },
-      {
-        "app_id": "500003565",
-        "app_name": "Ticketmaster\uff0dBuy, Sell Tickets",
-        "avg_rating": 2.046,
-        "category": "entertainment",
-        "rating_1": 3439,
-        "rating_5": 987,
-        "review_count": 5460
-      },
-      {
-        "app_id": "1111876388",
-        "app_name": "T-Life",
-        "avg_rating": 2.366,
-        "category": "lifestyle",
-        "rating_1": 3063,
-        "rating_5": 1469,
-        "review_count": 5440
-      },
-      {
-        "app_id": "6473753684",
-        "app_name": "Claude by Anthropic",
-        "avg_rating": 3.442,
-        "category": "productivity",
-        "rating_1": 1536,
-        "rating_5": 2765,
-        "review_count": 5420
-      },
-      {
-        "app_id": "384830320",
-        "app_name": "Life360: Family Safety & GPS",
-        "avg_rating": 4.354,
-        "category": "social_networking",
-        "rating_1": 465,
-        "rating_5": 3928,
-        "review_count": 5326
-      },
-      {
-        "app_id": "897446215",
-        "app_name": "Canva: AI Video & Photo Editor",
-        "avg_rating": 4.044,
+        "app_id": "1500855883",
+        "app_name": "CapCut: Photo & Video Editor",
+        "avg_rating": 2.795,
         "category": "photo_and_video",
-        "rating_1": 857,
-        "rating_5": 3549,
-        "review_count": 5299
+        "rating_1": 11116,
+        "rating_5": 8175,
+        "review_count": 27129
       },
       {
-        "app_id": "951937596",
-        "app_name": "Microsoft Outlook",
-        "avg_rating": 3.65,
-        "category": "productivity",
-        "rating_1": 1250,
-        "rating_5": 2861,
-        "review_count": 5270
-      },
-      {
-        "app_id": "530168168",
-        "app_name": "Paramount+",
-        "avg_rating": 2.508,
-        "category": "entertainment",
-        "rating_1": 2559,
-        "rating_5": 1451,
-        "review_count": 5116
-      },
-      {
-        "app_id": "985746746",
-        "app_name": "Discord - Talk, Play, Hang Out",
-        "avg_rating": 2.37,
-        "category": "social_networking",
-        "rating_1": 2934,
-        "rating_5": 1288,
-        "review_count": 5071
-      },
-      {
-        "app_id": "429047995",
-        "app_name": "Pinterest",
-        "avg_rating": 2.657,
-        "category": "lifestyle",
-        "rating_1": 1963,
-        "rating_5": 1250,
-        "review_count": 4898
-      },
-      {
-        "app_id": "1089294040",
-        "app_name": "Capital One Shopping: Save Now",
-        "avg_rating": 3.931,
-        "category": "shopping",
-        "rating_1": 1052,
-        "rating_5": 3181,
-        "review_count": 4620
-      },
-      {
-        "app_id": "535886823",
-        "app_name": "Google Chrome",
-        "avg_rating": 3.67,
+        "app_id": "284815942",
+        "app_name": "Google",
+        "avg_rating": 3.352,
         "category": "utilities",
-        "rating_1": 1214,
-        "rating_5": 2743,
-        "review_count": 4616
+        "rating_1": 8394,
+        "rating_5": 12842,
+        "review_count": 25453
       },
       {
-        "app_id": "545519333",
-        "app_name": "Amazon Prime Video",
-        "avg_rating": 1.693,
-        "category": "entertainment",
-        "rating_1": 3110,
-        "rating_5": 314,
-        "review_count": 4579
+        "app_id": "401626263",
+        "app_name": "Airbnb",
+        "avg_rating": 2.602,
+        "category": "travel",
+        "rating_1": 12043,
+        "rating_5": 7289,
+        "review_count": 24422
       },
       {
-        "app_id": "686449807",
-        "app_name": "Telegram Messenger",
-        "avg_rating": 2.473,
+        "app_id": "6446901002",
+        "app_name": "Threads",
+        "avg_rating": 2.948,
         "category": "social_networking",
-        "rating_1": 2369,
-        "rating_5": 1193,
-        "review_count": 4571
+        "rating_1": 9688,
+        "rating_5": 9116,
+        "review_count": 22793
       },
       {
-        "app_id": "284882215",
-        "app_name": "Facebook",
-        "avg_rating": 2.776,
-        "category": "social_networking",
-        "rating_1": 2017,
-        "rating_5": 1601,
-        "review_count": 4485
-      },
-      {
-        "app_id": "6751921248",
-        "app_name": "Rips by Triumph",
-        "avg_rating": 3.764,
-        "category": "shopping",
-        "rating_1": 1095,
-        "rating_5": 2745,
-        "review_count": 4385
-      },
-      {
-        "app_id": "482066631",
-        "app_name": "The Roku App (Official)",
-        "avg_rating": 3.777,
-        "category": "entertainment",
-        "rating_1": 960,
-        "rating_5": 2605,
-        "review_count": 4337
-      },
-      {
-        "app_id": "422689480",
-        "app_name": "Gmail - Email by Google",
-        "avg_rating": 2.542,
-        "category": "productivity",
-        "rating_1": 2024,
-        "rating_5": 1132,
-        "review_count": 4260
-      },
-      {
-        "app_id": "983156458",
-        "app_name": "Microsoft Authenticator",
-        "avg_rating": 1.557,
-        "category": "productivity",
-        "rating_1": 3339,
-        "rating_5": 361,
-        "review_count": 4258
-      },
-      {
-        "app_id": "1113153706",
-        "app_name": "Microsoft Teams",
-        "avg_rating": 2.621,
+        "app_id": "444553167",
+        "app_name": "ADP Mobile Solutions",
+        "avg_rating": 2.477,
         "category": "business",
-        "rating_1": 1803,
-        "rating_5": 1060,
-        "review_count": 4120
+        "rating_1": 11096,
+        "rating_5": 6058,
+        "review_count": 22081
       },
       {
-        "app_id": "1673567402",
-        "app_name": "Freecash - Get Paid Real Money",
-        "avg_rating": 3.965,
+        "app_id": "436672029",
+        "app_name": "AliExpress - Shopping App",
+        "avg_rating": 4.591,
+        "category": "shopping",
+        "rating_1": 1232,
+        "rating_5": 17347,
+        "review_count": 21274
+      },
+      {
+        "app_id": "1064216828",
+        "app_name": "Reddit",
+        "avg_rating": 2.255,
+        "category": "news",
+        "rating_1": 12197,
+        "rating_5": 4957,
+        "review_count": 20508
+      },
+      {
+        "app_id": "922103212",
+        "app_name": "McDonald's",
+        "avg_rating": 2.897,
+        "category": "food_and_drink",
+        "rating_1": 8219,
+        "rating_5": 7550,
+        "review_count": 20163
+      },
+      {
+        "app_id": "298867247",
+        "app_name": "Chase Mobile\u00ae: Bank & Invest",
+        "avg_rating": 3.741,
+        "category": "finance",
+        "rating_1": 4925,
+        "rating_5": 12381,
+        "review_count": 20098
+      },
+      {
+        "app_id": "1123582513",
+        "app_name": "Cashman Casino Slots Games",
+        "avg_rating": 4.099,
+        "category": "games",
+        "rating_1": 2631,
+        "rating_5": 12932,
+        "review_count": 19493
+      },
+      {
+        "app_id": "1446075923",
+        "app_name": "Disney+",
+        "avg_rating": 2.96,
         "category": "entertainment",
-        "rating_1": 870,
-        "rating_5": 2847,
-        "review_count": 4102
+        "rating_1": 7607,
+        "rating_5": 7088,
+        "review_count": 19430
+      },
+      {
+        "app_id": "546505307",
+        "app_name": "Zoom Workplace",
+        "avg_rating": 3.501,
+        "category": "business",
+        "rating_1": 5315,
+        "rating_5": 9880,
+        "review_count": 19350
+      },
+      {
+        "app_id": "1096918571",
+        "app_name": "Google Meet",
+        "avg_rating": 4.15,
+        "category": "social_networking",
+        "rating_1": 2227,
+        "rating_5": 12543,
+        "review_count": 19279
+      },
+      {
+        "app_id": "507874739",
+        "app_name": "Google Drive",
+        "avg_rating": 3.775,
+        "category": "productivity",
+        "rating_1": 4192,
+        "rating_5": 11475,
+        "review_count": 19276
+      },
+      {
+        "app_id": "460177396",
+        "app_name": "Twitch: Live Streaming",
+        "avg_rating": 2.444,
+        "category": "photo_and_video",
+        "rating_1": 9538,
+        "rating_5": 4714,
+        "review_count": 18500
       },
       {
         "app_id": "585027354",
         "app_name": "Google Maps",
-        "avg_rating": 3.06,
+        "avg_rating": 2.312,
         "category": "navigation",
-        "rating_1": 1498,
-        "rating_5": 1670,
-        "review_count": 3900
+        "rating_1": 10862,
+        "rating_5": 4867,
+        "review_count": 18059
+      },
+      {
+        "app_id": "1054033219",
+        "app_name": "VIZIO | WatchFree+",
+        "avg_rating": 3.276,
+        "category": "entertainment",
+        "rating_1": 5851,
+        "rating_5": 8167,
+        "review_count": 17387
+      },
+      {
+        "app_id": "344542975",
+        "app_name": "Southwest Airlines: Travel App",
+        "avg_rating": 3.494,
+        "category": "travel",
+        "rating_1": 4894,
+        "rating_5": 9345,
+        "review_count": 17369
+      },
+      {
+        "app_id": "6477489729",
+        "app_name": "Google Gemini",
+        "avg_rating": 3.839,
+        "category": "productivity",
+        "rating_1": 3802,
+        "rating_5": 10775,
+        "review_count": 16954
+      },
+      {
+        "app_id": "382698565",
+        "app_name": "American Airlines",
+        "avg_rating": 2.31,
+        "category": "travel",
+        "rating_1": 8925,
+        "rating_5": 3790,
+        "review_count": 16155
+      },
+      {
+        "app_id": "422689480",
+        "app_name": "Gmail - Email by Google",
+        "avg_rating": 2.802,
+        "category": "productivity",
+        "rating_1": 6306,
+        "rating_5": 4991,
+        "review_count": 15676
+      },
+      {
+        "app_id": "535509415",
+        "app_name": "Costco",
+        "avg_rating": 2.732,
+        "category": "shopping",
+        "rating_1": 6443,
+        "rating_5": 4767,
+        "review_count": 15139
+      },
+      {
+        "app_id": "6443467666",
+        "app_name": "Love and Deepspace",
+        "avg_rating": 1.933,
+        "category": "games",
+        "rating_1": 8003,
+        "rating_5": 1975,
+        "review_count": 13145
+      },
+      {
+        "app_id": "1193350206",
+        "app_name": "YouTube TV",
+        "avg_rating": 2.403,
+        "category": "entertainment",
+        "rating_1": 5274,
+        "rating_5": 2004,
+        "review_count": 11482
+      },
+      {
+        "app_id": "1488269261",
+        "app_name": "Whatnot: Shop, Sell, Connect",
+        "avg_rating": 3.19,
+        "category": "shopping",
+        "rating_1": 3993,
+        "rating_5": 5006,
+        "review_count": 10546
+      },
+      {
+        "app_id": "544007664",
+        "app_name": "YouTube",
+        "avg_rating": 3.167,
+        "category": "photo_and_video",
+        "rating_1": 3547,
+        "rating_5": 4432,
+        "review_count": 10327
+      },
+      {
+        "app_id": "6475757306",
+        "app_name": "Disney Solitaire",
+        "avg_rating": 4.336,
+        "category": "games",
+        "rating_1": 765,
+        "rating_5": 6216,
+        "review_count": 8240
+      },
+      {
+        "app_id": "284882215",
+        "app_name": "Facebook",
+        "avg_rating": 2.887,
+        "category": "social_networking",
+        "rating_1": 3406,
+        "rating_5": 3103,
+        "review_count": 7984
+      },
+      {
+        "app_id": "623592465",
+        "app_name": "Heads Up!",
+        "avg_rating": 3.716,
+        "category": "games",
+        "rating_1": 1734,
+        "rating_5": 4323,
+        "review_count": 7608
       }
     ],
     "by_category": [
       {
-        "avg_rating": 3.502,
+        "avg_rating": 3.433,
         "category": "shopping",
-        "rating_1": 66379,
-        "rating_2": 15978,
-        "rating_3": 16645,
-        "rating_4": 16394,
-        "rating_5": 126980,
-        "review_count": 242376
+        "rating_1": 101401,
+        "rating_2": 24489,
+        "rating_3": 24101,
+        "rating_4": 23656,
+        "rating_5": 178042,
+        "review_count": 351689
       },
       {
-        "avg_rating": 3.584,
+        "avg_rating": 3.688,
         "category": "travel",
-        "rating_1": 54023,
-        "rating_2": 7998,
-        "rating_3": 7264,
-        "rating_4": 7920,
-        "rating_5": 108233,
-        "review_count": 185438
+        "rating_1": 82917,
+        "rating_2": 13690,
+        "rating_3": 12476,
+        "rating_4": 13991,
+        "rating_5": 190798,
+        "review_count": 313872
       },
       {
-        "avg_rating": 3.13,
+        "avg_rating": 3.154,
         "category": "entertainment",
-        "rating_1": 54756,
-        "rating_2": 11798,
-        "rating_3": 11401,
-        "rating_4": 10370,
-        "rating_5": 65432,
-        "review_count": 153757
+        "rating_1": 97962,
+        "rating_2": 21418,
+        "rating_3": 21987,
+        "rating_4": 21975,
+        "rating_5": 119415,
+        "review_count": 282757
       },
       {
-        "avg_rating": 2.673,
+        "avg_rating": 2.915,
         "category": "finance",
-        "rating_1": 58143,
-        "rating_2": 7029,
-        "rating_3": 5551,
-        "rating_4": 4576,
-        "rating_5": 40442,
-        "review_count": 115741
+        "rating_1": 98212,
+        "rating_2": 13021,
+        "rating_3": 11014,
+        "rating_4": 9426,
+        "rating_5": 90531,
+        "review_count": 222204
       },
       {
-        "avg_rating": 3.282,
+        "avg_rating": 3.32,
         "category": "games",
-        "rating_1": 27315,
-        "rating_2": 7043,
-        "rating_3": 7441,
-        "rating_4": 7406,
-        "rating_5": 39671,
-        "review_count": 88876
+        "rating_1": 53521,
+        "rating_2": 15167,
+        "rating_3": 13684,
+        "rating_4": 13891,
+        "rating_5": 82793,
+        "review_count": 179056
       },
       {
-        "avg_rating": 2.486,
+        "avg_rating": 2.555,
         "category": "food_delivery",
-        "rating_1": 37056,
-        "rating_2": 4456,
-        "rating_3": 3831,
-        "rating_4": 2345,
-        "rating_5": 20571,
-        "review_count": 68259
+        "rating_1": 64237,
+        "rating_2": 8200,
+        "rating_3": 7119,
+        "rating_4": 4652,
+        "rating_5": 38681,
+        "review_count": 122889
       },
       {
-        "avg_rating": 2.997,
+        "avg_rating": 3.175,
         "category": "social_networking",
-        "rating_1": 22565,
-        "rating_2": 3429,
-        "rating_3": 3603,
-        "rating_4": 3403,
-        "rating_5": 22505,
-        "review_count": 55505
+        "rating_1": 37747,
+        "rating_2": 6434,
+        "rating_3": 7431,
+        "rating_4": 7810,
+        "rating_5": 46336,
+        "review_count": 105758
       },
       {
-        "avg_rating": 2.372,
-        "category": "social",
-        "rating_1": 28515,
-        "rating_2": 4556,
-        "rating_3": 4360,
-        "rating_4": 3330,
-        "rating_5": 12421,
-        "review_count": 53182
-      },
-      {
-        "avg_rating": 3.348,
+        "avg_rating": 3.394,
         "category": "productivity",
-        "rating_1": 15544,
-        "rating_2": 2686,
-        "rating_3": 2772,
-        "rating_4": 2721,
-        "rating_5": 23799,
-        "review_count": 47522
+        "rating_1": 26975,
+        "rating_2": 5524,
+        "rating_3": 5764,
+        "rating_4": 5571,
+        "rating_5": 44305,
+        "review_count": 88139
       },
       {
-        "avg_rating": 4.071,
+        "avg_rating": 2.637,
+        "category": "social",
+        "rating_1": 41495,
+        "rating_2": 6905,
+        "rating_3": 7072,
+        "rating_4": 5768,
+        "rating_5": 26187,
+        "review_count": 87427
+      },
+      {
+        "avg_rating": 4.024,
         "category": "education",
-        "rating_1": 5217,
-        "rating_2": 1925,
-        "rating_3": 2892,
-        "rating_4": 4786,
-        "rating_5": 25241,
-        "review_count": 40061
+        "rating_1": 11431,
+        "rating_2": 3976,
+        "rating_3": 5747,
+        "rating_4": 9389,
+        "rating_5": 49936,
+        "review_count": 80479
       },
       {
-        "avg_rating": 2.866,
-        "category": "health",
-        "rating_1": 12500,
-        "rating_2": 4293,
-        "rating_3": 3580,
-        "rating_4": 2416,
-        "rating_5": 11171,
-        "review_count": 33960
-      },
-      {
-        "avg_rating": 3.731,
-        "category": "ai_tools",
-        "rating_1": 8952,
-        "rating_2": 968,
-        "rating_3": 1078,
-        "rating_4": 1260,
-        "rating_5": 20946,
-        "review_count": 33204
-      },
-      {
-        "avg_rating": 2.937,
+        "avg_rating": 2.807,
         "category": "photo_and_video",
-        "rating_1": 11681,
-        "rating_2": 2548,
-        "rating_3": 2895,
-        "rating_4": 2659,
-        "rating_5": 10661,
-        "review_count": 30444
+        "rating_1": 31184,
+        "rating_2": 6069,
+        "rating_3": 6246,
+        "rating_4": 5493,
+        "rating_5": 24387,
+        "review_count": 73379
       },
       {
-        "avg_rating": 3.345,
-        "category": "utilities",
-        "rating_1": 9299,
-        "rating_2": 1481,
-        "rating_3": 1636,
-        "rating_4": 1618,
-        "rating_5": 14076,
-        "review_count": 28110
+        "avg_rating": 3.896,
+        "category": "ai_tools",
+        "rating_1": 14638,
+        "rating_2": 2038,
+        "rating_3": 2368,
+        "rating_4": 2774,
+        "rating_5": 43568,
+        "review_count": 65386
       },
       {
-        "avg_rating": 2.333,
-        "category": "lifestyle",
-        "rating_1": 10651,
-        "rating_2": 2318,
-        "rating_3": 1690,
-        "rating_4": 1026,
-        "rating_5": 4547,
-        "review_count": 20232
-      },
-      {
-        "avg_rating": 2.636,
+        "avg_rating": 2.904,
         "category": "business",
-        "rating_1": 6270,
-        "rating_2": 1312,
-        "rating_3": 1057,
-        "rating_4": 830,
-        "rating_5": 4051,
-        "review_count": 13520
+        "rating_1": 24720,
+        "rating_2": 5208,
+        "rating_3": 4319,
+        "rating_4": 3859,
+        "rating_5": 22472,
+        "review_count": 60578
       },
       {
-        "avg_rating": 3.823,
-        "category": "health_and_fitness",
-        "rating_1": 1882,
-        "rating_2": 571,
-        "rating_3": 574,
-        "rating_4": 643,
-        "rating_5": 5705,
-        "review_count": 9375
+        "avg_rating": 2.908,
+        "category": "health",
+        "rating_1": 20287,
+        "rating_2": 6799,
+        "rating_3": 6202,
+        "rating_4": 4850,
+        "rating_5": 18660,
+        "review_count": 56798
       },
       {
-        "avg_rating": 2.65,
-        "category": "sports",
-        "rating_1": 4185,
-        "rating_2": 544,
-        "rating_3": 420,
-        "rating_4": 406,
-        "rating_5": 2793,
-        "review_count": 8348
+        "avg_rating": 3.351,
+        "category": "utilities",
+        "rating_1": 13279,
+        "rating_2": 2273,
+        "rating_3": 2430,
+        "rating_4": 2494,
+        "rating_5": 20321,
+        "review_count": 40797
       },
       {
-        "avg_rating": 3.781,
-        "category": "music",
-        "rating_1": 1545,
-        "rating_2": 559,
-        "rating_3": 678,
-        "rating_4": 784,
-        "rating_5": 4634,
-        "review_count": 8200
-      },
-      {
-        "avg_rating": 2.852,
+        "avg_rating": 2.488,
         "category": "news",
-        "rating_1": 2969,
-        "rating_2": 415,
-        "rating_3": 380,
-        "rating_4": 282,
-        "rating_5": 2549,
-        "review_count": 6595
+        "rating_1": 16628,
+        "rating_2": 2612,
+        "rating_3": 1854,
+        "rating_4": 1329,
+        "rating_5": 9175,
+        "review_count": 31598
       },
       {
-        "avg_rating": 3.321,
-        "category": "navigation",
-        "rating_1": 1858,
-        "rating_2": 403,
-        "rating_3": 384,
-        "rating_4": 329,
-        "rating_5": 2826,
-        "review_count": 5800
+        "avg_rating": 2.349,
+        "category": "lifestyle",
+        "rating_1": 12225,
+        "rating_2": 2648,
+        "rating_3": 1933,
+        "rating_4": 1212,
+        "rating_5": 5344,
+        "review_count": 23362
       },
       {
-        "avg_rating": 1.804,
+        "avg_rating": 2.786,
         "category": "food_and_drink",
-        "rating_1": 2185,
-        "rating_2": 396,
-        "rating_3": 249,
-        "rating_4": 121,
-        "rating_5": 349,
-        "review_count": 3300
+        "rating_1": 9607,
+        "rating_2": 2023,
+        "rating_3": 1668,
+        "rating_4": 1141,
+        "rating_5": 7684,
+        "review_count": 22123
       },
       {
-        "avg_rating": 3.353,
-        "category": "graphics_and_design",
-        "rating_1": 456,
-        "rating_2": 198,
-        "rating_3": 311,
-        "rating_4": 449,
-        "rating_5": 705,
-        "review_count": 2119
+        "avg_rating": 3.996,
+        "category": "health_and_fitness",
+        "rating_1": 3643,
+        "rating_2": 1169,
+        "rating_3": 1213,
+        "rating_4": 1493,
+        "rating_5": 14399,
+        "review_count": 21917
       },
       {
-        "avg_rating": 3.927,
-        "category": "books",
-        "rating_1": 370,
-        "rating_2": 109,
-        "rating_3": 116,
-        "rating_4": 129,
-        "rating_5": 1296,
-        "review_count": 2020
+        "avg_rating": 2.601,
+        "category": "sports",
+        "rating_1": 10743,
+        "rating_2": 1249,
+        "rating_3": 943,
+        "rating_4": 874,
+        "rating_5": 6820,
+        "review_count": 20629
       },
       {
-        "avg_rating": 3.789,
-        "category": "weather",
-        "rating_1": 351,
-        "rating_2": 125,
-        "rating_3": 149,
-        "rating_4": 175,
-        "rating_5": 1060,
-        "review_count": 1860
+        "avg_rating": 2.461,
+        "category": "navigation",
+        "rating_1": 11234,
+        "rating_2": 1094,
+        "rating_3": 935,
+        "rating_4": 695,
+        "rating_5": 6042,
+        "review_count": 20000
       },
       {
-        "avg_rating": 3.598,
+        "avg_rating": 3.779,
+        "category": "music",
+        "rating_1": 2399,
+        "rating_2": 840,
+        "rating_3": 1027,
+        "rating_4": 1336,
+        "rating_5": 7095,
+        "review_count": 12697
+      },
+      {
+        "avg_rating": 3.634,
         "category": "medical",
-        "rating_1": 303,
-        "rating_2": 122,
-        "rating_3": 144,
-        "rating_4": 97,
-        "rating_5": 734,
-        "review_count": 1400
+        "rating_1": 1155,
+        "rating_2": 473,
+        "rating_3": 534,
+        "rating_4": 362,
+        "rating_5": 2943,
+        "review_count": 5467
+      },
+      {
+        "avg_rating": 3.946,
+        "category": "books",
+        "rating_1": 430,
+        "rating_2": 144,
+        "rating_3": 136,
+        "rating_4": 162,
+        "rating_5": 1581,
+        "review_count": 2453
+      },
+      {
+        "avg_rating": 3.89,
+        "category": "weather",
+        "rating_1": 380,
+        "rating_2": 137,
+        "rating_3": 160,
+        "rating_4": 201,
+        "rating_5": 1331,
+        "review_count": 2209
+      },
+      {
+        "avg_rating": 3.358,
+        "category": "graphics_and_design",
+        "rating_1": 457,
+        "rating_2": 200,
+        "rating_3": 312,
+        "rating_4": 455,
+        "rating_5": 712,
+        "review_count": 2136
       }
     ],
     "overall": [
       {
         "rating": 1,
-        "review_count": 444970
+        "review_count": 788907
       },
       {
         "rating": 2,
-        "review_count": 83260
+        "review_count": 153800
       },
       {
         "rating": 3,
-        "review_count": 81101
+        "review_count": 148675
       },
       {
         "rating": 4,
-        "review_count": 76475
+        "review_count": 144859
       },
       {
         "rating": 5,
-        "review_count": 573398
+        "review_count": 1059558
       }
     ]
   },
   "text_quality": {
     "duplicate_examples": [
       {
-        "app_count": 170,
-        "row_count": 3197,
+        "app_count": 182,
+        "row_count": 6600,
         "sample": "good"
       },
       {
-        "app_count": 160,
-        "row_count": 2163,
+        "app_count": 169,
+        "row_count": 4368,
         "sample": "love it"
       },
       {
-        "app_count": 153,
-        "row_count": 2110,
+        "app_count": 164,
+        "row_count": 4227,
         "sample": "great"
       },
       {
-        "app_count": 139,
-        "row_count": 1359,
+        "app_count": 161,
+        "row_count": 2574,
         "sample": "awesome"
       },
       {
-        "app_count": 108,
-        "row_count": 1274,
+        "app_count": 126,
+        "row_count": 2350,
         "sample": "excelente"
       },
       {
-        "app_count": 123,
-        "row_count": 1253,
-        "sample": "excellent"
-      },
-      {
-        "app_count": 121,
-        "row_count": 1215,
+        "app_count": 132,
+        "row_count": 2341,
         "sample": "great app"
       },
       {
-        "app_count": 137,
-        "row_count": 1027,
-        "sample": "amazing"
+        "app_count": 139,
+        "row_count": 2303,
+        "sample": "excellent"
       },
       {
-        "app_count": 138,
-        "row_count": 987,
+        "app_count": 158,
+        "row_count": 2038,
         "sample": "i love it"
       },
       {
-        "app_count": 115,
-        "row_count": 853,
+        "app_count": 158,
+        "row_count": 1924,
+        "sample": "amazing"
+      },
+      {
+        "app_count": 141,
+        "row_count": 1652,
         "sample": "very good"
       },
       {
-        "app_count": 122,
-        "row_count": 774,
+        "app_count": 141,
+        "row_count": 1592,
         "sample": "nice"
       },
       {
-        "app_count": 115,
-        "row_count": 719,
+        "app_count": 131,
+        "row_count": 1282,
         "sample": "the best"
       },
       {
-        "app_count": 86,
-        "row_count": 606,
+        "app_count": 107,
+        "row_count": 1164,
         "sample": "thank you"
       },
       {
-        "app_count": 54,
-        "row_count": 573,
-        "sample": "great service"
+        "app_count": 110,
+        "row_count": 1071,
+        "sample": "thanks"
       },
       {
-        "app_count": 97,
-        "row_count": 534,
-        "sample": "love this app"
+        "app_count": 106,
+        "row_count": 1030,
+        "sample": "good app"
       }
     ],
     "duplicate_summary": {
-      "distinct_review_keys": 1259204,
+      "distinct_review_keys": 2295799,
       "distinct_review_keys_rate": 1.0,
-      "largest_normalized_duplicate_group": 3197,
-      "largest_normalized_duplicate_group_rate": 0.0025,
-      "normalized_duplicate_group_count": 13300,
-      "normalized_duplicate_group_count_rate": 0.0106,
-      "normalized_duplicate_row_count": 107374,
-      "normalized_duplicate_row_count_rate": 0.0853,
-      "review_count": 1259204
+      "largest_normalized_duplicate_group": 6600,
+      "largest_normalized_duplicate_group_rate": 0.0029,
+      "normalized_duplicate_group_count": 26160,
+      "normalized_duplicate_group_count_rate": 0.0114,
+      "normalized_duplicate_row_count": 223586,
+      "normalized_duplicate_row_count_rate": 0.0974,
+      "review_count": 2295799
     },
     "length_summary": {
-      "avg_chars": 171.4,
+      "avg_chars": 168.8,
       "max_chars": 6000,
       "min_chars": 1,
-      "p10_chars": 16.0,
-      "p25_chars": 43.0,
-      "p50_chars": 105.0,
-      "p75_chars": 220.0,
-      "p90_chars": 394.0,
-      "p95_chars": 551.0,
-      "review_count": 1259204
+      "p10_chars": 15.0,
+      "p25_chars": 41.0,
+      "p50_chars": 102.0,
+      "p75_chars": 217.0,
+      "p90_chars": 390.0,
+      "p95_chars": 544.0,
+      "review_count": 2295799
     },
     "low_signal": {
-      "angle_bracket_content": 42,
+      "angle_bracket_content": 77,
       "angle_bracket_content_rate": 0.0,
       "blank_content": 0,
       "blank_content_rate": 0.0,
       "blank_title": 0,
       "blank_title_rate": 0.0,
-      "content_1_to_20_chars": 163161,
-      "content_1_to_20_chars_rate": 0.1296,
-      "content_21_to_50_chars": 199719,
-      "content_21_to_50_chars_rate": 0.1586,
+      "content_1_to_20_chars": 310651,
+      "content_1_to_20_chars_rate": 0.1353,
+      "content_21_to_50_chars": 368678,
+      "content_21_to_50_chars_rate": 0.1606,
       "multiline_content": 0,
       "multiline_content_rate": 0.0,
-      "non_ascii_content": 568473,
-      "non_ascii_content_rate": 0.4515,
-      "review_count": 1259204
+      "non_ascii_content": 1030881,
+      "non_ascii_content_rate": 0.449,
+      "review_count": 2295799
     }
   },
   "time_coverage": {
     "freshness_by_app_stalest_50": [
       {
-        "app_id": "824305459",
-        "app_name": "Papa's Freezeria To Go!",
-        "category": "games",
-        "max_updated_epoch_seconds": 1763182077,
-        "newest_review_age_days": 219.8,
-        "review_count": 1384,
-        "reviews_last_30_days": 0,
-        "reviews_last_7_days": 0
-      },
-      {
         "app_id": "404990064",
         "app_name": "SkyView\u00ae",
         "category": "education",
-        "max_updated_epoch_seconds": 1771805777,
-        "newest_review_age_days": 120,
-        "review_count": 2260,
-        "reviews_last_30_days": 0,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "288419283",
-        "app_name": "RadarScope",
-        "category": "weather",
-        "max_updated_epoch_seconds": 1776299471,
-        "newest_review_age_days": 68,
-        "review_count": 1660,
-        "reviews_last_30_days": 0,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "373493387",
-        "app_name": "AnkiMobile Flashcards",
-        "category": "education",
-        "max_updated_epoch_seconds": 1776786907,
-        "newest_review_age_days": 62.3,
-        "review_count": 1184,
-        "reviews_last_30_days": 0,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "957215308",
-        "app_name": "Raya",
-        "category": "lifestyle",
-        "max_updated_epoch_seconds": 1778727036,
-        "newest_review_age_days": 39.9,
-        "review_count": 794,
-        "reviews_last_30_days": 0,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "294934058",
-        "app_name": "HotSchedules",
-        "category": "business",
-        "max_updated_epoch_seconds": 1778824592,
-        "newest_review_age_days": 38.7,
-        "review_count": 1400,
-        "reviews_last_30_days": 0,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "6740349587",
-        "app_name": "Backyard Baseball '01",
-        "category": "games",
-        "max_updated_epoch_seconds": 1779305897,
-        "newest_review_age_days": 33.2,
-        "review_count": 223,
-        "reviews_last_30_days": 0,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "672902340",
-        "app_name": "onX Hunt: GPS Hunting Maps",
-        "category": "navigation",
-        "max_updated_epoch_seconds": 1779316967,
-        "newest_review_age_days": 33,
-        "review_count": 1900,
-        "reviews_last_30_days": 0,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "932747118",
-        "app_name": "Shadowrocket",
-        "category": "utilities",
-        "max_updated_epoch_seconds": 1779592676,
-        "newest_review_age_days": 29.8,
-        "review_count": 1420,
-        "reviews_last_30_days": 1,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "550221096",
-        "app_name": "STARZ",
-        "category": "entertainment",
-        "max_updated_epoch_seconds": 1779998375,
-        "newest_review_age_days": 25.1,
-        "review_count": 1900,
-        "reviews_last_30_days": 5,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "623592465",
-        "app_name": "Heads Up!",
-        "category": "games",
-        "max_updated_epoch_seconds": 1780179952,
-        "newest_review_age_days": 23,
-        "review_count": 1180,
-        "reviews_last_30_days": 8,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "850417475",
-        "app_name": "Candy Crush Soda Saga",
-        "category": "games",
-        "max_updated_epoch_seconds": 1780453734,
-        "newest_review_age_days": 19.9,
-        "review_count": 1900,
-        "reviews_last_30_days": 12,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "6502453075",
-        "app_name": "Balatro",
-        "category": "games",
-        "max_updated_epoch_seconds": 1780642449,
-        "newest_review_age_days": 17.7,
-        "review_count": 1900,
-        "reviews_last_30_days": 26,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "1522122685",
-        "app_name": "Clapper: Video, Live, Chat",
-        "category": "social_networking",
-        "max_updated_epoch_seconds": 1780753281,
-        "newest_review_age_days": 16.4,
-        "review_count": 1879,
-        "reviews_last_30_days": 16,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "392796698",
-        "app_name": "GroupMe",
-        "category": "social_networking",
-        "max_updated_epoch_seconds": 1780786023,
-        "newest_review_age_days": 16,
-        "review_count": 1400,
-        "reviews_last_30_days": 32,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "1406710800",
-        "app_name": "Stardew Valley",
-        "category": "games",
-        "max_updated_epoch_seconds": 1780851561,
-        "newest_review_age_days": 15.3,
-        "review_count": 1780,
-        "reviews_last_30_days": 14,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "1477966166",
-        "app_name": "MONOPOLY: The Board Game",
-        "category": "games",
-        "max_updated_epoch_seconds": 1780861849,
-        "newest_review_age_days": 15.2,
-        "review_count": 2020,
-        "reviews_last_30_days": 29,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "1476380919",
-        "app_name": "Cleaner Guru: Clean Up Storage",
-        "category": "utilities",
-        "max_updated_epoch_seconds": 1780856455,
-        "newest_review_age_days": 15.2,
-        "review_count": 2000,
-        "reviews_last_30_days": 36,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "525818839",
-        "app_name": "Plague Inc.",
-        "category": "games",
-        "max_updated_epoch_seconds": 1780936552,
-        "newest_review_age_days": 14.3,
-        "review_count": 1660,
-        "reviews_last_30_days": 35,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "388497605",
-        "app_name": "Google Authenticator",
-        "category": "utilities",
-        "max_updated_epoch_seconds": 1781006908,
-        "newest_review_age_days": 13.5,
-        "review_count": 1780,
-        "reviews_last_30_days": 35,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "6448786147",
-        "app_name": "Last War:Survival",
-        "category": "games",
-        "max_updated_epoch_seconds": 1781100682,
+        "max_updated_epoch_seconds": 1783134559,
         "newest_review_age_days": 12.4,
-        "review_count": 1780,
-        "reviews_last_30_days": 53,
+        "review_count": 2281,
+        "reviews_last_30_days": 2,
         "reviews_last_7_days": 0
       },
       {
-        "app_id": "1596736236",
-        "app_name": "Red's First Flight",
-        "category": "games",
-        "max_updated_epoch_seconds": 1781137618,
-        "newest_review_age_days": 12,
-        "review_count": 1780,
-        "reviews_last_30_days": 52,
+        "app_id": "6736407724",
+        "app_name": "WeatherWise.app",
+        "category": "weather",
+        "max_updated_epoch_seconds": 1783583720,
+        "newest_review_age_days": 7.2,
+        "review_count": 212,
+        "reviews_last_30_days": 14,
         "reviews_last_7_days": 0
       },
       {
         "app_id": "1531467766",
         "app_name": "ViX: TV, Sports and News",
         "category": "entertainment",
-        "max_updated_epoch_seconds": 1781203371,
-        "newest_review_age_days": 11.2,
-        "review_count": 2140,
-        "reviews_last_30_days": 37,
-        "reviews_last_7_days": 0
+        "max_updated_epoch_seconds": 1783606790,
+        "newest_review_age_days": 7,
+        "review_count": 2174,
+        "reviews_last_30_days": 22,
+        "reviews_last_7_days": 1
       },
       {
-        "app_id": "1098157959",
-        "app_name": "Evony",
+        "app_id": "824305459",
+        "app_name": "Papa's Freezeria To Go!",
         "category": "games",
-        "max_updated_epoch_seconds": 1781200590,
-        "newest_review_age_days": 11.2,
-        "review_count": 1780,
-        "reviews_last_30_days": 19,
-        "reviews_last_7_days": 0
+        "max_updated_epoch_seconds": 1783671881,
+        "newest_review_age_days": 6.2,
+        "review_count": 1406,
+        "reviews_last_30_days": 2,
+        "reviews_last_7_days": 1
       },
       {
-        "app_id": "1077137248",
-        "app_name": "BIGO LIVE-Live Stream, Go Live",
-        "category": "social_networking",
-        "max_updated_epoch_seconds": 1781215274,
-        "newest_review_age_days": 11.1,
-        "review_count": 1899,
-        "reviews_last_30_days": 49,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "388491656",
-        "app_name": "Fly Delta",
-        "category": "travel",
-        "max_updated_epoch_seconds": 1781225684,
-        "newest_review_age_days": 10.9,
-        "review_count": 1500,
-        "reviews_last_30_days": 43,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "469337564",
-        "app_name": "Acrobat Reader: PDF Editor",
-        "category": "business",
-        "max_updated_epoch_seconds": 1781246378,
-        "newest_review_age_days": 10.7,
-        "review_count": 1660,
-        "reviews_last_30_days": 82,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "1096918571",
-        "app_name": "Google Meet",
-        "category": "social_networking",
-        "max_updated_epoch_seconds": 1781284333,
-        "newest_review_age_days": 10.3,
-        "review_count": 1280,
-        "reviews_last_30_days": 38,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "327630330",
-        "app_name": "Dropbox: Cloud Storage Backup",
-        "category": "productivity",
-        "max_updated_epoch_seconds": 1781291514,
-        "newest_review_age_days": 10.2,
-        "review_count": 1620,
-        "reviews_last_30_days": 56,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "664575829",
-        "app_name": "Fishdom",
-        "category": "games",
-        "max_updated_epoch_seconds": 1781300293,
-        "newest_review_age_days": 10.1,
-        "review_count": 1660,
-        "reviews_last_30_days": 79,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "1149994032",
-        "app_name": "Facetune: Photo & Video Editor",
-        "category": "photo_and_video",
-        "max_updated_epoch_seconds": 1781324936,
-        "newest_review_age_days": 9.8,
-        "review_count": 2140,
-        "reviews_last_30_days": 57,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "6503284107",
-        "app_name": "All in Hole: Black Hole Games",
-        "category": "games",
-        "max_updated_epoch_seconds": 1781364361,
-        "newest_review_age_days": 9.3,
-        "review_count": 1880,
-        "reviews_last_30_days": 67,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "1193350206",
-        "app_name": "YouTube TV",
-        "category": "entertainment",
-        "max_updated_epoch_seconds": 1781366782,
-        "newest_review_age_days": 9.3,
-        "review_count": 1280,
-        "reviews_last_30_days": 27,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "887914690",
-        "app_name": "Feeld: Dating for the Curious",
-        "category": "lifestyle",
-        "max_updated_epoch_seconds": 1781402483,
-        "newest_review_age_days": 8.9,
-        "review_count": 2020,
-        "reviews_last_30_days": 73,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "1123582513",
-        "app_name": "Cashman Casino Slots Games",
-        "category": "games",
-        "max_updated_epoch_seconds": 1781422680,
-        "newest_review_age_days": 8.7,
-        "review_count": 1160,
-        "reviews_last_30_days": 68,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "1243005112",
-        "app_name": "Lightning Link Casino Slots",
-        "category": "games",
-        "max_updated_epoch_seconds": 1781453318,
-        "newest_review_age_days": 8.3,
-        "review_count": 2140,
-        "reviews_last_30_days": 92,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "426826309",
-        "app_name": "Strava: Run, Bike, Walk",
-        "category": "health_and_fitness",
-        "max_updated_epoch_seconds": 1781482445,
-        "newest_review_age_days": 8,
-        "review_count": 1520,
-        "reviews_last_30_days": 86,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "1176027022",
-        "app_name": "Toon Blast",
-        "category": "games",
-        "max_updated_epoch_seconds": 1781485145,
-        "newest_review_age_days": 7.9,
-        "review_count": 2000,
-        "reviews_last_30_days": 194,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "6449094229",
-        "app_name": "Match Factory!",
-        "category": "games",
-        "max_updated_epoch_seconds": 1781484672,
-        "newest_review_age_days": 7.9,
-        "review_count": 1900,
-        "reviews_last_30_days": 124,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "535509415",
-        "app_name": "Costco",
-        "category": "shopping",
-        "max_updated_epoch_seconds": 1781534735,
-        "newest_review_age_days": 7.4,
-        "review_count": 1520,
-        "reviews_last_30_days": 135,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "546505307",
-        "app_name": "Zoom Workplace",
-        "category": "business",
-        "max_updated_epoch_seconds": 1781531620,
-        "newest_review_age_days": 7.4,
-        "review_count": 1480,
-        "reviews_last_30_days": 83,
-        "reviews_last_7_days": 0
-      },
-      {
-        "app_id": "1308415878",
-        "app_name": "GameChanger",
+        "app_id": "6532603739",
+        "app_name": "FWC2026 Mobile Tickets",
         "category": "sports",
-        "max_updated_epoch_seconds": 1781540671,
-        "newest_review_age_days": 7.3,
-        "review_count": 1680,
-        "reviews_last_30_days": 140,
-        "reviews_last_7_days": 0
+        "max_updated_epoch_seconds": 1783668292,
+        "newest_review_age_days": 6.2,
+        "review_count": 158,
+        "reviews_last_30_days": 38,
+        "reviews_last_7_days": 1
       },
       {
-        "app_id": "6503272652",
-        "app_name": "Last Z: Survival Shooter",
+        "app_id": "6740349587",
+        "app_name": "Backyard Baseball '01",
         "category": "games",
-        "max_updated_epoch_seconds": 1781582732,
-        "newest_review_age_days": 6.8,
-        "review_count": 1900,
-        "reviews_last_30_days": 102,
-        "reviews_last_7_days": 4
-      },
-      {
-        "app_id": "1195621598",
-        "app_name": "Homescapes: Match 3 Games",
-        "category": "games",
-        "max_updated_epoch_seconds": 1781595521,
-        "newest_review_age_days": 6.7,
-        "review_count": 2260,
-        "reviews_last_30_days": 122,
+        "max_updated_epoch_seconds": 1783779268,
+        "newest_review_age_days": 5,
+        "review_count": 250,
+        "reviews_last_30_days": 8,
         "reviews_last_7_days": 3
       },
       {
-        "app_id": "1521236603",
-        "app_name": "Travel Town - Merge Adventure",
-        "category": "games",
-        "max_updated_epoch_seconds": 1781614223,
-        "newest_review_age_days": 6.4,
-        "review_count": 2020,
-        "reviews_last_30_days": 125,
-        "reviews_last_7_days": 4
+        "app_id": "373493387",
+        "app_name": "AnkiMobile Flashcards",
+        "category": "education",
+        "max_updated_epoch_seconds": 1783852399,
+        "newest_review_age_days": 4.1,
+        "review_count": 1211,
+        "reviews_last_30_days": 9,
+        "reviews_last_7_days": 2
       },
       {
-        "app_id": "1105855019",
-        "app_name": "Gardenscapes",
+        "app_id": "288419283",
+        "app_name": "RadarScope",
+        "category": "weather",
+        "max_updated_epoch_seconds": 1783944358,
+        "newest_review_age_days": 3,
+        "review_count": 1997,
+        "reviews_last_30_days": 12,
+        "reviews_last_7_days": 3
+      },
+      {
+        "app_id": "623592465",
+        "app_name": "Heads Up!",
         "category": "games",
-        "max_updated_epoch_seconds": 1781628505,
-        "newest_review_age_days": 6.3,
-        "review_count": 1760,
-        "reviews_last_30_days": 210,
+        "max_updated_epoch_seconds": 1783963031,
+        "newest_review_age_days": 2.8,
+        "review_count": 7608,
+        "reviews_last_30_days": 29,
+        "reviews_last_7_days": 7
+      },
+      {
+        "app_id": "6758328352",
+        "app_name": "Scritchy Scratchy",
+        "category": "games",
+        "max_updated_epoch_seconds": 1783995082,
+        "newest_review_age_days": 2.5,
+        "review_count": 126,
+        "reviews_last_30_days": 35,
+        "reviews_last_7_days": 2
+      },
+      {
+        "app_id": "1406710800",
+        "app_name": "Stardew Valley",
+        "category": "games",
+        "max_updated_epoch_seconds": 1784002910,
+        "newest_review_age_days": 2.4,
+        "review_count": 1831,
+        "reviews_last_30_days": 40,
         "reviews_last_7_days": 6
       },
       {
-        "app_id": "288429040",
-        "app_name": "LinkedIn: Community & Network",
-        "category": "business",
-        "max_updated_epoch_seconds": 1781627916,
-        "newest_review_age_days": 6.3,
-        "review_count": 1600,
-        "reviews_last_30_days": 119,
-        "reviews_last_7_days": 4
+        "app_id": "932747118",
+        "app_name": "Shadowrocket",
+        "category": "utilities",
+        "max_updated_epoch_seconds": 1784012514,
+        "newest_review_age_days": 2.3,
+        "review_count": 2025,
+        "reviews_last_30_days": 25,
+        "reviews_last_7_days": 9
       },
       {
-        "app_id": "284862083",
-        "app_name": "NYTimes: US and Global News",
-        "category": "news",
-        "max_updated_epoch_seconds": 1781630560,
-        "newest_review_age_days": 6.3,
-        "review_count": 1540,
-        "reviews_last_30_days": 196,
-        "reviews_last_7_days": 3
+        "app_id": "294934058",
+        "app_name": "HotSchedules",
+        "category": "business",
+        "max_updated_epoch_seconds": 1784014204,
+        "newest_review_age_days": 2.2,
+        "review_count": 3261,
+        "reviews_last_30_days": 4,
+        "reviews_last_7_days": 1
+      },
+      {
+        "app_id": "1477966166",
+        "app_name": "MONOPOLY: The Board Game",
+        "category": "games",
+        "max_updated_epoch_seconds": 1784015068,
+        "newest_review_age_days": 2.2,
+        "review_count": 2073,
+        "reviews_last_30_days": 39,
+        "reviews_last_7_days": 7
       },
       {
         "app_id": "1013961111",
         "app_name": "Blink Home Monitor",
         "category": "utilities",
-        "max_updated_epoch_seconds": 1781646586,
-        "newest_review_age_days": 6.1,
-        "review_count": 1900,
-        "reviews_last_30_days": 128,
-        "reviews_last_7_days": 7
+        "max_updated_epoch_seconds": 1784026174,
+        "newest_review_age_days": 2.1,
+        "review_count": 2039,
+        "reviews_last_30_days": 144,
+        "reviews_last_7_days": 29
+      },
+      {
+        "app_id": "850417475",
+        "app_name": "Candy Crush Soda Saga",
+        "category": "games",
+        "max_updated_epoch_seconds": 1784026718,
+        "newest_review_age_days": 2.1,
+        "review_count": 1960,
+        "reviews_last_30_days": 48,
+        "reviews_last_7_days": 13
+      },
+      {
+        "app_id": "1123582513",
+        "app_name": "Cashman Casino Slots Games",
+        "category": "games",
+        "max_updated_epoch_seconds": 1784032604,
+        "newest_review_age_days": 2,
+        "review_count": 19493,
+        "reviews_last_30_days": 73,
+        "reviews_last_7_days": 13
       },
       {
         "app_id": "1118115766",
         "app_name": "Bloons TD 6",
         "category": "games",
-        "max_updated_epoch_seconds": 1781642614,
-        "newest_review_age_days": 6.1,
-        "review_count": 1520,
-        "reviews_last_30_days": 121,
+        "max_updated_epoch_seconds": 1784031959,
+        "newest_review_age_days": 2,
+        "review_count": 3527,
+        "reviews_last_30_days": 106,
+        "reviews_last_7_days": 15
+      },
+      {
+        "app_id": "680595680",
+        "app_name": "Telemundo: Series y TV en vivo",
+        "category": "entertainment",
+        "max_updated_epoch_seconds": 1784037865,
+        "newest_review_age_days": 2,
+        "review_count": 3410,
+        "reviews_last_30_days": 62,
+        "reviews_last_7_days": 9
+      },
+      {
+        "app_id": "1195621598",
+        "app_name": "Homescapes: Match 3 Games",
+        "category": "games",
+        "max_updated_epoch_seconds": 1784035877,
+        "newest_review_age_days": 2,
+        "review_count": 2441,
+        "reviews_last_30_days": 181,
+        "reviews_last_7_days": 24
+      },
+      {
+        "app_id": "1149994032",
+        "app_name": "Facetune: Photo & Video Editor",
+        "category": "photo_and_video",
+        "max_updated_epoch_seconds": 1784036430,
+        "newest_review_age_days": 2,
+        "review_count": 2234,
+        "reviews_last_30_days": 84,
+        "reviews_last_7_days": 19
+      },
+      {
+        "app_id": "957215308",
+        "app_name": "Raya",
+        "category": "lifestyle",
+        "max_updated_epoch_seconds": 1784036069,
+        "newest_review_age_days": 2,
+        "review_count": 820,
+        "reviews_last_30_days": 7,
+        "reviews_last_7_days": 1
+      },
+      {
+        "app_id": "1193350206",
+        "app_name": "YouTube TV",
+        "category": "entertainment",
+        "max_updated_epoch_seconds": 1784044603,
+        "newest_review_age_days": 1.9,
+        "review_count": 11482,
+        "reviews_last_30_days": 46,
+        "reviews_last_7_days": 7
+      },
+      {
+        "app_id": "916366645",
+        "app_name": "Procreate Pocket",
+        "category": "graphics_and_design",
+        "max_updated_epoch_seconds": 1784044905,
+        "newest_review_age_days": 1.9,
+        "review_count": 2136,
+        "reviews_last_30_days": 18,
         "reviews_last_7_days": 3
+      },
+      {
+        "app_id": "1476380919",
+        "app_name": "Cleaner Guru: Clean Up Storage",
+        "category": "utilities",
+        "max_updated_epoch_seconds": 1784046576,
+        "newest_review_age_days": 1.9,
+        "review_count": 2031,
+        "reviews_last_30_days": 17,
+        "reviews_last_7_days": 3
+      },
+      {
+        "app_id": "1105855019",
+        "app_name": "Gardenscapes",
+        "category": "games",
+        "max_updated_epoch_seconds": 1784044967,
+        "newest_review_age_days": 1.9,
+        "review_count": 1911,
+        "reviews_last_30_days": 153,
+        "reviews_last_7_days": 28
+      },
+      {
+        "app_id": "401626263",
+        "app_name": "Airbnb",
+        "category": "travel",
+        "max_updated_epoch_seconds": 1784054634,
+        "newest_review_age_days": 1.8,
+        "review_count": 24422,
+        "reviews_last_30_days": 120,
+        "reviews_last_7_days": 21
+      },
+      {
+        "app_id": "546505307",
+        "app_name": "Zoom Workplace",
+        "category": "business",
+        "max_updated_epoch_seconds": 1784050596,
+        "newest_review_age_days": 1.8,
+        "review_count": 19350,
+        "reviews_last_30_days": 94,
+        "reviews_last_7_days": 16
+      },
+      {
+        "app_id": "460177396",
+        "app_name": "Twitch: Live Streaming",
+        "category": "photo_and_video",
+        "max_updated_epoch_seconds": 1784052930,
+        "newest_review_age_days": 1.8,
+        "review_count": 18500,
+        "reviews_last_30_days": 258,
+        "reviews_last_7_days": 53
+      },
+      {
+        "app_id": "1180884341",
+        "app_name": "FaceApp: Perfect Face Editor",
+        "category": "photo_and_video",
+        "max_updated_epoch_seconds": 1784050611,
+        "newest_review_age_days": 1.8,
+        "review_count": 6438,
+        "reviews_last_30_days": 214,
+        "reviews_last_7_days": 34
+      },
+      {
+        "app_id": "664575829",
+        "app_name": "Fishdom",
+        "category": "games",
+        "max_updated_epoch_seconds": 1784048188,
+        "newest_review_age_days": 1.8,
+        "review_count": 5704,
+        "reviews_last_30_days": 82,
+        "reviews_last_7_days": 17
+      },
+      {
+        "app_id": "388491656",
+        "app_name": "Fly Delta",
+        "category": "travel",
+        "max_updated_epoch_seconds": 1784051168,
+        "newest_review_age_days": 1.8,
+        "review_count": 4435,
+        "reviews_last_30_days": 47,
+        "reviews_last_7_days": 11
+      },
+      {
+        "app_id": "1522122685",
+        "app_name": "Clapper: Video, Live, Chat",
+        "category": "social_networking",
+        "max_updated_epoch_seconds": 1784048020,
+        "newest_review_age_days": 1.8,
+        "review_count": 1932,
+        "reviews_last_30_days": 35,
+        "reviews_last_7_days": 6
+      },
+      {
+        "app_id": "6767364919",
+        "app_name": "Trump Accounts: Official App",
+        "category": "finance",
+        "max_updated_epoch_seconds": 1784048700,
+        "newest_review_age_days": 1.8,
+        "review_count": 309,
+        "reviews_last_30_days": 265,
+        "reviews_last_7_days": 64
+      },
+      {
+        "app_id": "836215269",
+        "app_name": "Chime\u00ae \u2013 Mobile Banking",
+        "category": "finance",
+        "max_updated_epoch_seconds": 1784061656,
+        "newest_review_age_days": 1.7,
+        "review_count": 5804,
+        "reviews_last_30_days": 435,
+        "reviews_last_7_days": 74
+      },
+      {
+        "app_id": "500003565",
+        "app_name": "Ticketmaster\uff0dBuy, Sell Tickets",
+        "category": "entertainment",
+        "max_updated_epoch_seconds": 1784061530,
+        "newest_review_age_days": 1.7,
+        "review_count": 5655,
+        "reviews_last_30_days": 202,
+        "reviews_last_7_days": 37
+      },
+      {
+        "app_id": "951937596",
+        "app_name": "Microsoft Outlook",
+        "category": "productivity",
+        "max_updated_epoch_seconds": 1784064872,
+        "newest_review_age_days": 1.7,
+        "review_count": 5537,
+        "reviews_last_30_days": 293,
+        "reviews_last_7_days": 60
+      },
+      {
+        "app_id": "1113153706",
+        "app_name": "Microsoft Teams",
+        "category": "business",
+        "max_updated_epoch_seconds": 1784062295,
+        "newest_review_age_days": 1.7,
+        "review_count": 4183,
+        "reviews_last_30_days": 69,
+        "reviews_last_7_days": 10
+      },
+      {
+        "app_id": "525818839",
+        "app_name": "Plague Inc.",
+        "category": "games",
+        "max_updated_epoch_seconds": 1784062882,
+        "newest_review_age_days": 1.7,
+        "review_count": 3968,
+        "reviews_last_30_days": 37,
+        "reviews_last_7_days": 8
+      },
+      {
+        "app_id": "905401434",
+        "app_name": "Fubo: Watch Live TV & Sports",
+        "category": "entertainment",
+        "max_updated_epoch_seconds": 1784062056,
+        "newest_review_age_days": 1.7,
+        "review_count": 2655,
+        "reviews_last_30_days": 79,
+        "reviews_last_7_days": 12
+      },
+      {
+        "app_id": "1465944282",
+        "app_name": "Love Island USA",
+        "category": "entertainment",
+        "max_updated_epoch_seconds": 1784058678,
+        "newest_review_age_days": 1.7,
+        "review_count": 2325,
+        "reviews_last_30_days": 206,
+        "reviews_last_7_days": 86
+      },
+      {
+        "app_id": "887914690",
+        "app_name": "Feeld: Dating for the Curious",
+        "category": "lifestyle",
+        "max_updated_epoch_seconds": 1784061230,
+        "newest_review_age_days": 1.7,
+        "review_count": 2120,
+        "reviews_last_30_days": 94,
+        "reviews_last_7_days": 28
+      },
+      {
+        "app_id": "575980917",
+        "app_name": "Jackpot Party - Casino Slots",
+        "category": "games",
+        "max_updated_epoch_seconds": 1784059855,
+        "newest_review_age_days": 1.7,
+        "review_count": 2017,
+        "reviews_last_30_days": 222,
+        "reviews_last_7_days": 20
+      },
+      {
+        "app_id": "6448786147",
+        "app_name": "Last War:Survival",
+        "category": "games",
+        "max_updated_epoch_seconds": 1784064355,
+        "newest_review_age_days": 1.7,
+        "review_count": 1871,
+        "reviews_last_30_days": 81,
+        "reviews_last_7_days": 14
+      },
+      {
+        "app_id": "1308415878",
+        "app_name": "GameChanger",
+        "category": "sports",
+        "max_updated_epoch_seconds": 1784062056,
+        "newest_review_age_days": 1.7,
+        "review_count": 1815,
+        "reviews_last_30_days": 131,
+        "reviews_last_7_days": 24
+      },
+      {
+        "app_id": "6476561442",
+        "app_name": "FIFA World Cup 2026\u2122",
+        "category": "sports",
+        "max_updated_epoch_seconds": 1784057371,
+        "newest_review_age_days": 1.7,
+        "review_count": 622,
+        "reviews_last_30_days": 230,
+        "reviews_last_7_days": 5
+      },
+      {
+        "app_id": "283646709",
+        "app_name": "PayPal",
+        "category": "finance",
+        "max_updated_epoch_seconds": 1784066099,
+        "newest_review_age_days": 1.6,
+        "review_count": 58690,
+        "reviews_last_30_days": 179,
+        "reviews_last_7_days": 32
+      },
+      {
+        "app_id": "444553167",
+        "app_name": "ADP Mobile Solutions",
+        "category": "business",
+        "max_updated_epoch_seconds": 1784072590,
+        "newest_review_age_days": 1.6,
+        "review_count": 22081,
+        "reviews_last_30_days": 644,
+        "reviews_last_7_days": 248
+      },
+      {
+        "app_id": "507874739",
+        "app_name": "Google Drive",
+        "category": "productivity",
+        "max_updated_epoch_seconds": 1784073455,
+        "newest_review_age_days": 1.6,
+        "review_count": 19276,
+        "reviews_last_30_days": 203,
+        "reviews_last_7_days": 48
+      },
+      {
+        "app_id": "422689480",
+        "app_name": "Gmail - Email by Google",
+        "category": "productivity",
+        "max_updated_epoch_seconds": 1784065567,
+        "newest_review_age_days": 1.6,
+        "review_count": 15676,
+        "reviews_last_30_days": 152,
+        "reviews_last_7_days": 31
       }
     ],
     "monthly_recent_24": [
       {
-        "app_count": 189,
+        "app_count": 200,
+        "month": "2026-07",
+        "review_count": 82111
+      },
+      {
+        "app_count": 199,
         "month": "2026-06",
-        "review_count": 89410
+        "review_count": 157826
       },
       {
-        "app_count": 194,
+        "app_count": 199,
         "month": "2026-05",
-        "review_count": 124346
+        "review_count": 129518
       },
       {
-        "app_count": 184,
+        "app_count": 193,
         "month": "2026-04",
-        "review_count": 87834
+        "review_count": 96926
       },
       {
-        "app_count": 175,
+        "app_count": 185,
         "month": "2026-03",
-        "review_count": 83643
+        "review_count": 100928
       },
       {
-        "app_count": 155,
+        "app_count": 172,
         "month": "2026-02",
-        "review_count": 63786
+        "review_count": 84589
       },
       {
-        "app_count": 140,
+        "app_count": 165,
         "month": "2026-01",
-        "review_count": 58508
+        "review_count": 87517
       },
       {
-        "app_count": 128,
+        "app_count": 156,
         "month": "2025-12",
-        "review_count": 44467
+        "review_count": 75373
       },
       {
-        "app_count": 119,
+        "app_count": 150,
         "month": "2025-11",
-        "review_count": 33879
+        "review_count": 57745
       },
       {
-        "app_count": 116,
+        "app_count": 146,
         "month": "2025-10",
-        "review_count": 35632
+        "review_count": 58556
       },
       {
-        "app_count": 106,
+        "app_count": 137,
         "month": "2025-09",
-        "review_count": 29904
+        "review_count": 48303
       },
       {
-        "app_count": 100,
+        "app_count": 130,
         "month": "2025-08",
-        "review_count": 28022
+        "review_count": 37569
+      },
+      {
+        "app_count": 123,
+        "month": "2025-07",
+        "review_count": 37687
+      },
+      {
+        "app_count": 118,
+        "month": "2025-06",
+        "review_count": 39680
+      },
+      {
+        "app_count": 114,
+        "month": "2025-05",
+        "review_count": 39299
+      },
+      {
+        "app_count": 109,
+        "month": "2025-04",
+        "review_count": 33348
+      },
+      {
+        "app_count": 108,
+        "month": "2025-03",
+        "review_count": 39658
+      },
+      {
+        "app_count": 104,
+        "month": "2025-02",
+        "review_count": 35039
+      },
+      {
+        "app_count": 99,
+        "month": "2025-01",
+        "review_count": 37919
+      },
+      {
+        "app_count": 97,
+        "month": "2024-12",
+        "review_count": 27345
+      },
+      {
+        "app_count": 94,
+        "month": "2024-11",
+        "review_count": 27062
       },
       {
         "app_count": 93,
-        "month": "2025-07",
-        "review_count": 26583
+        "month": "2024-10",
+        "review_count": 27116
+      },
+      {
+        "app_count": 89,
+        "month": "2024-09",
+        "review_count": 27290
       },
       {
         "app_count": 86,
-        "month": "2025-06",
-        "review_count": 22976
-      },
-      {
-        "app_count": 79,
-        "month": "2025-05",
-        "review_count": 20276
-      },
-      {
-        "app_count": 76,
-        "month": "2025-04",
-        "review_count": 19625
-      },
-      {
-        "app_count": 73,
-        "month": "2025-03",
-        "review_count": 21437
-      },
-      {
-        "app_count": 70,
-        "month": "2025-02",
-        "review_count": 20339
-      },
-      {
-        "app_count": 68,
-        "month": "2025-01",
-        "review_count": 19878
-      },
-      {
-        "app_count": 66,
-        "month": "2024-12",
-        "review_count": 14872
-      },
-      {
-        "app_count": 61,
-        "month": "2024-11",
-        "review_count": 15316
-      },
-      {
-        "app_count": 61,
-        "month": "2024-10",
-        "review_count": 12471
-      },
-      {
-        "app_count": 55,
-        "month": "2024-09",
-        "review_count": 12228
-      },
-      {
-        "app_count": 52,
         "month": "2024-08",
-        "review_count": 12651
-      },
-      {
-        "app_count": 51,
-        "month": "2024-07",
-        "review_count": 12214
+        "review_count": 31446
       }
     ]
   },
@@ -2358,670 +2540,670 @@
         "app_id": "297606951",
         "app_name": "Amazon Shopping",
         "category": "shopping",
-        "max_updated_epoch_seconds": 1781877450,
-        "min_updated_epoch_seconds": 1612624173,
-        "review_count": 72303,
-        "reviews_last_30_days": 1203
+        "max_updated_epoch_seconds": 1784081047,
+        "min_updated_epoch_seconds": 1503609363,
+        "review_count": 102264,
+        "reviews_last_30_days": 1067
       },
       {
         "app_id": "338137227",
         "app_name": "Walmart",
         "category": "shopping",
-        "max_updated_epoch_seconds": 1781878575,
-        "min_updated_epoch_seconds": 1671666073,
-        "review_count": 68776,
-        "reviews_last_30_days": 2840
-      },
-      {
-        "app_id": "297430070",
-        "app_name": "Target",
-        "category": "shopping",
-        "max_updated_epoch_seconds": 1781870926,
-        "min_updated_epoch_seconds": 1293713404,
-        "review_count": 59905,
-        "reviews_last_30_days": 358
+        "max_updated_epoch_seconds": 1784082207,
+        "min_updated_epoch_seconds": 1628853578,
+        "review_count": 101299,
+        "reviews_last_30_days": 3320
       },
       {
         "app_id": "368677368",
         "app_name": "Uber",
         "category": "travel",
-        "max_updated_epoch_seconds": 1781878676,
-        "min_updated_epoch_seconds": 1737125589,
-        "review_count": 50433,
-        "reviews_last_30_days": 2557
+        "max_updated_epoch_seconds": 1784082173,
+        "min_updated_epoch_seconds": 1716049588,
+        "review_count": 81082,
+        "reviews_last_30_days": 3090
       },
       {
         "app_id": "529379082",
         "app_name": "Lyft",
         "category": "travel",
-        "max_updated_epoch_seconds": 1781878776,
-        "min_updated_epoch_seconds": 1688881175,
-        "review_count": 37592,
-        "reviews_last_30_days": 1201
-      },
-      {
-        "app_id": "427916203",
-        "app_name": "Expedia",
-        "category": "travel",
-        "max_updated_epoch_seconds": 1781876451,
-        "min_updated_epoch_seconds": 1462368917,
-        "review_count": 35301,
-        "reviews_last_30_days": 443
-      },
-      {
-        "app_id": "351727428",
-        "app_name": "Venmo",
-        "category": "finance",
-        "max_updated_epoch_seconds": 1781878132,
-        "min_updated_epoch_seconds": 1675024056,
-        "review_count": 35290,
-        "reviews_last_30_days": 992
-      },
-      {
-        "app_id": "1508186374",
-        "app_name": "Peacock TV: Stream TV & Movies",
-        "category": "entertainment",
-        "max_updated_epoch_seconds": 1781749709,
-        "min_updated_epoch_seconds": 1609512446,
-        "review_count": 34471,
-        "reviews_last_30_days": 560
-      },
-      {
-        "app_id": "363590051",
-        "app_name": "Netflix",
-        "category": "entertainment",
-        "max_updated_epoch_seconds": 1781878238,
-        "min_updated_epoch_seconds": 1730567010,
-        "review_count": 34466,
-        "reviews_last_30_days": 1692
-      },
-      {
-        "app_id": "1058959277",
-        "app_name": "Uber Eats",
-        "category": "food_delivery",
-        "max_updated_epoch_seconds": 1781878560,
-        "min_updated_epoch_seconds": 1711386035,
-        "review_count": 34348,
-        "reviews_last_30_days": 1067
-      },
-      {
-        "app_id": "341232718",
-        "app_name": "MyFitnessPal",
-        "category": "health",
-        "max_updated_epoch_seconds": 1781878771,
-        "min_updated_epoch_seconds": 1664671650,
-        "review_count": 33960,
-        "reviews_last_30_days": 382
-      },
-      {
-        "app_id": "719972451",
-        "app_name": "DoorDash",
-        "category": "food_delivery",
-        "max_updated_epoch_seconds": 1781878340,
-        "min_updated_epoch_seconds": 1740457863,
-        "review_count": 33911,
-        "reviews_last_30_days": 3490
-      },
-      {
-        "app_id": "283646709",
-        "app_name": "PayPal",
-        "category": "finance",
-        "max_updated_epoch_seconds": 1781872209,
-        "min_updated_epoch_seconds": 1623611285,
-        "review_count": 33744,
-        "reviews_last_30_days": 193
-      },
-      {
-        "app_id": "711923939",
-        "app_name": "Cash App",
-        "category": "finance",
-        "max_updated_epoch_seconds": 1781877953,
-        "min_updated_epoch_seconds": 1686940861,
-        "review_count": 33685,
-        "reviews_last_30_days": 889
-      },
-      {
-        "app_id": "367003839",
-        "app_name": "Booking.com",
-        "category": "travel",
-        "max_updated_epoch_seconds": 1781874015,
-        "min_updated_epoch_seconds": 1570304118,
-        "review_count": 33634,
-        "reviews_last_30_days": 396
-      },
-      {
-        "app_id": "570060128",
-        "app_name": "Duolingo",
-        "category": "education",
-        "max_updated_epoch_seconds": 1781878748,
-        "min_updated_epoch_seconds": 1768787399,
-        "review_count": 33317,
-        "reviews_last_30_days": 6486
+        "max_updated_epoch_seconds": 1784082819,
+        "min_updated_epoch_seconds": 1597193969,
+        "review_count": 69648,
+        "reviews_last_30_days": 1382
       },
       {
         "app_id": "6448311069",
         "app_name": "ChatGPT",
         "category": "ai_tools",
-        "max_updated_epoch_seconds": 1781878746,
-        "min_updated_epoch_seconds": 1770609195,
-        "review_count": 33204,
-        "reviews_last_30_days": 7406
+        "max_updated_epoch_seconds": 1784082797,
+        "min_updated_epoch_seconds": 1756664084,
+        "review_count": 65386,
+        "reviews_last_30_days": 8032
       },
       {
-        "app_id": "835599320",
-        "app_name": "TikTok",
-        "category": "social",
-        "max_updated_epoch_seconds": 1781876909,
-        "min_updated_epoch_seconds": 1753325426,
-        "review_count": 31513,
-        "reviews_last_30_days": 2639
+        "app_id": "570060128",
+        "app_name": "Duolingo",
+        "category": "education",
+        "max_updated_epoch_seconds": 1784082837,
+        "min_updated_epoch_seconds": 1758313561,
+        "review_count": 64236,
+        "reviews_last_30_days": 6531
+      },
+      {
+        "app_id": "351727428",
+        "app_name": "Venmo",
+        "category": "finance",
+        "max_updated_epoch_seconds": 1784082624,
+        "min_updated_epoch_seconds": 1627074984,
+        "review_count": 62932,
+        "reviews_last_30_days": 1094
+      },
+      {
+        "app_id": "719972451",
+        "app_name": "DoorDash",
+        "category": "food_delivery",
+        "max_updated_epoch_seconds": 1784082940,
+        "min_updated_epoch_seconds": 1704987598,
+        "review_count": 61759,
+        "reviews_last_30_days": 3988
+      },
+      {
+        "app_id": "711923939",
+        "app_name": "Cash App",
+        "category": "finance",
+        "max_updated_epoch_seconds": 1784082313,
+        "min_updated_epoch_seconds": 1616523821,
+        "review_count": 61431,
+        "reviews_last_30_days": 848
+      },
+      {
+        "app_id": "367003839",
+        "app_name": "Booking.com",
+        "category": "travel",
+        "max_updated_epoch_seconds": 1784078284,
+        "min_updated_epoch_seconds": 1503514980,
+        "review_count": 61268,
+        "reviews_last_30_days": 502
+      },
+      {
+        "app_id": "1058959277",
+        "app_name": "Uber Eats",
+        "category": "food_delivery",
+        "max_updated_epoch_seconds": 1784081564,
+        "min_updated_epoch_seconds": 1653857891,
+        "review_count": 61130,
+        "reviews_last_30_days": 1290
+      },
+      {
+        "app_id": "363590051",
+        "app_name": "Netflix",
+        "category": "entertainment",
+        "max_updated_epoch_seconds": 1784082778,
+        "min_updated_epoch_seconds": 1613133166,
+        "review_count": 60946,
+        "reviews_last_30_days": 1749
       },
       {
         "app_id": "324684580",
         "app_name": "Spotify",
         "category": "entertainment",
-        "max_updated_epoch_seconds": 1781878675,
-        "min_updated_epoch_seconds": 1774462334,
-        "review_count": 26893,
-        "reviews_last_30_days": 11570
+        "max_updated_epoch_seconds": 1784082952,
+        "min_updated_epoch_seconds": 1763964288,
+        "review_count": 60682,
+        "reviews_last_30_days": 10607
       },
       {
-        "app_id": "401626263",
-        "app_name": "Airbnb",
+        "app_id": "297430070",
+        "app_name": "Target",
+        "category": "shopping",
+        "max_updated_epoch_seconds": 1784080326,
+        "min_updated_epoch_seconds": 1289674307,
+        "review_count": 60655,
+        "reviews_last_30_days": 400
+      },
+      {
+        "app_id": "835599320",
+        "app_name": "TikTok",
+        "category": "social",
+        "max_updated_epoch_seconds": 1784082838,
+        "min_updated_epoch_seconds": 1737242250,
+        "review_count": 59839,
+        "reviews_last_30_days": 3479
+      },
+      {
+        "app_id": "283646709",
+        "app_name": "PayPal",
+        "category": "finance",
+        "max_updated_epoch_seconds": 1784066099,
+        "min_updated_epoch_seconds": 1577752643,
+        "review_count": 58690,
+        "reviews_last_30_days": 179
+      },
+      {
+        "app_id": "341232718",
+        "app_name": "MyFitnessPal",
+        "category": "health",
+        "max_updated_epoch_seconds": 1784081495,
+        "min_updated_epoch_seconds": 1499352745,
+        "review_count": 56798,
+        "reviews_last_30_days": 297
+      },
+      {
+        "app_id": "427916203",
+        "app_name": "Expedia",
         "category": "travel",
-        "max_updated_epoch_seconds": 1781858414,
-        "min_updated_epoch_seconds": 1289776286,
-        "review_count": 24318,
-        "reviews_last_30_days": 106
+        "max_updated_epoch_seconds": 1784080831,
+        "min_updated_epoch_seconds": 1302169621,
+        "review_count": 39493,
+        "reviews_last_30_days": 529
+      },
+      {
+        "app_id": "1508186374",
+        "app_name": "Peacock TV: Stream TV & Movies",
+        "category": "entertainment",
+        "max_updated_epoch_seconds": 1784082419,
+        "min_updated_epoch_seconds": 1594777995,
+        "review_count": 38643,
+        "reviews_last_30_days": 881
       },
       {
         "app_id": "389801252",
         "app_name": "Instagram",
         "category": "social",
-        "max_updated_epoch_seconds": 1781877454,
-        "min_updated_epoch_seconds": 1765630634,
-        "review_count": 21669,
-        "reviews_last_30_days": 3287
-      },
-      {
-        "app_id": "6477489729",
-        "app_name": "Google Gemini",
-        "category": "productivity",
-        "max_updated_epoch_seconds": 1781750481,
-        "min_updated_epoch_seconds": 1735137529,
-        "review_count": 14947,
-        "reviews_last_30_days": 1421
-      },
-      {
-        "app_id": "284815942",
-        "app_name": "Google",
-        "category": "utilities",
-        "max_updated_epoch_seconds": 1781749699,
-        "min_updated_epoch_seconds": 1738170885,
-        "review_count": 14614,
-        "reviews_last_30_days": 906
-      },
-      {
-        "app_id": "6446901002",
-        "app_name": "Threads",
-        "category": "social_networking",
-        "max_updated_epoch_seconds": 1781746512,
-        "min_updated_epoch_seconds": 1723196806,
-        "review_count": 14532,
-        "reviews_last_30_days": 559
-      },
-      {
-        "app_id": "1500855883",
-        "app_name": "CapCut: Photo & Video Editor",
-        "category": "photo_and_video",
-        "max_updated_epoch_seconds": 1781750127,
-        "min_updated_epoch_seconds": 1751291858,
-        "review_count": 14185,
-        "reviews_last_30_days": 1053
+        "max_updated_epoch_seconds": 1784082810,
+        "min_updated_epoch_seconds": 1763669855,
+        "review_count": 27588,
+        "reviews_last_30_days": 3957
       },
       {
         "app_id": "310633997",
         "app_name": "WhatsApp Messenger",
         "category": "social_networking",
-        "max_updated_epoch_seconds": 1781750498,
-        "min_updated_epoch_seconds": 1750221720,
-        "review_count": 13302,
-        "reviews_last_30_days": 1090
+        "max_updated_epoch_seconds": 1784080737,
+        "min_updated_epoch_seconds": 1720564983,
+        "review_count": 27404,
+        "reviews_last_30_days": 1218
       },
       {
-        "app_id": "1488269261",
-        "app_name": "Whatnot: Shop, Sell, Connect",
-        "category": "shopping",
-        "max_updated_epoch_seconds": 1781745832,
-        "min_updated_epoch_seconds": 1576353421,
-        "review_count": 9825,
-        "reviews_last_30_days": 751
-      },
-      {
-        "app_id": "407558537",
-        "app_name": "Capital One Mobile",
-        "category": "finance",
-        "max_updated_epoch_seconds": 1781779814,
-        "min_updated_epoch_seconds": 1760378708,
-        "review_count": 5974,
-        "reviews_last_30_days": 655
-      },
-      {
-        "app_id": "6670324846",
-        "app_name": "Grok - AI Chat & Video",
-        "category": "productivity",
-        "max_updated_epoch_seconds": 1781779856,
-        "min_updated_epoch_seconds": 1773074035,
-        "review_count": 5917,
-        "reviews_last_30_days": 1397
-      },
-      {
-        "app_id": "500003565",
-        "app_name": "Ticketmaster\uff0dBuy, Sell Tickets",
-        "category": "entertainment",
-        "max_updated_epoch_seconds": 1781747935,
-        "min_updated_epoch_seconds": 1726179437,
-        "review_count": 5460,
-        "reviews_last_30_days": 185
-      },
-      {
-        "app_id": "1111876388",
-        "app_name": "T-Life",
-        "category": "lifestyle",
-        "max_updated_epoch_seconds": 1781757037,
-        "min_updated_epoch_seconds": 1735496805,
-        "review_count": 5440,
-        "reviews_last_30_days": 232
-      },
-      {
-        "app_id": "6473753684",
-        "app_name": "Claude by Anthropic",
-        "category": "productivity",
-        "max_updated_epoch_seconds": 1781742378,
-        "min_updated_epoch_seconds": 1714576789,
-        "review_count": 5420,
-        "reviews_last_30_days": 641
-      },
-      {
-        "app_id": "384830320",
-        "app_name": "Life360: Family Safety & GPS",
-        "category": "social_networking",
-        "max_updated_epoch_seconds": 1781723324,
-        "min_updated_epoch_seconds": 1771371336,
-        "review_count": 5326,
-        "reviews_last_30_days": 1776
-      },
-      {
-        "app_id": "897446215",
-        "app_name": "Canva: AI Video & Photo Editor",
+        "app_id": "1500855883",
+        "app_name": "CapCut: Photo & Video Editor",
         "category": "photo_and_video",
-        "max_updated_epoch_seconds": 1781767946,
-        "min_updated_epoch_seconds": 1742410398,
-        "review_count": 5299,
-        "reviews_last_30_days": 337
+        "max_updated_epoch_seconds": 1784080854,
+        "min_updated_epoch_seconds": 1740628529,
+        "review_count": 27129,
+        "reviews_last_30_days": 1303
       },
       {
-        "app_id": "951937596",
-        "app_name": "Microsoft Outlook",
-        "category": "productivity",
-        "max_updated_epoch_seconds": 1781767001,
-        "min_updated_epoch_seconds": 1741106849,
-        "review_count": 5270,
-        "reviews_last_30_days": 299
-      },
-      {
-        "app_id": "530168168",
-        "app_name": "Paramount+",
-        "category": "entertainment",
-        "max_updated_epoch_seconds": 1781758375,
-        "min_updated_epoch_seconds": 1754733384,
-        "review_count": 5116,
-        "reviews_last_30_days": 486
-      },
-      {
-        "app_id": "985746746",
-        "app_name": "Discord - Talk, Play, Hang Out",
-        "category": "social_networking",
-        "max_updated_epoch_seconds": 1781778599,
-        "min_updated_epoch_seconds": 1769730681,
-        "review_count": 5071,
-        "reviews_last_30_days": 694
-      },
-      {
-        "app_id": "429047995",
-        "app_name": "Pinterest",
-        "category": "lifestyle",
-        "max_updated_epoch_seconds": 1781776474,
-        "min_updated_epoch_seconds": 1771355711,
-        "review_count": 4898,
-        "reviews_last_30_days": 1134
-      },
-      {
-        "app_id": "1089294040",
-        "app_name": "Capital One Shopping: Save Now",
-        "category": "shopping",
-        "max_updated_epoch_seconds": 1781775968,
-        "min_updated_epoch_seconds": 1729893976,
-        "review_count": 4620,
-        "reviews_last_30_days": 133
-      },
-      {
-        "app_id": "535886823",
-        "app_name": "Google Chrome",
+        "app_id": "284815942",
+        "app_name": "Google",
         "category": "utilities",
-        "max_updated_epoch_seconds": 1781760418,
-        "min_updated_epoch_seconds": 1756410269,
-        "review_count": 4616,
-        "reviews_last_30_days": 460
+        "max_updated_epoch_seconds": 1784080928,
+        "min_updated_epoch_seconds": 1681037995,
+        "review_count": 25453,
+        "reviews_last_30_days": 998
       },
       {
-        "app_id": "545519333",
-        "app_name": "Amazon Prime Video",
-        "category": "entertainment",
-        "max_updated_epoch_seconds": 1781757447,
-        "min_updated_epoch_seconds": 1718062772,
-        "review_count": 4579,
-        "reviews_last_30_days": 189
+        "app_id": "401626263",
+        "app_name": "Airbnb",
+        "category": "travel",
+        "max_updated_epoch_seconds": 1784054634,
+        "min_updated_epoch_seconds": 1289776286,
+        "review_count": 24422,
+        "reviews_last_30_days": 120
       },
       {
-        "app_id": "686449807",
-        "app_name": "Telegram Messenger",
+        "app_id": "6446901002",
+        "app_name": "Threads",
         "category": "social_networking",
-        "max_updated_epoch_seconds": 1781775891,
-        "min_updated_epoch_seconds": 1754611109,
-        "review_count": 4571,
-        "reviews_last_30_days": 427
+        "max_updated_epoch_seconds": 1784080637,
+        "min_updated_epoch_seconds": 1688598366,
+        "review_count": 22793,
+        "reviews_last_30_days": 716
       },
       {
-        "app_id": "284882215",
-        "app_name": "Facebook",
-        "category": "social_networking",
-        "max_updated_epoch_seconds": 1781747521,
-        "min_updated_epoch_seconds": 1779539706,
-        "review_count": 4485,
-        "reviews_last_30_days": 4405
-      },
-      {
-        "app_id": "6751921248",
-        "app_name": "Rips by Triumph",
-        "category": "shopping",
-        "max_updated_epoch_seconds": 1781722395,
-        "min_updated_epoch_seconds": 1776973359,
-        "review_count": 4385,
-        "reviews_last_30_days": 2026
-      },
-      {
-        "app_id": "482066631",
-        "app_name": "The Roku App (Official)",
-        "category": "entertainment",
-        "max_updated_epoch_seconds": 1781778602,
-        "min_updated_epoch_seconds": 1763872559,
-        "review_count": 4337,
-        "reviews_last_30_days": 865
-      },
-      {
-        "app_id": "422689480",
-        "app_name": "Gmail - Email by Google",
-        "category": "productivity",
-        "max_updated_epoch_seconds": 1781739619,
-        "min_updated_epoch_seconds": 1727211384,
-        "review_count": 4260,
-        "reviews_last_30_days": 146
-      },
-      {
-        "app_id": "983156458",
-        "app_name": "Microsoft Authenticator",
-        "category": "productivity",
-        "max_updated_epoch_seconds": 1781754566,
-        "min_updated_epoch_seconds": 1691624686,
-        "review_count": 4258,
-        "reviews_last_30_days": 110
-      },
-      {
-        "app_id": "1113153706",
-        "app_name": "Microsoft Teams",
+        "app_id": "444553167",
+        "app_name": "ADP Mobile Solutions",
         "category": "business",
-        "max_updated_epoch_seconds": 1781745033,
-        "min_updated_epoch_seconds": 1663333157,
-        "review_count": 4120,
-        "reviews_last_30_days": 56
+        "max_updated_epoch_seconds": 1784072590,
+        "min_updated_epoch_seconds": 1536945616,
+        "review_count": 22081,
+        "reviews_last_30_days": 644
       },
       {
-        "app_id": "1673567402",
-        "app_name": "Freecash - Get Paid Real Money",
+        "app_id": "436672029",
+        "app_name": "AliExpress - Shopping App",
+        "category": "shopping",
+        "max_updated_epoch_seconds": 1784082827,
+        "min_updated_epoch_seconds": 1758480581,
+        "review_count": 21274,
+        "reviews_last_30_days": 2537
+      },
+      {
+        "app_id": "1064216828",
+        "app_name": "Reddit",
+        "category": "news",
+        "max_updated_epoch_seconds": 1784082400,
+        "min_updated_epoch_seconds": 1690159590,
+        "review_count": 20508,
+        "reviews_last_30_days": 941
+      },
+      {
+        "app_id": "922103212",
+        "app_name": "McDonald's",
+        "category": "food_and_drink",
+        "max_updated_epoch_seconds": 1784082500,
+        "min_updated_epoch_seconds": 1748701974,
+        "review_count": 20163,
+        "reviews_last_30_days": 872
+      },
+      {
+        "app_id": "298867247",
+        "app_name": "Chase Mobile\u00ae: Bank & Invest",
+        "category": "finance",
+        "max_updated_epoch_seconds": 1784082973,
+        "min_updated_epoch_seconds": 1698851604,
+        "review_count": 20098,
+        "reviews_last_30_days": 830
+      },
+      {
+        "app_id": "1123582513",
+        "app_name": "Cashman Casino Slots Games",
+        "category": "games",
+        "max_updated_epoch_seconds": 1784032604,
+        "min_updated_epoch_seconds": 1614697352,
+        "review_count": 19493,
+        "reviews_last_30_days": 73
+      },
+      {
+        "app_id": "1446075923",
+        "app_name": "Disney+",
         "category": "entertainment",
-        "max_updated_epoch_seconds": 1781723200,
-        "min_updated_epoch_seconds": 1772036983,
-        "review_count": 4102,
-        "reviews_last_30_days": 63
+        "max_updated_epoch_seconds": 1784081976,
+        "min_updated_epoch_seconds": 1699391502,
+        "review_count": 19430,
+        "reviews_last_30_days": 461
+      },
+      {
+        "app_id": "546505307",
+        "app_name": "Zoom Workplace",
+        "category": "business",
+        "max_updated_epoch_seconds": 1784050596,
+        "min_updated_epoch_seconds": 1605630382,
+        "review_count": 19350,
+        "reviews_last_30_days": 94
+      },
+      {
+        "app_id": "1096918571",
+        "app_name": "Google Meet",
+        "category": "social_networking",
+        "max_updated_epoch_seconds": 1784075907,
+        "min_updated_epoch_seconds": 1542327842,
+        "review_count": 19279,
+        "reviews_last_30_days": 49
+      },
+      {
+        "app_id": "507874739",
+        "app_name": "Google Drive",
+        "category": "productivity",
+        "max_updated_epoch_seconds": 1784073455,
+        "min_updated_epoch_seconds": 1541095854,
+        "review_count": 19276,
+        "reviews_last_30_days": 203
+      },
+      {
+        "app_id": "460177396",
+        "app_name": "Twitch: Live Streaming",
+        "category": "photo_and_video",
+        "max_updated_epoch_seconds": 1784052930,
+        "min_updated_epoch_seconds": 1624310417,
+        "review_count": 18500,
+        "reviews_last_30_days": 258
       },
       {
         "app_id": "585027354",
         "app_name": "Google Maps",
         "category": "navigation",
-        "max_updated_epoch_seconds": 1781761318,
-        "min_updated_epoch_seconds": 1765574831,
-        "review_count": 3900,
-        "reviews_last_30_days": 634
+        "max_updated_epoch_seconds": 1784081084,
+        "min_updated_epoch_seconds": 1739798471,
+        "review_count": 18059,
+        "reviews_last_30_days": 734
+      },
+      {
+        "app_id": "1054033219",
+        "app_name": "VIZIO | WatchFree+",
+        "category": "entertainment",
+        "max_updated_epoch_seconds": 1784082086,
+        "min_updated_epoch_seconds": 1458701100,
+        "review_count": 17387,
+        "reviews_last_30_days": 273
+      },
+      {
+        "app_id": "344542975",
+        "app_name": "Southwest Airlines: Travel App",
+        "category": "travel",
+        "max_updated_epoch_seconds": 1784079417,
+        "min_updated_epoch_seconds": 1647621554,
+        "review_count": 17369,
+        "reviews_last_30_days": 379
+      },
+      {
+        "app_id": "6477489729",
+        "app_name": "Google Gemini",
+        "category": "productivity",
+        "max_updated_epoch_seconds": 1784079555,
+        "min_updated_epoch_seconds": 1731550956,
+        "review_count": 16954,
+        "reviews_last_30_days": 1370
+      },
+      {
+        "app_id": "382698565",
+        "app_name": "American Airlines",
+        "category": "travel",
+        "max_updated_epoch_seconds": 1784076044,
+        "min_updated_epoch_seconds": 1292244464,
+        "review_count": 16155,
+        "reviews_last_30_days": 357
+      },
+      {
+        "app_id": "422689480",
+        "app_name": "Gmail - Email by Google",
+        "category": "productivity",
+        "max_updated_epoch_seconds": 1784065567,
+        "min_updated_epoch_seconds": 1616884102,
+        "review_count": 15676,
+        "reviews_last_30_days": 152
+      },
+      {
+        "app_id": "535509415",
+        "app_name": "Costco",
+        "category": "shopping",
+        "max_updated_epoch_seconds": 1784082973,
+        "min_updated_epoch_seconds": 1341608722,
+        "review_count": 15139,
+        "reviews_last_30_days": 142
+      },
+      {
+        "app_id": "6443467666",
+        "app_name": "Love and Deepspace",
+        "category": "games",
+        "max_updated_epoch_seconds": 1784082071,
+        "min_updated_epoch_seconds": 1755003651,
+        "review_count": 13145,
+        "reviews_last_30_days": 10888
+      },
+      {
+        "app_id": "1193350206",
+        "app_name": "YouTube TV",
+        "category": "entertainment",
+        "max_updated_epoch_seconds": 1784044603,
+        "min_updated_epoch_seconds": 1491411252,
+        "review_count": 11482,
+        "reviews_last_30_days": 46
+      },
+      {
+        "app_id": "1488269261",
+        "app_name": "Whatnot: Shop, Sell, Connect",
+        "category": "shopping",
+        "max_updated_epoch_seconds": 1784079951,
+        "min_updated_epoch_seconds": 1576353421,
+        "review_count": 10546,
+        "reviews_last_30_days": 784
+      },
+      {
+        "app_id": "544007664",
+        "app_name": "YouTube",
+        "category": "photo_and_video",
+        "max_updated_epoch_seconds": 1784082867,
+        "min_updated_epoch_seconds": 1780176570,
+        "review_count": 10327,
+        "reviews_last_30_days": 6725
+      },
+      {
+        "app_id": "6475757306",
+        "app_name": "Disney Solitaire",
+        "category": "games",
+        "max_updated_epoch_seconds": 1784081678,
+        "min_updated_epoch_seconds": 1773293874,
+        "review_count": 8240,
+        "reviews_last_30_days": 1770
+      },
+      {
+        "app_id": "284882215",
+        "app_name": "Facebook",
+        "category": "social_networking",
+        "max_updated_epoch_seconds": 1784082520,
+        "min_updated_epoch_seconds": 1779539706,
+        "review_count": 7984,
+        "reviews_last_30_days": 3726
+      },
+      {
+        "app_id": "623592465",
+        "app_name": "Heads Up!",
+        "category": "games",
+        "max_updated_epoch_seconds": 1783963031,
+        "min_updated_epoch_seconds": 1367469994,
+        "review_count": 7608,
+        "reviews_last_30_days": 29
       }
     ],
     "by_category": [
       {
         "app_count": 15,
-        "avg_content_chars": 171.4,
-        "avg_rating": 3.502,
+        "avg_content_chars": 173.3,
+        "avg_rating": 3.433,
         "category": "shopping",
-        "review_count": 242376,
-        "reviews_last_30_days": 15619
+        "review_count": 351689,
+        "reviews_last_30_days": 20871
       },
       {
         "app_count": 8,
-        "avg_content_chars": 181.5,
-        "avg_rating": 3.584,
+        "avg_content_chars": 167.8,
+        "avg_rating": 3.688,
         "category": "travel",
-        "review_count": 185438,
-        "reviews_last_30_days": 5411
+        "review_count": 313872,
+        "reviews_last_30_days": 6406
       },
       {
         "app_count": 27,
-        "avg_content_chars": 148.8,
-        "avg_rating": 3.13,
+        "avg_content_chars": 155.9,
+        "avg_rating": 3.154,
         "category": "entertainment",
-        "review_count": 153757,
-        "reviews_last_30_days": 22816
+        "review_count": 282757,
+        "reviews_last_30_days": 25629
       },
       {
         "app_count": 9,
-        "avg_content_chars": 186.2,
-        "avg_rating": 2.673,
+        "avg_content_chars": 176.2,
+        "avg_rating": 2.915,
         "category": "finance",
-        "review_count": 115741,
-        "reviews_last_30_days": 5142
+        "review_count": 222204,
+        "reviews_last_30_days": 6659
       },
       {
         "app_count": 52,
-        "avg_content_chars": 172.5,
-        "avg_rating": 3.282,
+        "avg_content_chars": 165.8,
+        "avg_rating": 3.32,
         "category": "games",
-        "review_count": 88876,
-        "reviews_last_30_days": 15846
+        "review_count": 179056,
+        "reviews_last_30_days": 29555
       },
       {
         "app_count": 2,
-        "avg_content_chars": 207,
-        "avg_rating": 2.486,
+        "avg_content_chars": 212.6,
+        "avg_rating": 2.555,
         "category": "food_delivery",
-        "review_count": 68259,
-        "reviews_last_30_days": 4557
+        "review_count": 122889,
+        "reviews_last_30_days": 5278
       },
       {
         "app_count": 11,
-        "avg_content_chars": 132.8,
-        "avg_rating": 2.997,
+        "avg_content_chars": 131.8,
+        "avg_rating": 3.175,
         "category": "social_networking",
-        "review_count": 55505,
-        "reviews_last_30_days": 9343
-      },
-      {
-        "app_count": 2,
-        "avg_content_chars": 172.7,
-        "avg_rating": 2.372,
-        "category": "social",
-        "review_count": 53182,
-        "reviews_last_30_days": 5926
+        "review_count": 105758,
+        "reviews_last_30_days": 9358
       },
       {
         "app_count": 10,
-        "avg_content_chars": 158.5,
-        "avg_rating": 3.348,
+        "avg_content_chars": 154.6,
+        "avg_rating": 3.394,
         "category": "productivity",
-        "review_count": 47522,
-        "reviews_last_30_days": 4844
+        "review_count": 88139,
+        "reviews_last_30_days": 4970
+      },
+      {
+        "app_count": 2,
+        "avg_content_chars": 170.7,
+        "avg_rating": 2.637,
+        "category": "social",
+        "review_count": 87427,
+        "reviews_last_30_days": 7436
       },
       {
         "app_count": 5,
-        "avg_content_chars": 172.1,
-        "avg_rating": 4.071,
+        "avg_content_chars": 171.2,
+        "avg_rating": 4.024,
         "category": "education",
-        "review_count": 40061,
-        "reviews_last_30_days": 7336
-      },
-      {
-        "app_count": 1,
-        "avg_content_chars": 217.7,
-        "avg_rating": 2.866,
-        "category": "health",
-        "review_count": 33960,
-        "reviews_last_30_days": 382
-      },
-      {
-        "app_count": 1,
-        "avg_content_chars": 127.2,
-        "avg_rating": 3.731,
-        "category": "ai_tools",
-        "review_count": 33204,
-        "reviews_last_30_days": 7406
+        "review_count": 80479,
+        "reviews_last_30_days": 7591
       },
       {
         "app_count": 7,
-        "avg_content_chars": 172.2,
-        "avg_rating": 2.937,
+        "avg_content_chars": 166.2,
+        "avg_rating": 2.807,
         "category": "photo_and_video",
-        "review_count": 30444,
-        "reviews_last_30_days": 6880
+        "review_count": 73379,
+        "reviews_last_30_days": 10186
+      },
+      {
+        "app_count": 1,
+        "avg_content_chars": 135.9,
+        "avg_rating": 3.896,
+        "category": "ai_tools",
+        "review_count": 65386,
+        "reviews_last_30_days": 8032
       },
       {
         "app_count": 7,
-        "avg_content_chars": 115.1,
-        "avg_rating": 3.345,
-        "category": "utilities",
-        "review_count": 28110,
-        "reviews_last_30_days": 2092
-      },
-      {
-        "app_count": 8,
-        "avg_content_chars": 227.2,
-        "avg_rating": 2.333,
-        "category": "lifestyle",
-        "review_count": 20232,
-        "reviews_last_30_days": 3119
-      },
-      {
-        "app_count": 7,
-        "avg_content_chars": 175.4,
-        "avg_rating": 2.636,
+        "avg_content_chars": 152.5,
+        "avg_rating": 2.904,
         "category": "business",
-        "review_count": 13520,
-        "reviews_last_30_days": 977
+        "review_count": 60578,
+        "reviews_last_30_days": 1297
       },
       {
-        "app_count": 5,
-        "avg_content_chars": 190.7,
-        "avg_rating": 3.823,
-        "category": "health_and_fitness",
-        "review_count": 9375,
-        "reviews_last_30_days": 1691
+        "app_count": 1,
+        "avg_content_chars": 226.3,
+        "avg_rating": 2.908,
+        "category": "health",
+        "review_count": 56798,
+        "reviews_last_30_days": 297
       },
       {
         "app_count": 7,
-        "avg_content_chars": 149.6,
-        "avg_rating": 2.65,
-        "category": "sports",
-        "review_count": 8348,
-        "reviews_last_30_days": 1570
-      },
-      {
-        "app_count": 4,
-        "avg_content_chars": 137.4,
-        "avg_rating": 3.781,
-        "category": "music",
-        "review_count": 8200,
-        "reviews_last_30_days": 1989
+        "avg_content_chars": 120.4,
+        "avg_rating": 3.351,
+        "category": "utilities",
+        "review_count": 40797,
+        "reviews_last_30_days": 2346
       },
       {
         "app_count": 3,
-        "avg_content_chars": 168.8,
-        "avg_rating": 2.852,
+        "avg_content_chars": 192.4,
+        "avg_rating": 2.488,
         "category": "news",
-        "review_count": 6595,
-        "reviews_last_30_days": 2764
+        "review_count": 31598,
+        "reviews_last_30_days": 2882
+      },
+      {
+        "app_count": 8,
+        "avg_content_chars": 226.1,
+        "avg_rating": 2.349,
+        "category": "lifestyle",
+        "review_count": 23362,
+        "reviews_last_30_days": 3384
       },
       {
         "app_count": 2,
-        "avg_content_chars": 190.6,
-        "avg_rating": 3.321,
-        "category": "navigation",
-        "review_count": 5800,
-        "reviews_last_30_days": 634
-      },
-      {
-        "app_count": 2,
-        "avg_content_chars": 205.6,
-        "avg_rating": 1.804,
+        "avg_content_chars": 163.4,
+        "avg_rating": 2.786,
         "category": "food_and_drink",
-        "review_count": 3300,
-        "reviews_last_30_days": 1064
+        "review_count": 22123,
+        "reviews_last_30_days": 1063
       },
       {
-        "app_count": 1,
-        "avg_content_chars": 224.2,
-        "avg_rating": 3.353,
-        "category": "graphics_and_design",
-        "review_count": 2119,
-        "reviews_last_30_days": 15
+        "app_count": 5,
+        "avg_content_chars": 216.1,
+        "avg_rating": 3.996,
+        "category": "health_and_fitness",
+        "review_count": 21917,
+        "reviews_last_30_days": 1950
       },
       {
-        "app_count": 1,
-        "avg_content_chars": 215.9,
-        "avg_rating": 3.927,
-        "category": "books",
-        "review_count": 2020,
-        "reviews_last_30_days": 533
+        "app_count": 7,
+        "avg_content_chars": 150.9,
+        "avg_rating": 2.601,
+        "category": "sports",
+        "review_count": 20629,
+        "reviews_last_30_days": 1861
       },
       {
         "app_count": 2,
-        "avg_content_chars": 268.5,
-        "avg_rating": 3.789,
-        "category": "weather",
-        "review_count": 1860,
-        "reviews_last_30_days": 10
+        "avg_content_chars": 162.5,
+        "avg_rating": 2.461,
+        "category": "navigation",
+        "review_count": 20000,
+        "reviews_last_30_days": 757
+      },
+      {
+        "app_count": 4,
+        "avg_content_chars": 145.8,
+        "avg_rating": 3.779,
+        "category": "music",
+        "review_count": 12697,
+        "reviews_last_30_days": 1980
       },
       {
         "app_count": 1,
-        "avg_content_chars": 185.2,
-        "avg_rating": 3.598,
+        "avg_content_chars": 177.8,
+        "avg_rating": 3.634,
         "category": "medical",
-        "review_count": 1400,
-        "reviews_last_30_days": 874
+        "review_count": 5467,
+        "reviews_last_30_days": 929
+      },
+      {
+        "app_count": 1,
+        "avg_content_chars": 219.5,
+        "avg_rating": 3.946,
+        "category": "books",
+        "review_count": 2453,
+        "reviews_last_30_days": 569
+      },
+      {
+        "app_count": 2,
+        "avg_content_chars": 263.5,
+        "avg_rating": 3.89,
+        "category": "weather",
+        "review_count": 2209,
+        "reviews_last_30_days": 26
+      },
+      {
+        "app_count": 1,
+        "avg_content_chars": 223.6,
+        "avg_rating": 3.358,
+        "category": "graphics_and_design",
+        "review_count": 2136,
+        "reviews_last_30_days": 18
       }
     ],
     "concentration": {
       "app_count": 200,
-      "hhi": 0.023,
-      "review_count": 1259204,
-      "top_10_share": 0.3676,
-      "top_1_share": 0.0574,
-      "top_5_share": 0.2295
+      "hhi": 0.0184,
+      "review_count": 2295799,
+      "top_10_share": 0.3185,
+      "top_1_share": 0.0445,
+      "top_5_share": 0.1828
     }
   }
 }

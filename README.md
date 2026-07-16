@@ -11,7 +11,7 @@ The production path uses Apple's public App Store web catalog review JSON, norma
 - Current target file: `data/targets/apple_apps.csv`
 - Current target shape: `app_name`, `category`, `apple_app_id`, `apple_slug`, `countries`, `active`, `notes`
 - Current target mode: all 200 tracked apps are active for full-scope daily incremental testing.
-- Historical backfill is paused while the daily incremental path is evaluated across the complete target set.
+- Historical backfill is manually disabled. Routine collection uses twice-daily incremental ingestion.
 
 ## Architecture
 
@@ -28,12 +28,16 @@ flowchart LR
 Postgres is the source of truth. Raw JSON and GitHub artifacts are useful for audit/debugging, but the cumulative dataset lives in these tables:
 
 - `app_store_targets`
+- `app_store_executions`
 - `app_store_runs`
+- `app_store_run_scopes`
 - `app_store_review_pages`
 - `app_store_reviews`
 - `app_store_review_changes`
 - `app_store_sync_state`
+- `app_store_monitor_snapshots`
 - `app_store_pressure_state`
+- `app_store_schema_migrations`
 
 Review identity is `platform + source + country + app_id + review_id`, so repeated runs upsert existing reviews instead of duplicating them. If Apple returns changed review metadata, the row is updated and the change is recorded.
 
@@ -43,7 +47,7 @@ See `docs/storage_schema.md` for the storage-layer design, table relationships, 
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m pip install -r requirements.lock
 ```
 
 Create and initialize local Postgres once:
@@ -81,7 +85,7 @@ Fetch and load a full-scope daily incremental window:
   --web-scope-time-budget-seconds 3600
 ```
 
-Run a controlled backfill continuation for selected active targets:
+Historical backfill is not a routine production command. After explicit operator approval, a single-scope capped diagnostic can use:
 
 ```bash
 .venv/bin/python app_store_pipeline.py daily-web-catalog \
@@ -89,7 +93,7 @@ Run a controlled backfill continuation for selected active targets:
   --limit 1 \
   --target-offset 0 \
   --start-page 1 \
-  --max-pages-per-app-country 0 \
+  --max-pages-per-app-country 25 \
   --review-limit 20 \
   --request-delay-seconds 10 \
   --web-time-budget-seconds 1200 \
@@ -97,7 +101,7 @@ Run a controlled backfill continuation for selected active targets:
   --disable-overlap-stop
 ```
 
-A complete historical scope requires terminal evidence of `no_next_href`. Stops caused by page cap, overlap, time budget, final non-200 status, or fetch error are lower-bound results and should be continued or interpreted as incomplete.
+The GitHub backfill workflow remains disabled and additionally requires `I_UNDERSTAND_BACKFILL_PRESSURE`, one runner, an explicit numeric start page, 1-5 apps, and 1-25 pages per scope if an operator deliberately re-enables it. Automatic continuation is removed. A complete historical scope requires `no_next_href`; all guarded/capped results remain lower bounds.
 
 Validate the database:
 
@@ -131,8 +135,9 @@ Generate the reproducible operating-limits report:
 Active workflows:
 
 - `CI`: test suite.
-- `App Store Review Pipeline`: scheduled and dispatchable app-level matrix daily incremental profile. It runs at 08:07 and 20:07 America/Los_Angeles during PDT. Each app starts at page 1 and fetches until it hits trusted historical review overlap, no-next, a time budget, or a fetch stop.
-- `App Store Web Catalog Backfill`: manual matrix backfill using self-hosted Mac runners and local Postgres. Keep this paused unless explicitly testing historical depth.
+- `App Store Review Pipeline`: scheduled and dispatchable app-level matrix daily incremental profile. It runs at 08:07 and 20:07 America/Los_Angeles during PDT. Each app starts at page 1 and fetches until trusted overlap, no-next, a time budget, or a fetch stop. Exact-execution monitoring and failing-only email are integrated.
+- `App Store Alert Email Test`: manual SMTP/eligibility validation without ingestion.
+- `App Store Web Catalog Backfill`: manually disabled and guarded; not part of routine operations.
 
 Research-era workflows have been moved to `docs/archive/workflows/` so they remain auditable but no longer appear as active runnable Actions.
 
@@ -149,6 +154,8 @@ Research-era workflows have been moved to `docs/archive/workflows/` so they rema
 - Data-quality HTML dashboard: `docs/eda/apple_review_data_quality_dashboard.html`
 - Architecture notes: `docs/architecture.md`
 - Storage schema design: `docs/storage_schema.md`
+- Monitoring and email alerts: `docs/monitoring.md`
+- Operations and recovery runbook: `docs/operations_recovery.md`
 - Source decision notes: `docs/source_decision_notes.md`
 - Research archive: `docs/archive/`
 
@@ -157,5 +164,5 @@ Research-era workflows have been moved to `docs/archive/workflows/` so they rema
 - The public web catalog path is public Apple-hosted structured catalog data, not a contractual App Store Connect API.
 - Historical completeness is proven per app-country scope only when the crawler reaches `no_next_href`.
 - Incremental catch-up is proven when a daily run reaches trusted historical review overlap. This avoids stopping on reviews inserted by an earlier incomplete daily run.
-- Deep historical backfill can trigger Apple pressure signals; individual HTTP 429 responses are handled with a 5-minute per-request retry delay plus jitter, while the current-run circuit breaker remains the main global stop condition.
+- Deep historical backfill can trigger Apple pressure signals and is disabled by default. Daily ingestion records both final HTTP status and recovered 429 attempts, with a 5-minute per-request retry delay plus jitter and a current-run circuit breaker.
 - Local Postgres is the current development store. Managed Postgres can be evaluated later if the project moves toward production hosting.

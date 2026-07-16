@@ -34,13 +34,13 @@ gh api repos/XVvvVX-bot/app-store-review-pipeline/actions/runners \
 
 ```sql
 select
-  max(fetched_at::timestamptz) as last_page_at,
-  count(*) filter (where fetched_at::timestamptz >= now() - interval '12 hours') as pages_12h,
-  count(*) filter (where status_code = 429 and fetched_at::timestamptz >= now() - interval '12 hours') as http_429_12h,
+  max(fetched_at_ts) as last_page_at,
+  count(*) filter (where fetched_at_ts >= now() - interval '12 hours') as pages_12h,
+  count(*) filter (where status_code = 429 and fetched_at_ts >= now() - interval '12 hours') as http_429_12h,
   count(*) filter (
     where status_code is not null
       and status_code <> 200
-      and fetched_at::timestamptz >= now() - interval '12 hours'
+      and fetched_at_ts >= now() - interval '12 hours'
   ) as non_200_12h
 from app_store_review_pages
 where source = 'apple_app_store_web_catalog_reviews';
@@ -282,8 +282,8 @@ select
   count(*) filter (where attempt_count > 1) as retried_pages
 from app_store_review_pages, w
 where source = 'apple_app_store_web_catalog_reviews'
-  and fetched_at::timestamptz >= w.start_at
-  and fetched_at::timestamptz <= w.end_at;
+  and fetched_at_ts >= w.start_at
+  and fetched_at_ts <= w.end_at;
 ```
 
 ```sql
@@ -301,8 +301,8 @@ select
   coalesce(sum(capped_scopes), 0) as capped_scopes
 from app_store_runs, w
 where source = 'apple_app_store_web_catalog_reviews'
-  and loaded_at::timestamptz >= w.start_at
-  and loaded_at::timestamptz <= w.end_at;
+  and loaded_at_ts >= w.start_at
+  and loaded_at_ts <= w.end_at;
 ```
 
 ## Regenerate Evidence

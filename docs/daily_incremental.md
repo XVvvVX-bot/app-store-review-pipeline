@@ -2,7 +2,7 @@
 
 This document explains the current daily incremental operating mode for the Apple App Store review pipeline.
 
-The purpose of this mode is to keep the Postgres review dataset fresh across all tracked apps without repeatedly walking deep historical pages. Historical backfill remains available as a manual workflow, but it is not the default operating mode while we evaluate stable refresh behavior.
+The purpose of this mode is to keep the Postgres review dataset fresh across all tracked apps without repeatedly walking deep historical pages. Historical backfill is disabled by default and guarded for deliberate, capped, single-runner use only.
 
 ## Current Schedule
 
@@ -28,18 +28,21 @@ Daily incremental ingestion is a safer production baseline:
 - it avoids repeated deep historical walks unless there is a deliberate backfill test;
 - it directly validates the operational question: can the pipeline reliably capture new review activity over time?
 
-The current stored dataset already supports short-term EDA and modeling. As of the latest local Postgres check, the web-catalog source has rows for 200 apps, with an app-level lower quartile of about 1,988 reviews and a median of about 3,914 reviews. Deep backfill can be resumed later in controlled batches if additional historical depth becomes a priority.
+The current stored dataset already supports short-term EDA and modeling. As of the 2026-07-16 local Postgres check, the web-catalog source has rows for 200 apps, with an app-level lower quartile of 2,192.8 reviews and a median of 4,418.5 reviews. Deep backfill can be resumed later in controlled batches if additional historical depth becomes a priority.
 
 ## End-To-End Schema Flow
 
 The daily incremental run writes directly into the reusable storage schema:
 
-1. Select active targets from `app_store_targets` and `data/targets/apple_apps.csv`.
-2. Create one `app_store_runs` row for each app job loaded into Postgres.
-3. Fetch Apple web catalog review pages and store page status in `app_store_review_pages`.
-4. Normalize review rows and upsert into `app_store_reviews`.
-5. Record inserted or updated review observations in `app_store_review_changes`.
-6. Update `app_store_sync_state` so future incremental runs know which historical overlap is trusted.
+1. Select active targets from `app_store_targets` and `data/targets/apple_apps.csv`, then compute intended scope/config signatures.
+2. Create one `app_store_executions` row for the GitHub run attempt.
+3. Create one `app_store_runs` row for each app worker loaded into Postgres.
+4. Fetch Apple web catalog review pages and store final status plus attempt-level retry/429 evidence in `app_store_review_pages`.
+5. Normalize review rows and upsert into `app_store_reviews`.
+6. Record inserted or updated fields, including before/after values, in `app_store_review_changes`.
+7. Persist one explicit `app_store_run_scopes` outcome for every intended app-country scope.
+8. Update `app_store_sync_state`; only a caught-up scope advances the trusted successful frontier.
+9. Generate one exact-execution health report, persist `app_store_monitor_snapshots`, and complete notification/heartbeat lifecycle handling.
 
 Postgres is the source of truth. Raw JSON and GitHub artifacts are audit/debug outputs, not the cumulative store. Artifact upload failures after Postgres run/page/review writes complete should be treated as post-ingestion infrastructure noise, not as Apple-source ingestion failures.
 
@@ -94,11 +97,11 @@ Current defaults:
 - pre-run HTTP 429 cooldown: disabled for routine daily incremental
 - current-run HTTP 429 circuit breaker: enabled
 
-The daily path is intentionally different from backfill. Backfill can be resumed manually with separate settings when historical depth testing is needed.
+The daily path is intentionally different from backfill. The backfill workflow is manually disabled. If historical depth becomes necessary, it must be explicitly re-enabled and requires the confirmation string `I_UNDERSTAND_BACKFILL_PRESSURE`, one runner, an explicit numeric start page, 1-5 apps, and 1-25 pages per scope. Automatic continuation has been removed.
 
 ## Current Operating Recommendation
 
-The current recommendation is to keep the twice-daily full-scope incremental schedule as the production baseline while controlled grouped operating-limit tests are completed.
+The current recommendation is to keep the twice-daily full-scope, uncapped overlap-stop incremental schedule as the production baseline. Controlled grouped operating-limit tests found no general benefit that justified moving all apps to a three-hour cadence, while one-page and three-page caps could miss incremental rows.
 
 The reproducible operating-limits report is the source of truth for run evidence:
 
@@ -106,7 +109,7 @@ The reproducible operating-limits report is the source of truth for run evidence
 - Machine-readable summary: `docs/operating_limits_summary.json`
 - GitHub run ledger: `docs/experiments/operating_model_run_ledger.json`
 
-As of the latest generated report, the successful full-scope baseline/control observations show clean source-pressure behavior: 0 HTTP 429 pages across successful observed runs, median successful runtime around 51 minutes, and median successful page volume around 276 pages. The high-activity app segment currently accounts for most newly inserted rows, which is why a hybrid model remains a candidate after the planned controlled tests.
+As of the latest generated report, successful full-scope baseline/control observations showed clean final source status, median successful runtime around 51 minutes, and median successful page volume around 276 pages. The high-activity app segment accounts for most new inserts, so a hybrid model remains a future option, not the current production default.
 
 Controlled strategy tests should not repeatedly use all 200 apps. A full-scope run consumes the available incremental-review signal for the next few hours, so frequency, page-cap, and hybrid experiments use fixed randomized 25-app groups from `docs/experiments/operating_model_target_groups.json`. Full-scope 200-app runs remain the production baseline/control path; grouped tests are the faster experimental path for comparing depth and operating patterns without waiting a day for fresh review activity.
 
@@ -127,13 +130,15 @@ For each scheduled run, the monitor checks:
 - GitHub job count: all matrix jobs should finish successfully.
 - `app_store_review_pages`: page count, app count, status code distribution, terminal reasons.
 - `app_store_runs`: inserted rows, updated rows, duplicates skipped, fetch errors, capped scopes.
-- HTTP 429 count and rate.
+- final HTTP 429 pages, recovered/final 429 attempt count, and attempts per fetched page.
 - Long-tail apps with unusually high page counts.
 - Apps that stop by time budget, fetch error, or final non-200 instead of trusted overlap.
 - App-country freshness from `app_store_sync_state`.
 - Database row counts and table sizes.
 
-The monitor appends a Markdown health summary to the GitHub Actions run summary and uploads both Markdown and JSON artifacts. It classifies the run as `healthy`, `degraded`, or `failing`; only `failing` status fails the monitor job and sends an external email. Healthy and degraded results remain in GitHub. The optional external heartbeat detects a scheduled workflow that never starts, which an in-workflow monitor cannot observe.
+The monitor appends a Markdown health summary to the GitHub Actions run summary and uploads Markdown/JSON artifacts. It queries the exact `execution_id`, classifies the run as `healthy`, `degraded`, or `failing`, reconciles review changes, stores a monitor snapshot, and finalizes execution status. Only an eligible first-attempt scheduled `failing` status sends external email. The independent GitHub-hosted notify job creates a fallback failing report when the self-hosted monitor is unavailable. Healthy and degraded results remain in GitHub.
+
+The optional external heartbeat receives `/start`, success, or `/fail` lifecycle pings. It detects a scheduled workflow that never starts or never completes, which an in-workflow monitor cannot observe.
 
 Manual SQL checks remain useful for investigation:
 
@@ -144,12 +149,14 @@ select
   count(*) as pages,
   count(distinct app_id) as apps,
   count(*) filter (where status_code = 200) as ok_pages,
-  count(*) filter (where status_code = 429) as http_429,
+  count(*) filter (where status_code = 429) as final_http_429_pages,
+  coalesce(sum(http_429_attempt_count), 0) as http_429_attempts,
+  coalesce(sum(soft_retry_count), 0) as soft_retries,
   count(*) filter (where status_code is not null and status_code <> 200 and status_code <> 429) as other_non_200,
   coalesce(sum(review_count), 0) as review_rows,
-  max(fetched_at::timestamptz) as last_page_at
+  max(fetched_at_ts) as last_page_at
 from app_store_review_pages
-where fetched_at::timestamptz >= now() - interval '24 hours';
+where fetched_at_ts >= now() - interval '24 hours';
 ```
 
 ```sql
@@ -160,7 +167,7 @@ select
   coalesce(sum(reviews_updated), 0) as reviews_updated,
   coalesce(sum(duplicates_skipped), 0) as duplicates_skipped
 from app_store_runs
-where loaded_at::timestamptz >= now() - interval '24 hours';
+where loaded_at_ts >= now() - interval '24 hours';
 ```
 
 ## Known Boundaries
@@ -171,3 +178,4 @@ where loaded_at::timestamptz >= now() - interval '24 hours';
 - A daily run that stops by trusted overlap is considered caught up for incremental freshness, even if older historical pages remain uncollected.
 - GitHub schedule timing can be delayed.
 - Local Postgres is the current development source of truth; managed Postgres remains a later production decision.
+- Detailed schema deployment and failure recovery steps are in `docs/operations_recovery.md`.

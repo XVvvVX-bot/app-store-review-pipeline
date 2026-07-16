@@ -362,28 +362,28 @@
   },
   "database_snapshot": [
     {
-      "row_count": 2270819,
+      "row_count": 2363030,
       "table_name": "app_store_review_changes",
-      "total_bytes": 1215479808,
-      "total_size": "1159 MB"
+      "total_bytes": 1921646592,
+      "total_size": "1833 MB"
     },
     {
-      "row_count": 117954,
+      "row_count": 129446,
       "table_name": "app_store_review_pages",
-      "total_bytes": 88514560,
-      "total_size": "84 MB"
+      "total_bytes": 193060864,
+      "total_size": "184 MB"
     },
     {
-      "row_count": 2270748,
+      "row_count": 2362752,
       "table_name": "app_store_reviews",
-      "total_bytes": 2585239552,
-      "total_size": "2465 MB"
+      "total_bytes": 4289331200,
+      "total_size": "4091 MB"
     },
     {
-      "row_count": 4658,
+      "row_count": 10458,
       "table_name": "app_store_runs",
-      "total_bytes": 1564672,
-      "total_size": "1528 kB"
+      "total_bytes": 10846208,
+      "total_size": "10 MB"
     }
   ],
   "decision_rules": {
@@ -671,7 +671,7 @@
   ],
   "metadata": {
     "database_url": "postgresql:///app_store_reviews",
-    "generated_at": "2026-07-01T11:02:51+00:00",
+    "generated_at": "2026-07-16T13:18:49+00:00",
     "grace_minutes": 5,
     "ledger_path": "docs/experiments/operating_model_run_ledger.json",
     "source": "apple_app_store_web_catalog_reviews"
