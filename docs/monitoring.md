@@ -116,7 +116,7 @@ The workflow uploads `notification_result.json`, which contains delivery status,
 
 ### Controlled SMTP Test
 
-Use `.github/workflows/app-store-alert-email-test.yml` after first-time setup or credential rotation. It is manual-only, sends a message whose subject starts with `[TEST]`, and uses a synthetic failing report with `--force` solely to exercise SMTP delivery. It does not start ingestion or read or modify Postgres. The workflow summary and seven-day artifact record the delivery result without storing email addresses or credentials.
+Use `.github/workflows/app-store-alert-email-test.yml` after first-time setup or credential rotation. It is manual-only and supports two modes: `smtp_connectivity` sends a synthetic report with `--force`, while `automatic_failure` simulates three HTTP 429 pages, requires the normal threshold and eligibility logic to classify the report as failing, and sends without `--force`. Both modes use a `[TEST]` subject and do not start ingestion or read or modify Postgres. The workflow summary and seven-day artifact record the delivery result without storing email addresses or credentials.
 
 ## Missing Scheduled Runs
 

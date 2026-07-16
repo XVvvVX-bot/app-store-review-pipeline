@@ -2,6 +2,15 @@ name: App Store Alert Email Test
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "SMTP-only connectivity test or automatic failing-alert simulation"
+        required: true
+        default: smtp_connectivity
+        type: choice
+        options:
+          - smtp_connectivity
+          - automatic_failure
 
 permissions:
   contents: read
@@ -10,6 +19,8 @@ jobs:
   email-test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      TEST_MODE: ${{ inputs.mode }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -32,43 +43,119 @@ jobs:
           from datetime import datetime, timezone
           from pathlib import Path
 
+          from app_store_review_pipeline.monitoring import evaluate_alerts, overall_status
+          from app_store_review_pipeline.notifications import build_monitoring_notification
+
           run_id = os.environ["GITHUB_RUN_ID"]
           run_url = f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{run_id}"
-          report = {
-              "metadata": {
-                  "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-                  "github_run_id": run_id,
-                  "github_run_url": run_url,
-                  "github_event_name": "workflow_dispatch",
-                  "github_run_attempt": int(os.environ.get("GITHUB_RUN_ATTEMPT", "1")),
-              },
-              "status": "failing",
-              "alerts": [
-                  {
-                      "severity": "failing",
-                      "code": "smtp_connectivity_test",
-                      "message": "Controlled SMTP connectivity test; ingestion is not failing.",
-                  }
-              ],
-              "run_metrics": {},
-              "app_metrics": {"pressure_scopes": []},
-              "stale_apps": [],
-              "notification": {
-                  "eligible": False,
-                  "reason": "manual_smtp_connectivity_test",
-                  "fingerprint": f"smtp-test-{run_id}",
-                  "subject": f"[TEST] App Store Review Pipeline email alert (run {run_id})",
-                  "body": "\n".join(
-                      [
-                          "App Store Review Pipeline email delivery test",
-                          "",
-                          "This is a controlled SMTP connectivity test.",
-                          "No ingestion was started and Postgres was not read or modified.",
-                          f"GitHub Actions evidence: {run_url}",
-                      ]
-                  ),
-              },
+          mode = os.environ["TEST_MODE"]
+          metadata = {
+              "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+              "github_run_id": run_id,
+              "github_run_url": run_url,
+              "github_event_name": "schedule" if mode == "automatic_failure" else "workflow_dispatch",
+              "github_run_attempt": int(os.environ.get("GITHUB_RUN_ATTEMPT", "1")),
           }
+
+          if mode == "automatic_failure":
+              run_metrics = {
+                  "page_count": 100,
+                  "review_rows": 2000,
+                  "reviews_inserted": 10,
+                  "reviews_updated": 0,
+                  "duplicates_skipped": 1990,
+                  "http_429_pages": 3,
+                  "http_429_rate": 0.03,
+                  "other_non_200_pages": 0,
+                  "fetch_errors": 0,
+                  "fetch_error_rate": 0,
+                  "retry_rate": 0,
+                  "duplicate_rate": 0.90,
+                  "backlog_terminal_rate": 0,
+                  "runtime_minutes": 5,
+              }
+              app_metrics = {
+                  "pressure_scopes": [
+                      {
+                          "app_id": "controlled-simulation",
+                          "app_name": "Controlled failure simulation",
+                          "country": "test",
+                          "page_count": 3,
+                          "page_share": 0.03,
+                          "http_429_pages": 3,
+                          "http_429_share": 1.0,
+                          "fetch_error_pages": 0,
+                          "terminal_reason": "simulated_http_429",
+                      }
+                  ]
+              }
+              alerts = evaluate_alerts(
+                  run_metrics=run_metrics,
+                  app_metrics=app_metrics,
+                  source_frontier={},
+                  accounting={"consistent": True},
+                  stale_apps=[],
+                  history={"median_inserted_per_app_run": 0},
+                  github={
+                      "job_failure": 0,
+                      "recent_schedule_run_count": 1,
+                      "recent_failed_schedule_run_count": 0,
+                  },
+                  selected_count=1,
+                  workflow_result="success",
+                  require_recent_scheduled_run=False,
+              )
+              report = {
+                  "metadata": metadata,
+                  "status": overall_status(alerts),
+                  "alerts": alerts,
+                  "run_metrics": run_metrics,
+                  "app_metrics": app_metrics,
+                  "stale_apps": [],
+              }
+              notification = build_monitoring_notification(report)
+              if report["status"] != "failing" or not notification["eligible"]:
+                  raise RuntimeError("Controlled failure did not qualify for automatic email delivery")
+              notification["subject"] = f"[TEST] {notification['subject']}"
+              notification["body"] = "\n".join(
+                  [
+                      "CONTROLLED AUTOMATIC FAILURE SIMULATION",
+                      "No ingestion was started and Postgres was not read or modified.",
+                      "",
+                      notification["body"],
+                  ]
+              )
+              report["notification"] = notification
+          else:
+              report = {
+                  "metadata": metadata,
+                  "status": "failing",
+                  "alerts": [
+                      {
+                          "severity": "failing",
+                          "code": "smtp_connectivity_test",
+                          "message": "Controlled SMTP connectivity test; ingestion is not failing.",
+                      }
+                  ],
+                  "run_metrics": {},
+                  "app_metrics": {"pressure_scopes": []},
+                  "stale_apps": [],
+                  "notification": {
+                      "eligible": False,
+                      "reason": "manual_smtp_connectivity_test",
+                      "fingerprint": f"smtp-test-{run_id}",
+                      "subject": f"[TEST] App Store Review Pipeline email alert (run {run_id})",
+                      "body": "\n".join(
+                          [
+                              "App Store Review Pipeline email delivery test",
+                              "",
+                              "This is a controlled SMTP connectivity test.",
+                              "No ingestion was started and Postgres was not read or modified.",
+                              f"GitHub Actions evidence: {run_url}",
+                          ]
+                      ),
+                  },
+              }
           Path("data/reports/monitoring/email_test_report.json").write_text(
               json.dumps(report, indent=2) + "\n",
               encoding="utf-8",
@@ -85,12 +172,18 @@ jobs:
           APP_STORE_ALERT_EMAIL_TO: ${{ secrets.APP_STORE_ALERT_EMAIL_TO }}
         run: |
           set -euo pipefail
-          python app_store_pipeline.py send-monitoring-email \
-            --report-json data/reports/monitoring/email_test_report.json \
-            --result-json data/reports/monitoring/email_test_result.json \
-            --force
+          email_args=(
+            --report-json data/reports/monitoring/email_test_report.json
+            --result-json data/reports/monitoring/email_test_result.json
+          )
+          if [ "$TEST_MODE" = "smtp_connectivity" ]; then
+            email_args+=(--force)
+          fi
+          python app_store_pipeline.py send-monitoring-email "${email_args[@]}"
           {
             echo "## SMTP Email Test"
+            echo
+            echo "Mode: \`$TEST_MODE\`"
             echo
             echo '```json'
             cat data/reports/monitoring/email_test_result.json
