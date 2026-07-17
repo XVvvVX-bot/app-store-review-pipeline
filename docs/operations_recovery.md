@@ -58,7 +58,7 @@ When one high-volume app repeatedly exhausts its incremental time budget before 
 - select only the affected app with `limit=1` and its `target_offset`;
 - keep `start_page=1` and set `resume_backlogged_scopes=true`;
 - keep `max_pages_per_app_country=0` and overlap stop enabled;
-- use `backlog_resume_overlap_pages=25`, `backlog_resume_lookback_attempts=4`, and `backlog_resume_max_age_hours=36`;
+- use the guarded workflow defaults: 25 overlap pages, 4 recent attempts, and a 36-hour maximum checkpoint age;
 - temporarily use `web_time_budget_seconds=7200` and `web_scope_time_budget_seconds=7200` for the controlled recovery.
 
 The checkpoint query only considers incomplete attempts newer than the scope's last successful catch-up. It chooses the recent attempt that reached the oldest review frontier, then moves 25 pages toward page 1 before resuming. The safety overlap absorbs normal page drift while trusted review IDs still control the final catch-up stop. After the scope reports `caught_up_to_existing_reviews`, leave routine scheduled runs in their default page-1 mode.
