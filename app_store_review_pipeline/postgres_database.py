@@ -1662,6 +1662,82 @@ def trusted_existing_review_ids_by_scope(
     return results
 
 
+def backlogged_resume_start_pages_by_scope(
+    database_url: str,
+    scopes: Iterable[tuple[str, str, str]],
+    *,
+    source: str = WEB_CATALOG_SOURCE,
+    overlap_pages: int = 25,
+    lookback_attempts: int = 4,
+    max_age_hours: int = 36,
+    initialize_schema: bool = True,
+) -> dict[tuple[str, str, str], int]:
+    scope_list = [(str(app_id), country.lower(), sort_by) for app_id, country, sort_by in scopes]
+    if not scope_list:
+        return {}
+    if initialize_schema:
+        initialize_postgres(database_url)
+    overlap_pages = max(1, int(overlap_pages))
+    lookback_attempts = max(1, int(lookback_attempts))
+    max_age_hours = max(1, int(max_age_hours))
+    results: dict[tuple[str, str, str], int] = {}
+    with connect_postgres(database_url) as connection:
+        for app_id, country, sort_by in scope_list:
+            row = connection.execute(
+                """
+                WITH recent_attempts AS (
+                    SELECT
+                        p.run_id,
+                        MAX(p.page_number) FILTER (WHERE p.status = 'ok') AS max_ok_page,
+                        MIN(p.min_updated_epoch_seconds) FILTER (
+                            WHERE p.status = 'ok' AND p.min_updated_epoch_seconds IS NOT NULL
+                        ) AS oldest_updated_epoch_seconds,
+                        MAX(r.loaded_at_ts) AS loaded_at
+                    FROM app_store_review_pages p
+                    JOIN app_store_runs r
+                      ON r.run_id = p.run_id
+                    JOIN app_store_sync_state s
+                      ON s.app_id = p.app_id
+                     AND s.country = p.country
+                     AND s.sort_by = p.sort_by
+                     AND s.source = p.source
+                    WHERE p.app_id = %s
+                      AND p.country = %s
+                      AND p.sort_by = %s
+                      AND p.source = %s
+                      AND s.backlogged = 1
+                      AND r.loaded_at_ts IS NOT NULL
+                      AND r.loaded_at_ts >= CURRENT_TIMESTAMP - (%s * INTERVAL '1 hour')
+                      AND (s.last_successful_at IS NULL OR r.loaded_at_ts > s.last_successful_at)
+                    GROUP BY p.run_id
+                    ORDER BY MAX(r.loaded_at_ts) DESC
+                    LIMIT %s
+                )
+                SELECT run_id, max_ok_page, oldest_updated_epoch_seconds, loaded_at
+                FROM recent_attempts
+                WHERE max_ok_page > 1
+                ORDER BY oldest_updated_epoch_seconds ASC NULLS LAST,
+                         max_ok_page DESC,
+                         loaded_at DESC
+                LIMIT 1
+                """,
+                (
+                    app_id,
+                    country,
+                    sort_by,
+                    source,
+                    max_age_hours,
+                    lookback_attempts,
+                ),
+            ).fetchone()
+            if not row:
+                continue
+            resume_start_page = max(1, int(row["max_ok_page"]) - overlap_pages + 1)
+            if resume_start_page > 1:
+                results[(app_id, country, sort_by)] = resume_start_page
+    return results
+
+
 def review_counts_by_scope(
     database_url: str,
     scopes: Iterable[tuple[str, str, str]],
@@ -2414,9 +2490,11 @@ def scope_outcome(
     fetch_errors: int,
     other_non_200_pages: int,
 ) -> str:
-    if page_count <= 0 or fetch_errors > 0 or other_non_200_pages > 0:
-        return "hard_failure"
     if terminal_reason in HARD_FAILURE_TERMINAL_REASONS:
+        return "hard_failure"
+    if terminal_reason in BACKLOG_TERMINAL_REASONS:
+        return "backlogged"
+    if page_count <= 0 or fetch_errors > 0 or other_non_200_pages > 0:
         return "hard_failure"
     if terminal_reason in SUCCESS_TERMINAL_REASONS:
         return "caught_up"

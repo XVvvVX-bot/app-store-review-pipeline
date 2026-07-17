@@ -72,6 +72,8 @@ Daily incremental starts at page 1 and fetches newest-to-older pages.
 
 It stops when it reaches trusted historical overlap, `no_next_href`, a time budget, or a fetch stop.
 
+Before starting another deep page, the fetcher now reserves enough remaining budget for one configured 429 cooldown, jitter allowance, and retry request. If that retry window no longer fits, the scope stops as `time_budget_retry_window_exceeded` and remains a resumable backlog instead of issuing a request that cannot be retried and turning the run into a hard failure.
+
 The overlap rule intentionally uses trusted history, not every review ever inserted. Reviews from an earlier incomplete daily run are not enough to stop the next run, because that could leave a gap between the newly inserted rows and the older historical dataset. The pipeline uses `app_store_sync_state.last_successful_run_id` to decide which existing review IDs are safe overlap anchors.
 
 This distinction matters for long-tail catch-up cases. For example, Spotify had a larger freshness gap than most apps in one validation run. The pipeline fetched 103 pages, saw 2,040 review rows, inserted 207 genuinely new reviews, skipped 1,833 already-known reviews, and then stopped with `caught_up_to_existing_reviews`. The 103 pages did not mean Spotify had 2,040 new reviews; it meant the pipeline had to walk far enough to bridge back to trusted historical rows.
@@ -96,6 +98,8 @@ Current defaults:
 - per-scope time budget: 3,600 seconds
 - pre-run HTTP 429 cooldown: disabled for routine daily incremental
 - current-run HTTP 429 circuit breaker: enabled
+
+Normal scheduled runs still start every app at page 1. A controlled manual recovery can add `--resume-backlogged-scopes`; it considers only recent incomplete attempts after the last successful catch-up, chooses the attempt that reached the oldest review frontier, and revisits 25 pages before that checkpoint. This mode is explicit so routine incremental runs continue to capture the newest page-one reviews.
 
 The daily path is intentionally different from backfill. The backfill workflow is manually disabled. If historical depth becomes necessary, it must be explicitly re-enabled and requires the confirmation string `I_UNDERSTAND_BACKFILL_PRESSURE`, one runner, an explicit numeric start page, 1-5 apps, and 1-25 pages per scope. Automatic continuation has been removed.
 

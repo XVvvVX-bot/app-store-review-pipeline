@@ -40,6 +40,7 @@ from app_store_review_pipeline.operating import (
 )
 from app_store_review_pipeline.postgres_database import (
     backfill_typed_timestamps_postgres,
+    backlogged_resume_start_pages_by_scope,
     finalize_execution_postgres,
     initialize_postgres,
     load_pipeline_run_postgres,
@@ -280,6 +281,29 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Skip syncing repository targets because an upstream preflight already synced them.",
     )
+    daily_web_catalog.add_argument(
+        "--resume-backlogged-scopes",
+        action="store_true",
+        help="Resume recent incomplete app-country scopes from a safety-overlapped page checkpoint.",
+    )
+    daily_web_catalog.add_argument(
+        "--backlog-resume-overlap-pages",
+        type=int,
+        default=25,
+        help="Number of already-fetched pages to revisit before a backlog checkpoint.",
+    )
+    daily_web_catalog.add_argument(
+        "--backlog-resume-lookback-attempts",
+        type=int,
+        default=4,
+        help="Number of recent incomplete attempts considered when choosing a backlog checkpoint.",
+    )
+    daily_web_catalog.add_argument(
+        "--backlog-resume-max-age-hours",
+        type=int,
+        default=36,
+        help="Maximum age of an incomplete attempt eligible for backlog recovery.",
+    )
     add_execution_arguments(daily_web_catalog)
     daily_web_catalog.set_defaults(func=command_daily_web_catalog)
 
@@ -486,6 +510,8 @@ def summarize_fetch_cli(report: dict) -> dict:
         "missing_rating": missing_rating,
         "overall_time_budget_exceeded": bool(report.get("overall_time_budget_exceeded", False)),
         "scope_time_budget_seconds": report.get("scope_time_budget_seconds", 0),
+        "resumed_scope_count": len(report.get("resumed_scopes", [])),
+        "resumed_scopes": report.get("resumed_scopes", []),
         "all_pages_ok_after_retry": bool(page_reports) and final_non_200_pages == 0 and report.get("fetch_errors", 0) == 0,
     }
 
@@ -806,6 +832,8 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
                 "request_jitter": getattr(args, "request_delay_jitter_seconds", 0.0),
                 "scope_time_budget": args.web_scope_time_budget_seconds,
                 "overlap_stop": not getattr(args, "disable_overlap_stop", False),
+                "resume_backlogged_scopes": bool(getattr(args, "resume_backlogged_scopes", False)),
+                "backlog_resume_overlap_pages": int(getattr(args, "backlog_resume_overlap_pages", 25)),
             }
         )
     )
@@ -848,6 +876,22 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         if getattr(args, "stop_at_rss_parity", False)
         else {}
     )
+    resume_backlogged_scopes = bool(getattr(args, "resume_backlogged_scopes", False))
+    if resume_backlogged_scopes and int(args.start_page) != 1:
+        raise ValueError("--resume-backlogged-scopes requires --start-page 1")
+    scope_start_pages = (
+        backlogged_resume_start_pages_by_scope(
+            args.database_url,
+            scopes,
+            source=WEB_CATALOG_SOURCE,
+            overlap_pages=getattr(args, "backlog_resume_overlap_pages", 25),
+            lookback_attempts=getattr(args, "backlog_resume_lookback_attempts", 4),
+            max_age_hours=getattr(args, "backlog_resume_max_age_hours", 36),
+            initialize_schema=initialize_schema,
+        )
+        if resume_backlogged_scopes
+        else {}
+    )
     fetch_report = fetch_web_catalog_targets(
         targets,
         raw_dir,
@@ -855,6 +899,7 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         sort_by=args.sort_by,
         max_pages_per_app_country=args.max_pages_per_app_country,
         start_page=args.start_page,
+        start_pages_by_scope=scope_start_pages,
         review_limit=args.review_limit,
         timeout_seconds=args.timeout_seconds,
         request_delay_seconds=args.request_delay_seconds,
@@ -931,6 +976,12 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         "target_offset": max(0, args.target_offset),
         "max_pages_per_app_country": args.max_pages_per_app_country,
         "start_page": args.start_page,
+        "resume_backlogged_scopes": resume_backlogged_scopes,
+        "backlog_resume_overlap_pages": getattr(args, "backlog_resume_overlap_pages", 25),
+        "backlog_resume_lookback_attempts": getattr(args, "backlog_resume_lookback_attempts", 4),
+        "backlog_resume_max_age_hours": getattr(args, "backlog_resume_max_age_hours", 36),
+        "effective_start_pages_by_scope": fetch_report.get("start_pages_by_scope", {}),
+        "resumed_scopes": fetch_report.get("resumed_scopes", []),
         "review_limit": args.review_limit,
         "request_delay_seconds": args.request_delay_seconds,
         "request_delay_jitter_seconds": getattr(args, "request_delay_jitter_seconds", 0.0),

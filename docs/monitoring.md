@@ -66,7 +66,7 @@ Each report contains:
 - database row counts, relation sizes, and growth compared with prior monitor snapshots;
 - high-volume, high-pressure, and long-tail app scopes.
 
-`http_429_pages` counts pages whose final response remained 429. `http_429_attempts` counts every 429 inside the retry chain, including a page that later recovered to 200. The alert rate is `http_429_attempts / fetched_pages`; final non-200 rate remains a separate metric.
+`http_429_pages` counts pages whose final response remained 429. `http_429_attempts` counts every 429 inside the retry chain, including a page that later recovered to 200. `final_http_429_rate` is the failing-threshold rate; the attempt rate remains visible as source-pressure evidence and produces a degraded warning when all affected pages recover.
 
 ## Health And Alert Logic
 
@@ -77,7 +77,7 @@ Each report contains:
 - A non-empty target set produces zero pages.
 - Any intended scope has no persisted scope outcome.
 - Any scope ends in `hard_failure`.
-- HTTP 429 attempts are at least 3, or attempts per fetched page are at least 0.5%.
+- Final HTTP 429 pages are at least 3, or final 429 pages per fetched page are at least 0.5%.
 - Fetch-error scopes are at least 1% of completed scopes.
 - Any active app-country-source scope has no completed collection attempt in 36 hours.
 - More than 5% of completed scopes remain backlogged.
@@ -85,7 +85,7 @@ Each report contains:
 
 ### Degraded
 
-- Any HTTP 429 attempt occurs below the failing threshold.
+- Any HTTP 429 attempt occurs and all final 429 pressure remains below the failing threshold.
 - Any non-429 final non-200 response occurs.
 - Retried pages exceed 10% of fetched pages.
 - Runtime exceeds 90 minutes or twice the recent comparable median.

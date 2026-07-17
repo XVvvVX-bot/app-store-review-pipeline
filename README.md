@@ -135,7 +135,7 @@ Generate the reproducible operating-limits report:
 Active workflows:
 
 - `CI`: test suite.
-- `App Store Review Pipeline`: scheduled and dispatchable app-level matrix daily incremental profile. It runs at 08:07 and 20:07 America/Los_Angeles during PDT. Each app starts at page 1 and fetches until trusted overlap, no-next, a time budget, or a fetch stop. Exact-execution monitoring and failing-only email are integrated.
+- `App Store Review Pipeline`: scheduled and dispatchable app-level matrix daily incremental profile. It runs at 08:07 and 20:07 America/Los_Angeles during PDT. Routine runs start each app at page 1 and fetch until trusted overlap, no-next, a time budget, or a fetch stop. Explicit safety-overlapped checkpoint recovery is available for a recent long-tail incremental backlog. Exact-execution monitoring and failing-only email are integrated.
 - `App Store Alert Email Test`: manual SMTP/eligibility validation without ingestion.
 - `App Store Web Catalog Backfill`: manually disabled and guarded; not part of routine operations.
 
@@ -164,5 +164,5 @@ Research-era workflows have been moved to `docs/archive/workflows/` so they rema
 - The public web catalog path is public Apple-hosted structured catalog data, not a contractual App Store Connect API.
 - Historical completeness is proven per app-country scope only when the crawler reaches `no_next_href`.
 - Incremental catch-up is proven when a daily run reaches trusted historical review overlap. This avoids stopping on reviews inserted by an earlier incomplete daily run.
-- Deep historical backfill can trigger Apple pressure signals and is disabled by default. Daily ingestion records both final HTTP status and recovered 429 attempts, with a 5-minute per-request retry delay plus jitter and a current-run circuit breaker.
+- Deep historical backfill can trigger Apple pressure signals and is disabled by default. Daily ingestion records both final HTTP status and recovered 429 attempts, with a 5-minute per-request retry delay plus jitter and a current-run circuit breaker. Recovered attempts warn as degraded; failing 429 thresholds use final unrecovered pages.
 - Local Postgres is the current development store. Managed Postgres can be evaluated later if the project moves toward production hosting.

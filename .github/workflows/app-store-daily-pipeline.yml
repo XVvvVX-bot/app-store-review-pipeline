@@ -55,6 +55,26 @@ on:
         required: false
         default: "1"
         type: string
+      resume_backlogged_scopes:
+        description: "Resume recent incomplete scopes from a safety-overlapped checkpoint; intended for controlled recovery"
+        required: false
+        default: false
+        type: boolean
+      backlog_resume_overlap_pages:
+        description: "Pages to revisit before the selected backlog checkpoint"
+        required: false
+        default: "25"
+        type: string
+      backlog_resume_lookback_attempts:
+        description: "Recent incomplete attempts considered for the backlog checkpoint"
+        required: false
+        default: "4"
+        type: string
+      backlog_resume_max_age_hours:
+        description: "Maximum age of an incomplete attempt eligible for backlog recovery"
+        required: false
+        default: "36"
+        type: string
       review_limit:
         description: "Requested web catalog reviews per page; Apple currently caps this at 20"
         required: false
@@ -159,6 +179,10 @@ jobs:
           INPUT_MAX_PARALLEL: ${{ github.event_name == 'workflow_dispatch' && inputs.max_parallel || '4' }}
           INPUT_MAX_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.max_pages_per_app_country || '0' }}
           INPUT_START_PAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.start_page || '1' }}
+          INPUT_RESUME_BACKLOGGED_SCOPES: ${{ github.event_name == 'workflow_dispatch' && inputs.resume_backlogged_scopes || 'false' }}
+          INPUT_BACKLOG_RESUME_OVERLAP_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.backlog_resume_overlap_pages || '25' }}
+          INPUT_BACKLOG_RESUME_LOOKBACK_ATTEMPTS: ${{ github.event_name == 'workflow_dispatch' && inputs.backlog_resume_lookback_attempts || '4' }}
+          INPUT_BACKLOG_RESUME_MAX_AGE_HOURS: ${{ github.event_name == 'workflow_dispatch' && inputs.backlog_resume_max_age_hours || '36' }}
           INPUT_REVIEW_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.review_limit || '20' }}
           INPUT_REQUEST_DELAY: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '10' }}
           INPUT_REQUEST_JITTER: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_jitter_seconds || '5' }}
@@ -207,6 +231,10 @@ jobs:
               "max_parallel": os.environ["INPUT_MAX_PARALLEL"],
               "max_pages": os.environ["INPUT_MAX_PAGES"],
               "start_page": os.environ["INPUT_START_PAGE"],
+              "resume_backlogged_scopes": os.environ["INPUT_RESUME_BACKLOGGED_SCOPES"].lower() == "true",
+              "backlog_resume_overlap_pages": os.environ["INPUT_BACKLOG_RESUME_OVERLAP_PAGES"],
+              "backlog_resume_lookback_attempts": os.environ["INPUT_BACKLOG_RESUME_LOOKBACK_ATTEMPTS"],
+              "backlog_resume_max_age_hours": os.environ["INPUT_BACKLOG_RESUME_MAX_AGE_HOURS"],
               "review_limit": os.environ["INPUT_REVIEW_LIMIT"],
               "request_delay": os.environ["INPUT_REQUEST_DELAY"],
               "request_jitter": os.environ["INPUT_REQUEST_JITTER"],
@@ -368,6 +396,10 @@ jobs:
       INPUT_PRESSURE_RAMP_LOOKBACK_MINUTES: ${{ github.event_name == 'workflow_dispatch' && inputs.pressure_ramp_lookback_minutes || '720' }}
       INPUT_PRESSURE_RAMP_MAX_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.pressure_ramp_max_pages || '25' }}
       INPUT_START_PAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.start_page || '1' }}
+      INPUT_RESUME_BACKLOGGED_SCOPES: ${{ github.event_name == 'workflow_dispatch' && inputs.resume_backlogged_scopes || 'false' }}
+      INPUT_BACKLOG_RESUME_OVERLAP_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.backlog_resume_overlap_pages || '25' }}
+      INPUT_BACKLOG_RESUME_LOOKBACK_ATTEMPTS: ${{ github.event_name == 'workflow_dispatch' && inputs.backlog_resume_lookback_attempts || '4' }}
+      INPUT_BACKLOG_RESUME_MAX_AGE_HOURS: ${{ github.event_name == 'workflow_dispatch' && inputs.backlog_resume_max_age_hours || '36' }}
       INPUT_REVIEW_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.review_limit || '20' }}
       INPUT_REQUEST_DELAY_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_seconds || '10' }}
       INPUT_REQUEST_DELAY_JITTER_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.request_delay_jitter_seconds || '5' }}
@@ -456,6 +488,15 @@ jobs:
           if [ "$INPUT_DISABLE_OVERLAP_STOP" = "true" ]; then
             overlap_flag="--disable-overlap-stop"
           fi
+          resume_args=()
+          if [ "$INPUT_RESUME_BACKLOGGED_SCOPES" = "true" ]; then
+            resume_args+=(
+              --resume-backlogged-scopes
+              --backlog-resume-overlap-pages "$INPUT_BACKLOG_RESUME_OVERLAP_PAGES"
+              --backlog-resume-lookback-attempts "$INPUT_BACKLOG_RESUME_LOOKBACK_ATTEMPTS"
+              --backlog-resume-max-age-hours "$INPUT_BACKLOG_RESUME_MAX_AGE_HOURS"
+            )
+          fi
           .venv/bin/python app_store_pipeline.py daily-web-catalog \
             --database-url "$database_url" \
             --limit "$INPUT_LIMIT" \
@@ -485,7 +526,8 @@ jobs:
             --intended-scope-count "$INTENDED_SCOPE_COUNT" \
             --assume-postgres-schema \
             --skip-target-sync \
-            $overlap_flag
+            $overlap_flag \
+            "${resume_args[@]}"
 
       - name: Check current-run web catalog 429 circuit breaker
         if: ${{ always() && !cancelled() }}

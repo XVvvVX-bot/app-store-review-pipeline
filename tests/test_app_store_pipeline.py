@@ -322,6 +322,7 @@ def test_sync_state_typed_timestamp_placeholders_are_aligned(monkeypatch):
 def test_scope_outcome_and_review_change_fields_are_explicit():
     assert scope_outcome(terminal_reason="caught_up_to_existing_reviews", page_count=1, fetch_errors=0, other_non_200_pages=0) == "caught_up"
     assert scope_outcome(terminal_reason="page_cap", page_count=2, fetch_errors=0, other_non_200_pages=0) == "backlogged"
+    assert scope_outcome(terminal_reason="time_budget_retry_window_exceeded", page_count=2, fetch_errors=1, other_non_200_pages=1) == "backlogged"
     assert scope_outcome(terminal_reason=None, page_count=0, fetch_errors=0, other_non_200_pages=0) == "hard_failure"
     assert review_changed_fields(
         {"title": "Before", "content": "Same", "rating": 5},
@@ -540,6 +541,54 @@ def test_trusted_existing_review_ids_use_successful_frontier(monkeypatch):
     assert "COALESCE(BOOL_OR" in queries[0][0]
     assert "first_run.loaded_at <= trusted_success_run.loaded_at" in queries[0][0]
     assert "first_run.loaded_at < inferred_incomplete.loaded_at" in queries[0][0]
+
+
+def test_backlogged_resume_start_pages_use_recent_deepest_checkpoint(monkeypatch):
+    queries = []
+
+    class FakeResult:
+        def fetchone(self):
+            return {
+                "run_id": "run-260",
+                "max_ok_page": 260,
+                "oldest_updated_epoch_seconds": 1_700_000_000,
+                "loaded_at": "2026-07-17T07:00:00Z",
+            }
+
+    class FakeConnection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def execute(self, query, params=None):
+            queries.append((query, params))
+            return FakeResult()
+
+    monkeypatch.setattr(postgres_database, "initialize_postgres", lambda database_url: None)
+    monkeypatch.setattr(postgres_database, "connect_postgres", lambda database_url: FakeConnection())
+
+    result = postgres_database.backlogged_resume_start_pages_by_scope(
+        "postgresql:///fixture",
+        [("6443467666", "US", "recent")],
+        overlap_pages=25,
+        lookback_attempts=4,
+        max_age_hours=36,
+    )
+
+    assert result == {("6443467666", "us", "recent"): 236}
+    assert queries[0][1] == (
+        "6443467666",
+        "us",
+        "recent",
+        WEB_CATALOG_SOURCE,
+        36,
+        4,
+    )
+    assert "s.backlogged = 1" in queries[0][0]
+    assert "r.loaded_at_ts > s.last_successful_at" in queries[0][0]
+    assert "oldest_updated_epoch_seconds ASC" in queries[0][0]
 
 
 def test_check_web_429_circuit_breaker_command_returns_two_when_tripped(monkeypatch, capsys):
@@ -1217,11 +1266,15 @@ def test_monitoring_workflow_and_schedule_failures_are_failing():
 
 
 def test_monitoring_http_429_thresholds_map_to_degraded_and_failing():
-    status, alerts = monitoring_alert_status(run_metrics={"http_429_pages": 1, "http_429_rate": 0.004})
+    status, alerts = monitoring_alert_status(
+        run_metrics={"http_429_pages": 1, "final_http_429_rate": 0.004}
+    )
     assert status == "degraded"
     assert "http_429_present" in alert_codes(alerts)
 
-    status, alerts = monitoring_alert_status(run_metrics={"http_429_pages": 3, "http_429_rate": 0.03})
+    status, alerts = monitoring_alert_status(
+        run_metrics={"http_429_pages": 3, "final_http_429_rate": 0.03}
+    )
     assert status == "failing"
     assert "excessive_http_429" in alert_codes(alerts)
 
@@ -1234,6 +1287,17 @@ def test_monitoring_http_429_thresholds_map_to_degraded_and_failing():
     )
     assert status == "degraded"
     assert "http_429_present" in alert_codes(alerts)
+
+    status, alerts = monitoring_alert_status(
+        run_metrics={
+            "http_429_pages": 0,
+            "http_429_attempts": 12,
+            "http_429_rate": 0.03,
+            "final_http_429_rate": 0,
+        }
+    )
+    assert status == "degraded"
+    assert "excessive_http_429" not in alert_codes(alerts)
 
 
 def test_monitoring_429_does_not_duplicate_other_non_200_warning():
@@ -2648,6 +2712,61 @@ def test_fetch_web_catalog_targets_stops_before_request_without_retry_window(tmp
     assert report["page_reports"][0]["terminal_reason"] == "time_budget_retry_window_exceeded"
 
 
+def test_fetch_web_catalog_targets_reserves_429_cooldown_before_next_request(tmp_path):
+    session = FakeWebSession(
+        [
+            FakeWebResponse(200, payload=web_catalog_payload(start=1, count=2, has_next=True)),
+            FakeWebResponse(200, payload=web_catalog_payload(start=3, count=2, has_next=False)),
+        ]
+    )
+
+    report = fetch_web_catalog_targets(
+        [fixture_target()],
+        tmp_path,
+        "run",
+        max_pages_per_app_country=0,
+        review_limit=2,
+        timeout_seconds=20,
+        request_delay_seconds=0,
+        web_429_retries=1,
+        web_429_retry_seconds=300,
+        web_429_retry_jitter_seconds=60,
+        web_soft_retries=0,
+        time_budget_seconds=350,
+        monotonic_fn=lambda: 0.0,
+        session=session,
+    )
+
+    assert len(session.calls) == 1
+    assert report["fetch_errors"] == 0
+    assert report["warning_scopes"][0]["reason"] == "time_budget_retry_window_exceeded"
+    assert report["page_reports"][0]["terminal_reason"] == "time_budget_retry_window_exceeded"
+
+
+def test_fetch_web_catalog_targets_classifies_unfittable_429_retry_as_backlog(tmp_path):
+    session = FakeWebSession([FakeWebResponse(429)])
+
+    report = fetch_web_catalog_targets(
+        [fixture_target()],
+        tmp_path,
+        "run",
+        max_pages_per_app_country=0,
+        review_limit=2,
+        request_delay_seconds=0,
+        web_429_retries=1,
+        web_429_retry_seconds=300,
+        web_soft_retries=0,
+        time_budget_seconds=1,
+        monotonic_fn=lambda: 0.0,
+        session=session,
+    )
+
+    assert report["fetch_errors"] == 1
+    assert report["page_reports"][0]["status_code"] == 429
+    assert report["page_reports"][0]["terminal_reason"] == "time_budget_retry_window_exceeded"
+    assert report["warning_scopes"][0]["reason"] == "time_budget_retry_window_exceeded"
+
+
 def test_fetch_web_catalog_targets_zero_page_cap_follows_until_no_next(tmp_path):
     session = FakeWebSession(
         [
@@ -2800,6 +2919,35 @@ def test_fetch_web_catalog_targets_can_start_from_deeper_page(tmp_path):
     assert report["page_reports"][0]["page_number"] == 51
     assert report["page_reports"][0]["raw_json_path"].endswith("_051.json")
     assert report["page_reports"][1]["terminal_reason"] == "page_cap"
+
+
+def test_fetch_web_catalog_targets_uses_scope_specific_resume_page(tmp_path):
+    session = FakeWebSession(
+        [
+            FakeWebResponse(200, payload=web_catalog_payload(start=471, count=2, has_next=True)),
+            FakeWebResponse(200, payload=web_catalog_payload(start=473, count=1, has_next=False)),
+        ]
+    )
+
+    report = fetch_web_catalog_targets(
+        [fixture_target()],
+        tmp_path,
+        "run",
+        start_page=1,
+        start_pages_by_scope={("123456789", "us", "recent"): 236},
+        max_pages_per_app_country=0,
+        review_limit=2,
+        request_delay_seconds=0,
+        web_429_retries=0,
+        session=session,
+    )
+
+    assert report["start_page"] == 1
+    assert report["start_pages_by_scope"] == {"123456789|us|recent": 236}
+    assert report["resumed_scopes"][0]["effective_start_page"] == 236
+    assert report["page_reports"][0]["page_number"] == 236
+    assert "offset=470" in session.calls[0]
+    assert report["page_reports"][1]["terminal_reason"] == "no_next_href"
 
 
 def test_fetch_web_catalog_targets_stops_after_target_review_count(tmp_path):

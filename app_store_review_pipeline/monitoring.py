@@ -341,7 +341,8 @@ def fetch_run_metrics(
             COUNT(*) FILTER (WHERE outcome = 'caught_up')::bigint AS caught_up_scope_count,
             COUNT(*) FILTER (WHERE outcome = 'backlogged')::bigint AS backlogged_scope_count,
             COUNT(*) FILTER (WHERE outcome = 'hard_failure')::bigint AS hard_failure_scope_count,
-            COALESCE(SUM(fetch_errors), 0)::bigint AS scope_fetch_errors
+            COALESCE(SUM(fetch_errors) FILTER (WHERE outcome = 'hard_failure'), 0)::bigint
+                AS scope_fetch_errors
         FROM app_store_run_scopes
         WHERE {scope_where}
         """,
@@ -382,6 +383,9 @@ def fetch_run_metrics(
     observed_rows = inserted + updated + skipped
     output["http_429_rate"] = (
         round(int(output.get("http_429_attempts") or 0) / page_count, 4) if page_count else 0
+    )
+    output["final_http_429_rate"] = (
+        round(int(output.get("http_429_pages") or 0) / page_count, 4) if page_count else 0
     )
     output["non_200_rate"] = (
         round((int(output.get("http_429_pages") or 0) + int(output.get("other_non_200_pages") or 0)) / page_count, 4)
@@ -922,7 +926,9 @@ def evaluate_alerts(
     database_growth = database_growth or {}
     page_count = int(run_metrics.get("page_count") or 0)
     inserted = int(run_metrics.get("reviews_inserted") or 0)
-    http_429 = int(run_metrics.get("http_429_attempts") or run_metrics.get("http_429_pages") or 0)
+    http_429_attempts = int(run_metrics.get("http_429_attempts") or run_metrics.get("http_429_pages") or 0)
+    final_http_429_pages = int(run_metrics.get("http_429_pages") or 0)
+    final_http_429_rate = float(run_metrics.get("final_http_429_rate") or 0)
     other_non_200 = int(run_metrics.get("other_non_200_pages") or 0)
     fetch_error_rate = float(run_metrics.get("fetch_error_rate") or 0)
     retry_rate = float(run_metrics.get("retry_rate") or 0)
@@ -962,10 +968,10 @@ def evaluate_alerts(
             "hard_failure_scopes",
             f"{hard_failure_scope_count} app-country scopes ended in a hard failure.",
         )
-    if http_429 >= 3 or float(run_metrics.get("http_429_rate") or 0) >= 0.005:
-        add_alert(alerts, "failing", "excessive_http_429", "HTTP 429 attempt volume or rate crossed the failing threshold.")
-    elif http_429 > 0:
-        add_alert(alerts, "degraded", "http_429_present", "An HTTP 429 attempt occurred but recovered or stayed below the failing threshold.")
+    if final_http_429_pages >= 3 or final_http_429_rate >= 0.005:
+        add_alert(alerts, "failing", "excessive_http_429", "Final HTTP 429 page volume or rate crossed the failing threshold.")
+    elif http_429_attempts > 0:
+        add_alert(alerts, "degraded", "http_429_present", "An HTTP 429 attempt occurred but recovered or final 429 pressure stayed below the failing threshold.")
     if other_non_200 > 0:
         add_alert(alerts, "degraded", "other_non_200_present", "One or more non-429 error responses occurred.")
     if fetch_error_rate >= 0.01:

@@ -37,6 +37,7 @@ def fetch_web_catalog_targets(
     sort_by: str = WEB_CATALOG_SORT_BY,
     max_pages_per_app_country: int = 25,
     start_page: int = 1,
+    start_pages_by_scope: dict[tuple[str, str, str], int] | None = None,
     review_limit: int = 20,
     timeout_seconds: float = 20.0,
     request_delay_seconds: float = 5.0,
@@ -60,11 +61,15 @@ def fetch_web_catalog_targets(
 ) -> dict[str, Any]:
     raw_dir.mkdir(parents=True, exist_ok=True)
     start_page = max(1, start_page)
-    page_cap = (
+    default_page_cap = (
         start_page + max_pages_per_app_country - 1
         if max_pages_per_app_country > 0
         else None
     )
+    start_pages_by_scope = {
+        (str(app_id), str(country).lower(), str(scope_sort)): max(start_page, int(scope_start_page))
+        for (app_id, country, scope_sort), scope_start_page in (start_pages_by_scope or {}).items()
+    }
     deadline_monotonic = monotonic_fn() + time_budget_seconds if time_budget_seconds and time_budget_seconds > 0 else None
     known_review_ids_by_scope = known_review_ids_by_scope or {}
     target_review_counts_by_scope = target_review_counts_by_scope or {}
@@ -73,6 +78,7 @@ def fetch_web_catalog_targets(
     capped_scopes: list[dict[str, str]] = []
     warning_scopes: list[dict[str, str]] = []
     target_reached_scopes: list[dict[str, Any]] = []
+    resumed_scopes: list[dict[str, Any]] = []
     owned_session = session is None
     http = session or requests.Session()
     overall_time_budget_exceeded = False
@@ -104,13 +110,30 @@ def fetch_web_catalog_targets(
                 )
                 effective_deadline = earliest_deadline(deadline_monotonic, scope_deadline_monotonic)
                 scope = (target.apple_app_id, country.lower(), sort_by)
+                scope_start_page = start_pages_by_scope.get(scope, start_page)
+                scope_page_cap = (
+                    scope_start_page + max_pages_per_app_country - 1
+                    if max_pages_per_app_country > 0
+                    else None
+                )
+                if scope_start_page > start_page:
+                    resumed_scopes.append(
+                        {
+                            "app_id": target.apple_app_id,
+                            "app_name": target.app_name,
+                            "country": country.lower(),
+                            "sort_by": sort_by,
+                            "requested_start_page": start_page,
+                            "effective_start_page": scope_start_page,
+                        }
+                    )
                 known_review_ids = known_review_ids_by_scope.get(scope, set())
                 target_review_count = target_review_counts_by_scope.get(scope)
                 scope_review_total = 0
                 consecutive_sparse_fetch_errors = 0
                 next_href: str | None = None
-                page_number = start_page
-                while page_cap is None or page_number <= page_cap:
+                page_number = scope_start_page
+                while scope_page_cap is None or page_number <= scope_page_cap:
                     stop_reason = deadline_stop_reason(deadline_monotonic, scope_deadline_monotonic, monotonic_fn)
                     if stop_reason:
                         warning_scopes.append(
@@ -132,7 +155,7 @@ def fetch_web_catalog_targets(
                         if stop_reason == "time_budget_exceeded":
                             overall_time_budget_exceeded = True
                         break
-                    if page_number > start_page and request_delay_seconds:
+                    if page_number > scope_start_page and request_delay_seconds:
                         page_delay_seconds = jittered_delay_seconds(
                             request_delay_seconds,
                             request_delay_jitter_seconds,
@@ -174,12 +197,15 @@ def fetch_web_catalog_targets(
                             timeout_seconds=timeout_seconds,
                             web_soft_retries=web_soft_retries,
                             web_soft_retry_seconds=web_soft_retry_seconds,
+                            web_429_retries=web_429_retries,
+                            web_429_retry_seconds=web_429_retry_seconds,
+                            web_429_retry_jitter_seconds=web_429_retry_jitter_seconds,
                         ),
                         deadline_monotonic,
                         scope_deadline_monotonic,
                         monotonic_fn,
                     )
-                    if page_number > start_page and retry_budget_stop:
+                    if page_number > scope_start_page and retry_budget_stop:
                         warning_scopes.append(
                             {
                                 "app_id": target.apple_app_id,
@@ -206,7 +232,7 @@ def fetch_web_catalog_targets(
                         country=country,
                         sort_by=sort_by,
                         page_number=page_number,
-                        start_page=start_page,
+                        start_page=scope_start_page,
                         next_href=next_href,
                         review_limit=review_limit,
                         session=http,
@@ -227,8 +253,8 @@ def fetch_web_catalog_targets(
                     terminal_reason = web_terminal_reason_for_page(
                         page_report,
                         page_number=page_number,
-                        start_page=start_page,
-                        max_pages_per_app_country=page_cap,
+                        start_page=scope_start_page,
+                        max_pages_per_app_country=scope_page_cap,
                         overlap_count=overlap_count,
                         known_review_count=len(known_review_ids),
                         page_review_total=scope_review_total,
@@ -311,9 +337,14 @@ def fetch_web_catalog_targets(
         "platform": PLATFORM,
         "sort_by": sort_by,
         "start_page": start_page,
+        "start_pages_by_scope": {
+            "|".join(scope): scope_start_page
+            for scope, scope_start_page in sorted(start_pages_by_scope.items())
+        },
+        "resumed_scopes": resumed_scopes,
         "max_pages_per_app_country": max_pages_per_app_country,
-        "last_allowed_page_number": page_cap,
-        "page_cap_enabled": page_cap is not None,
+        "last_allowed_page_number": default_page_cap,
+        "page_cap_enabled": default_page_cap is not None,
         "request_delay_seconds": request_delay_seconds,
         "request_delay_jitter_seconds": request_delay_jitter_seconds,
         "web_429_retries": web_429_retries,
@@ -402,10 +433,23 @@ def minimum_request_retry_budget_seconds(
     timeout_seconds: float,
     web_soft_retries: int,
     web_soft_retry_seconds: float,
+    web_429_retries: int = 0,
+    web_429_retry_seconds: float = 0.0,
+    web_429_retry_jitter_seconds: float = 0.0,
 ) -> float:
-    if web_soft_retries <= 0:
-        return 0.0
-    return max(1.0, float(timeout_seconds)) + max(0.0, float(web_soft_retry_seconds))
+    request_timeout = max(1.0, float(timeout_seconds))
+    retry_windows: list[float] = []
+    if web_soft_retries > 0:
+        retry_windows.append(
+            (2 * request_timeout) + max(0.0, float(web_soft_retry_seconds))
+        )
+    if web_429_retries > 0:
+        retry_windows.append(
+            (2 * request_timeout)
+            + max(0.0, float(web_429_retry_seconds))
+            + max(0.0, float(web_429_retry_jitter_seconds))
+        )
+    return max(retry_windows, default=0.0)
 
 
 def request_retry_budget_stop_reason(
@@ -553,6 +597,11 @@ def fetch_web_catalog_page(
         )
         return replace(
             page,
+            terminal_reason=(
+                "time_budget_retry_window_exceeded"
+                if final_attempt_stopped_for_time_budget([{"attempts": attempts}])
+                else None
+            ),
             http_429_attempt_count=sum(
                 int(attempt.get("status_code") == 429) for attempt in attempts
             ),
@@ -607,7 +656,7 @@ def fetch_web_catalog_page(
         soft_retry_count=max(0, soft_attempts_made - 1),
     )
     if final_attempt_stopped_for_time_budget([{"attempts": attempts}]):
-        page = replace(page, terminal_reason="time_budget_exceeded")
+        page = replace(page, terminal_reason="time_budget_retry_window_exceeded")
     return page, reviews, summary["next_href"]
 
 
