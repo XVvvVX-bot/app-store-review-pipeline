@@ -1010,10 +1010,15 @@ def evaluate_alerts(
             "change_accounting_mismatch",
             "Run insert/update totals do not match the persisted review-change ledger.",
         )
-    if backlog_terminal_rate > 0.05:
+    if int(selected_count or 0) >= 100 and backlog_terminal_rate > 0.05:
         add_alert(alerts, "failing", "backlog_terminal_rate", "More than 5% of completed scopes remained backlogged.")
     elif int(run_metrics.get("backlogged_scope_count") or 0) > 0:
-        add_alert(alerts, "degraded", "backlogged_scopes", "One or more completed scopes remain backlogged.")
+        add_alert(
+            alerts,
+            "degraded",
+            "backlogged_scopes",
+            "One or more completed scopes remain backlogged; targeted runs stay degraded so recovery can continue without a production failure alert.",
+        )
     if page_count > 0 and int(selected_count or 0) >= 100 and duplicate_rate >= 0.95:
         add_alert(alerts, "degraded", "high_duplicate_rate", "Duplicate rate is at or above 95% for the current run.")
     if comparable_execution_count >= 3 and median_inserted > 0 and inserted < 0.30 * median_inserted:

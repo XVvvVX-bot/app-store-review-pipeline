@@ -1351,6 +1351,14 @@ def test_monitoring_fetch_stale_duplicate_insert_and_backlog_alerts():
     assert status == "failing"
     assert "backlog_terminal_rate" in alert_codes(alerts)
 
+    status, alerts = monitoring_alert_status(
+        run_metrics={"backlog_terminal_rate": 1, "backlogged_scope_count": 1},
+        selected_count=1,
+    )
+    assert status == "degraded"
+    assert "backlogged_scopes" in alert_codes(alerts)
+    assert "backlog_terminal_rate" not in alert_codes(alerts)
+
     status, alerts = monitoring_alert_status(run_metrics={"missing_scope_count": 1})
     assert status == "failing"
     assert "missing_execution_scopes" in alert_codes(alerts)

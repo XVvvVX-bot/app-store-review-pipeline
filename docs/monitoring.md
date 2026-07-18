@@ -80,7 +80,7 @@ Each report contains:
 - Final HTTP 429 pages are at least 3, or final 429 pages per fetched page are at least 0.5%.
 - Fetch-error scopes are at least 1% of completed scopes.
 - Any active app-country-source scope has no completed collection attempt in 36 hours.
-- More than 5% of completed scopes remain backlogged.
+- More than 5% of completed scopes remain backlogged in a full-scope run (at least 100 selected targets).
 - Run insert/update totals disagree with `app_store_review_changes`.
 
 ### Degraded
@@ -92,7 +92,7 @@ Each report contains:
 - A full-scale run has at least 95% duplicates.
 - Inserts fall below 30% of the median only after at least three comparable completed executions exist.
 - Any active scope has no completed collection attempt for 24 to 36 hours.
-- One or more scopes remain backlogged but the rate is no more than 5%.
+- One or more scopes remain backlogged but the full-scope rate is no more than 5%; targeted recovery runs also remain degraded rather than failing so they can continue from their next checkpoint without an external production-failure alert.
 - A full-scope run inserts zero rows; source-frontier evidence distinguishes an unchanged Apple snapshot from an unexplained zero-insert run.
 - A scope dominates at least 25% of page volume or at least 50% of 429 attempts in a run with at least 10 selected targets.
 - Database growth exceeds 100 MiB and three times the recent snapshot median.
