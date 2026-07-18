@@ -948,7 +948,7 @@ def evaluate_alerts(
         add_alert(alerts, "failing", "workflow_failure", "Current workflow or one or more required jobs failed.")
     if require_recent_scheduled_run and int(github.get("recent_schedule_run_count") or 0) == 0:
         add_alert(alerts, "failing", "missing_scheduled_run", "No scheduled App Store Review Pipeline run was found in the monitor lookback window.")
-    if int(github.get("recent_failed_schedule_run_count") or 0) >= 2:
+    if require_recent_scheduled_run and int(github.get("recent_failed_schedule_run_count") or 0) >= 2:
         add_alert(alerts, "failing", "repeated_scheduled_failures", "Two or more recent scheduled runs failed.")
     if int(selected_count or 0) > 0 and page_count == 0:
         add_alert(alerts, "failing", "zero_pages", "Current run has zero fetched pages for a non-empty target set.")

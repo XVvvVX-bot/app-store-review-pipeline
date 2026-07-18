@@ -1260,9 +1260,16 @@ def test_monitoring_workflow_and_schedule_failures_are_failing():
     assert status == "failing"
     assert "missing_scheduled_run" in alert_codes(alerts)
 
-    status, alerts = monitoring_alert_status(github={"recent_failed_schedule_run_count": 2})
+    status, alerts = monitoring_alert_status(
+        github={"recent_failed_schedule_run_count": 2},
+        require_recent_scheduled_run=True,
+    )
     assert status == "failing"
     assert "repeated_scheduled_failures" in alert_codes(alerts)
+
+    status, alerts = monitoring_alert_status(github={"recent_failed_schedule_run_count": 2})
+    assert status == "healthy"
+    assert "repeated_scheduled_failures" not in alert_codes(alerts)
 
 
 def test_monitoring_http_429_thresholds_map_to_degraded_and_failing():

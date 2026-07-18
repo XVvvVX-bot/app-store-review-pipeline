@@ -73,7 +73,7 @@ Each report contains:
 ### Failing
 
 - A required prepare, preflight, or daily matrix job fails.
-- Two or more recent scheduled ingestion runs fail.
+- Two or more recent scheduled ingestion runs fail, evaluated by the independent schedule monitor rather than inherited by manual recovery reports.
 - A non-empty target set produces zero pages.
 - Any intended scope has no persisted scope outcome.
 - Any scope ends in `hard_failure`.
