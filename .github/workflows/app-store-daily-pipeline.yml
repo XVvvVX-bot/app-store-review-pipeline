@@ -464,9 +464,9 @@ jobs:
           if [ "$INPUT_DISABLE_OVERLAP_STOP" = "true" ]; then
             overlap_flag="--disable-overlap-stop"
           fi
-          resume_args=()
+          resume_flag=""
           if [ "$INPUT_RESUME_BACKLOGGED_SCOPES" = "true" ]; then
-            resume_args+=(--resume-backlogged-scopes)
+            resume_flag="--resume-backlogged-scopes"
           fi
           .venv/bin/python app_store_pipeline.py daily-web-catalog \
             --database-url "$database_url" \
@@ -498,7 +498,7 @@ jobs:
             --assume-postgres-schema \
             --skip-target-sync \
             $overlap_flag \
-            "${resume_args[@]}"
+            $resume_flag
 
       - name: Check current-run web catalog 429 circuit breaker
         if: ${{ always() && !cancelled() }}

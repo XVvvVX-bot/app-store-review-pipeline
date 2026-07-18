@@ -1618,6 +1618,7 @@ def test_monitoring_notification_is_short_scoped_and_failing_only():
 def test_active_workflows_keep_watchdog_removed_and_backfill_hard_capped():
     workflows = Path(__file__).resolve().parents[1] / ".github" / "workflows"
     backfill = (workflows / "app-store-web-catalog-backfill.yml").read_text(encoding="utf-8")
+    daily = (workflows / "app-store-daily-pipeline.yml").read_text(encoding="utf-8")
 
     assert not (workflows / "app-store-monitor.yml").exists()
     assert 'integer("INPUT_LIMIT", 1, 5)' in backfill
@@ -1625,6 +1626,9 @@ def test_active_workflows_keep_watchdog_removed_and_backfill_hard_capped():
     assert 'integer("INPUT_MAX_PAGES_PER_APP_COUNTRY", 1, 25)' in backfill
     assert "I_UNDERSTAND_BACKFILL_PRESSURE" in backfill
     assert "auto_continue" not in backfill
+    assert 'resume_flag=""' in daily
+    assert 'resume_flag="--resume-backlogged-scopes"' in daily
+    assert "resume_args=()" not in daily
 
 
 def test_fallback_failure_report_remains_email_eligible_for_scheduled_run(tmp_path):
