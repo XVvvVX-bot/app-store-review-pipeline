@@ -73,7 +73,7 @@ Each report contains:
 ### Failing
 
 - A required prepare, preflight, or daily matrix job fails.
-- Two or more recent scheduled ingestion runs fail, evaluated by the independent schedule monitor rather than inherited by manual recovery reports.
+- Two or more recent scheduled ingestion runs fail when an operator audit uses `--require-recent-scheduled-run`; normal per-run reports evaluate the current workflow and do not inherit historical failures into manual recovery runs.
 - A non-empty target set produces zero pages.
 - Any intended scope has no persisted scope outcome.
 - Any scope ends in `hard_failure`.
