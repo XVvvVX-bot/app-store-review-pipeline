@@ -604,9 +604,9 @@ def outage_recovery_status_postgres(
                 (source, str(github_run_id)),
             ).fetchone()
             if execution:
-                hard_failure_rows = connection.execute(
+                raw_hard_failure_rows = connection.execute(
                     """
-                    SELECT app_id, app_name, country, sort_by, terminal_reason,
+                    SELECT run_id, app_id, app_name, country, sort_by, terminal_reason,
                         page_count, fetch_errors, other_non_200_pages
                     FROM app_store_run_scopes
                     WHERE execution_id = %s
@@ -615,6 +615,34 @@ def outage_recovery_status_postgres(
                     """,
                     (execution["execution_id"],),
                 ).fetchall()
+                for raw_row in raw_hard_failure_rows:
+                    row = dict(raw_row)
+                    checkpoint = connection.execute(
+                        """
+                        SELECT
+                            MAX(page_number) FILTER (WHERE status = 'ok') AS max_ok_page,
+                            MIN(page_number) FILTER (
+                                WHERE status <> 'ok'
+                                   OR (status_code IS NOT NULL AND status_code <> 200)
+                                   OR error_message IS NOT NULL
+                            ) AS first_error_page
+                        FROM app_store_review_pages
+                        WHERE run_id = %s
+                          AND app_id = %s
+                          AND country = %s
+                          AND sort_by = %s
+                        """,
+                        (row["run_id"], row["app_id"], row["country"], row["sort_by"]),
+                    ).fetchone()
+                    max_ok_page = int((checkpoint or {}).get("max_ok_page") or 1)
+                    first_error_page = int(
+                        (checkpoint or {}).get("first_error_page") or max_ok_page
+                    )
+                    row["recovery_start_page"] = max(
+                        1,
+                        min(max_ok_page, first_error_page) - 25 + 1,
+                    )
+                    hard_failure_rows.append(row)
         backlog_rows = connection.execute(
             """
             SELECT state.app_id, target.app_name, state.country, state.sort_by,

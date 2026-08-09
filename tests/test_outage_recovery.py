@@ -509,7 +509,13 @@ def test_full_recovery_queues_hard_failure_scope_for_targeted_retry(monkeypatch,
         "app_store_review_pipeline.runner_supervisor.outage_recovery_status_postgres",
         lambda *args, **kwargs: {
             "backlogged_scopes": [],
-            "hard_failure_scopes": [{"app_id": "544007664", "app_name": "YouTube"}],
+            "hard_failure_scopes": [
+                {
+                    "app_id": "544007664",
+                    "app_name": "YouTube",
+                    "recovery_start_page": 7,
+                }
+            ],
             "execution": {
                 "status": "failing",
                 "intended_scope_count": 200,
@@ -527,6 +533,7 @@ def test_full_recovery_queues_hard_failure_scope_for_targeted_retry(monkeypatch,
     assert state["phase"] == "recovery_backlog"
     assert state["backlog_queue"] == ["544007664"]
     assert state["forced_recovery_apps"] == ["544007664"]
+    assert state["forced_recovery_start_pages"] == {"544007664": 7}
     assert state.get("manual_attention_reason") is None
 
 
@@ -555,6 +562,7 @@ def test_targeted_hard_failure_is_cleared_only_by_successful_execution(monkeypat
         "phase": "recovery_backlog",
         "backlog_queue": ["544007664"],
         "forced_recovery_apps": ["544007664"],
+        "forced_recovery_start_pages": {"544007664": 7},
         "current_backlog_app": "544007664",
         "current_run_id": None,
         "current_run": {"status": "completed", "conclusion": "success"},
@@ -565,7 +573,35 @@ def test_targeted_hard_failure_is_cleared_only_by_successful_execution(monkeypat
 
     assert state["backlog_queue"] == []
     assert state["forced_recovery_apps"] == []
+    assert state["forced_recovery_start_pages"] == {}
     assert verification == ["verify"]
+
+
+def test_hard_failure_retry_starts_before_failed_page_without_backlog_resume(monkeypatch, tmp_path):
+    current = datetime(2026, 8, 9, 20, 0, tzinfo=timezone.utc)
+    supervisor = RunnerSupervisor(SupervisorConfig(repo_path=tmp_path), state_path=tmp_path / "state.json")
+    monkeypatch.setattr(
+        "app_store_review_pipeline.runner_supervisor.outage_recovery_status_postgres",
+        lambda *args, **kwargs: {"backlogged_scopes": [], "execution": None},
+    )
+    monkeypatch.setattr(supervisor, "nonstale_active_daily_runs", lambda now: [])
+    monkeypatch.setattr("app_store_review_pipeline.runner_supervisor.target_offset_for_app", lambda *args: 64)
+    dispatched = []
+    monkeypatch.setattr(supervisor, "dispatch_recovery", lambda **kwargs: dispatched.append(kwargs) or "9011")
+    state = {
+        "phase": "recovery_backlog",
+        "incident_id": "fixture",
+        "backlog_queue": ["544007664"],
+        "forced_recovery_apps": ["544007664"],
+        "forced_recovery_start_pages": {"544007664": 7},
+        "backlog_attempts": {},
+    }
+
+    supervisor.advance_backlog(state, current)
+
+    assert dispatched[0]["target_offset"] == 64
+    assert dispatched[0]["start_page"] == 7
+    assert dispatched[0]["resume_backlog"] is False
 
 
 def test_failing_database_monitor_status_blocks_recovery_resolution(monkeypatch, tmp_path):

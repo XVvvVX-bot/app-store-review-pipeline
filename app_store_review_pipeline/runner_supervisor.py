@@ -279,7 +279,13 @@ class RunnerSupervisor:
                 self.manual_attention(state, "full_recovery_did_not_complete_intended_scope", current)
                 return
             backlog_apps = unique_backlog_apps(status.get("backlogged_scopes") or [])
-            hard_failure_apps = unique_backlog_apps(status.get("hard_failure_scopes") or [])
+            hard_failure_scopes = status.get("hard_failure_scopes") or []
+            hard_failure_apps = unique_backlog_apps(hard_failure_scopes)
+            hard_failure_start_pages = {
+                str(scope["app_id"]): int(scope.get("recovery_start_page") or 1)
+                for scope in hard_failure_scopes
+                if scope.get("app_id")
+            }
             recovery_apps = list(dict.fromkeys([*backlog_apps, *hard_failure_apps]))
             if phase == "recovery_verify":
                 if recovery_apps:
@@ -303,6 +309,7 @@ class RunnerSupervisor:
                 phase="recovery_backlog",
                 backlog_queue=recovery_apps,
                 forced_recovery_apps=hard_failure_apps,
+                forced_recovery_start_pages=hard_failure_start_pages,
                 backlog_attempts={},
                 current_run=None,
                 current_run_id=None,
@@ -338,6 +345,7 @@ class RunnerSupervisor:
     def advance_backlog(self, state: dict[str, Any], current: datetime) -> None:
         queue = list(state.get("backlog_queue") or [])
         forced_recovery_apps = set(state.get("forced_recovery_apps") or [])
+        forced_recovery_start_pages = dict(state.get("forced_recovery_start_pages") or {})
         current_app = str(state.get("current_backlog_app") or "")
         if current_app and not state.get("current_run_id") and state.get("current_run"):
             completed_run_id = str(state.get("last_completed_run_id") or "")
@@ -355,6 +363,7 @@ class RunnerSupervisor:
             if execution_recovered(execution):
                 queue = [app_id for app_id in queue if app_id != current_app]
                 forced_recovery_apps.discard(current_app)
+                forced_recovery_start_pages.pop(current_app, None)
                 state["current_backlog_app"] = None
                 state["not_before"] = None
             else:
@@ -366,6 +375,7 @@ class RunnerSupervisor:
                 state["not_before"] = isoformat(current + timedelta(minutes=self.config.backlog_retry_minutes))
             state["backlog_queue"] = queue
             state["forced_recovery_apps"] = list(forced_recovery_apps)
+            state["forced_recovery_start_pages"] = forced_recovery_start_pages
             state["current_run"] = None
             state["last_completed_run_id"] = None
 
@@ -398,13 +408,15 @@ class RunnerSupervisor:
         attempt = int(attempts.get(app_id) or 0) + 1
         attempts[app_id] = attempt
         target_offset = target_offset_for_app(self.config.repo_path / DEFAULT_TARGETS, app_id)
+        forced_recovery = app_id in forced_recovery_apps
         token = f"outage:{state['incident_id']}:backlog:{app_id}:{attempt}"
         run_id = self.dispatch_recovery(
             token=token,
             limit=1,
             target_offset=target_offset,
             max_parallel=1,
-            resume_backlog=True,
+            resume_backlog=not forced_recovery,
+            start_page=int(forced_recovery_start_pages.get(app_id) or 1),
             time_budget=7200,
         )
         state.update(
@@ -425,6 +437,7 @@ class RunnerSupervisor:
         target_offset: int = 0,
         max_parallel: int = 4,
         resume_backlog: bool = False,
+        start_page: int = 1,
         time_budget: int = 3600,
     ) -> str:
         fields = {
@@ -434,7 +447,7 @@ class RunnerSupervisor:
             "max_parallel": str(max_parallel),
             "max_pages_per_app_country": "0",
             "pressure_ramp_mode": RECOVERY_PRESSURE_MODE,
-            "start_page": "1",
+            "start_page": str(start_page),
             "resume_backlogged_scopes": str(resume_backlog).lower(),
             "review_limit": "20",
             "request_delay_seconds": "10",
@@ -564,6 +577,7 @@ class RunnerSupervisor:
             current_backlog_app=None,
             backlog_queue=[],
             forced_recovery_apps=[],
+            forced_recovery_start_pages={},
             last_completed_run_id=None,
             not_before=None,
         )
@@ -856,6 +870,7 @@ def load_state(path: Path) -> dict[str, Any]:
             "restart_attempts": 0,
             "backlog_queue": [],
             "forced_recovery_apps": [],
+            "forced_recovery_start_pages": {},
             "backlog_attempts": {},
         }
     try:
@@ -866,6 +881,7 @@ def load_state(path: Path) -> dict[str, Any]:
             "restart_attempts": 0,
             "backlog_queue": [],
             "forced_recovery_apps": [],
+            "forced_recovery_start_pages": {},
             "backlog_attempts": {},
         }
 
@@ -895,6 +911,7 @@ def reset_supervisor_recovery_state(
         current_backlog_app=None,
         backlog_queue=[],
         forced_recovery_apps=[],
+        forced_recovery_start_pages={},
         backlog_attempts={},
         last_completed_run_id=None,
         not_before=None,
