@@ -68,6 +68,7 @@ from app_store_review_pipeline.runner_supervisor import (
     RunnerSupervisor,
     SupervisorConfig,
     install_runner_supervisor,
+    reset_supervisor_recovery_state,
 )
 from app_store_review_pipeline.targets import active_targets, load_targets
 from app_store_review_pipeline.utils import make_run_id, utc_timestamp
@@ -311,6 +312,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     supervisor.add_argument("--config", type=Path, default=DEFAULT_SUPERVISOR_CONFIG)
     supervisor.add_argument("--state", type=Path, default=DEFAULT_SUPERVISOR_STATE)
+    supervisor.add_argument("--reset-manual-attention", action="store_true")
     supervisor.set_defaults(func=command_runner_supervisor)
 
     install_supervisor = subparsers.add_parser(
@@ -862,6 +864,10 @@ def command_coordinate_monitoring_incident(args: argparse.Namespace) -> int:
 
 
 def command_runner_supervisor(args: argparse.Namespace) -> int:
+    if args.reset_manual_attention:
+        result = reset_supervisor_recovery_state(args.state)
+        print(json.dumps(result, indent=2, sort_keys=True, default=str))
+        return 0
     config = SupervisorConfig.from_file(args.config)
     result = RunnerSupervisor(config, state_path=args.state).run_once()
     print(json.dumps(result, indent=2, sort_keys=True, default=str))

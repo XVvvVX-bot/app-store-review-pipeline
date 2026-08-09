@@ -42,6 +42,15 @@ Inspect one tick without waiting for launchd:
 .venv/bin/python app_store_pipeline.py runner-supervisor
 ```
 
+After fixing the recorded root cause of a bounded `manual_attention` stop, explicitly reopen recovery without editing JSON:
+
+```bash
+.venv/bin/python app_store_pipeline.py runner-supervisor --reset-manual-attention
+launchctl kickstart -k "gui/$(id -u)/com.sciencia.app-store-runner-supervisor"
+```
+
+The reset preserves the previous reason and reset time in the state file, clears stale run pointers, restores the bounded attempt budget, and starts a new stability window.
+
 Healthy means Postgres responds, GitHub is reachable, at least four eligible runners are online, and at least four launchd runner services are loaded.
 
 ## Automatic Outage Recovery

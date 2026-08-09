@@ -820,6 +820,49 @@ def load_state(path: Path) -> dict[str, Any]:
         return {"phase": "idle", "restart_attempts": 0, "backlog_queue": [], "backlog_attempts": {}}
 
 
+def reset_supervisor_recovery_state(
+    path: Path,
+    *,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    state = load_state(path)
+    previous_phase = str(state.get("phase") or "idle")
+    previous_reason = str(state.get("manual_attention_reason") or "")
+    if previous_phase != "manual_attention":
+        return {
+            "reset": False,
+            "reason": "supervisor_not_in_manual_attention",
+            "phase": previous_phase,
+        }
+    current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc).replace(microsecond=0)
+    state.update(
+        phase="stabilizing",
+        healthy_since=None,
+        pending_recovery_phase="full",
+        current_run_id=None,
+        current_run=None,
+        current_dispatch_token=None,
+        current_backlog_app=None,
+        backlog_queue=[],
+        backlog_attempts={},
+        not_before=None,
+        full_recovery_attempts=0,
+        verify_recovery_attempts=0,
+        manual_attention_reason=None,
+        manual_attention_at=None,
+        last_manual_attention_reason=previous_reason,
+        manual_attention_reset_at=isoformat(current),
+    )
+    write_state(path, state)
+    return {
+        "reset": True,
+        "previous_phase": previous_phase,
+        "previous_reason": previous_reason,
+        "phase": state["phase"],
+        "reset_at": state["manual_attention_reset_at"],
+    }
+
+
 def write_state(path: Path, state: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")

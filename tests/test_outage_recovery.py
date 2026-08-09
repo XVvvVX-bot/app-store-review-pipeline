@@ -17,6 +17,7 @@ from app_store_review_pipeline.runner_supervisor import (
     execution_complete,
     execution_monitor_verified,
     prepare_supervisor_runtime,
+    reset_supervisor_recovery_state,
     target_offset_for_app,
     unique_backlog_apps,
     update_env_value,
@@ -681,6 +682,35 @@ def test_supervisor_config_update_preserves_secrets(tmp_path):
         "APP_STORE_REPO_PATH=/new/runtime\n"
         "APP_STORE_HEARTBEAT_URL=https://example.invalid/secret\n"
     )
+
+
+def test_manual_attention_reset_preserves_audit_reason(tmp_path):
+    state_path = tmp_path / "state.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "phase": "manual_attention",
+                "manual_attention_reason": "runner_capacity_api_failed",
+                "current_run_id": "9008",
+                "full_recovery_attempts": 3,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = reset_supervisor_recovery_state(
+        state_path,
+        now=datetime(2026, 8, 9, 20, 0, tzinfo=timezone.utc),
+    )
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+
+    assert result["reset"] is True
+    assert state["phase"] == "stabilizing"
+    assert state["pending_recovery_phase"] == "full"
+    assert state["current_run_id"] is None
+    assert state["full_recovery_attempts"] == 0
+    assert state["last_manual_attention_reason"] == "runner_capacity_api_failed"
+    assert state["manual_attention_reset_at"] == "2026-08-09T20:00:00Z"
 
 
 def test_workflow_keeps_recovery_within_dispatch_input_limit():
