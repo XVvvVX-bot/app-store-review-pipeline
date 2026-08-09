@@ -78,7 +78,7 @@ Each report contains:
 - Two or more recent scheduled ingestion runs fail when an operator audit uses `--require-recent-scheduled-run`; normal per-run reports evaluate the current workflow and do not inherit historical failures into manual recovery runs.
 - A non-empty target set produces zero pages.
 - Any intended scope has no persisted scope outcome.
-- Any scope ends in `hard_failure`.
+- Any scope ends in `hard_failure`. During explicit outage recovery, this keeps the run failing while the supervisor performs a bounded single-app retry; only a clean final full-scope verification resolves the incident.
 - Final HTTP 429 pages are at least 3, or final 429 pages per fetched page are at least 0.5%.
 - Fetch-error scopes are at least 1% of completed scopes.
 - Any active app-country-source scope has no completed collection attempt in 36 hours.

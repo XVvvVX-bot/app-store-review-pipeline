@@ -237,6 +237,7 @@ SUCCESS_TERMINAL_REASONS = {
 }
 BACKLOG_TERMINAL_REASONS = {
     "page_cap",
+    "intermediate_fetch_error",
     "empty_page_before_overlap",
     "empty_page_after_sparse_scan",
     "time_budget_exceeded",
@@ -587,6 +588,7 @@ def outage_recovery_status_postgres(
             (source,),
         ).fetchone()
         execution = None
+        hard_failure_rows = []
         if github_run_id:
             execution = connection.execute(
                 """
@@ -601,6 +603,18 @@ def outage_recovery_status_postgres(
                 """,
                 (source, str(github_run_id)),
             ).fetchone()
+            if execution:
+                hard_failure_rows = connection.execute(
+                    """
+                    SELECT app_id, app_name, country, sort_by, terminal_reason,
+                        page_count, fetch_errors, other_non_200_pages
+                    FROM app_store_run_scopes
+                    WHERE execution_id = %s
+                      AND outcome = 'hard_failure'
+                    ORDER BY app_id, country, sort_by
+                    """,
+                    (execution["execution_id"],),
+                ).fetchall()
         backlog_rows = connection.execute(
             """
             SELECT state.app_id, target.app_name, state.country, state.sort_by,
@@ -622,6 +636,7 @@ def outage_recovery_status_postgres(
         "backlogged_scope_count": int(freshness["backlogged_scope_count"] or 0),
         "scope_count": int(freshness["scope_count"] or 0),
         "backlogged_scopes": [dict(row) for row in backlog_rows],
+        "hard_failure_scopes": [dict(row) for row in hard_failure_rows],
         "execution": dict(execution) if execution else None,
     }
 
@@ -1834,6 +1849,11 @@ def backlogged_resume_start_pages_by_scope(
                     SELECT
                         p.run_id,
                         MAX(p.page_number) FILTER (WHERE p.status = 'ok') AS max_ok_page,
+                        MIN(p.page_number) FILTER (
+                            WHERE p.status <> 'ok'
+                               OR (p.status_code IS NOT NULL AND p.status_code <> 200)
+                               OR p.error_message IS NOT NULL
+                        ) AS first_error_page,
                         MIN(p.min_updated_epoch_seconds) FILTER (
                             WHERE p.status = 'ok' AND p.min_updated_epoch_seconds IS NOT NULL
                         ) AS oldest_updated_epoch_seconds,
@@ -1858,7 +1878,8 @@ def backlogged_resume_start_pages_by_scope(
                     ORDER BY MAX(r.loaded_at_ts) DESC
                     LIMIT %s
                 )
-                SELECT run_id, max_ok_page, oldest_updated_epoch_seconds, loaded_at
+                SELECT run_id, max_ok_page, first_error_page,
+                    oldest_updated_epoch_seconds, loaded_at
                 FROM recent_attempts
                 WHERE max_ok_page > 1
                 ORDER BY oldest_updated_epoch_seconds ASC NULLS LAST,
@@ -1877,7 +1898,11 @@ def backlogged_resume_start_pages_by_scope(
             ).fetchone()
             if not row:
                 continue
-            resume_start_page = max(1, int(row["max_ok_page"]) - overlap_pages + 1)
+            checkpoint_page = min(
+                int(row["max_ok_page"]),
+                int(row.get("first_error_page") or row["max_ok_page"]),
+            )
+            resume_start_page = max(1, checkpoint_page - overlap_pages + 1)
             if resume_start_page > 1:
                 results[(app_id, country, sort_by)] = resume_start_page
     return results
@@ -2706,9 +2731,26 @@ def _update_sync_states_postgres_once(
             reviews = grouped_reviews.get(key, [])
             terminal_reason = pages[-1].get("terminal_reason") if pages else None
             overlap = sum(int(page.get("overlap_review_count") or 0) for page in pages)
+            scope_has_errors = any(
+                (page.get("status") is not None and page.get("status") != "ok")
+                or (
+                    page.get("status_code") is not None
+                    and int(page["status_code"]) != 200
+                )
+                or bool(page.get("error_message"))
+                for page in pages
+            )
             backlogged = (
-                terminal_reason in (BACKLOG_TERMINAL_REASONS | HARD_FAILURE_TERMINAL_REASONS)
-                and overlap == 0
+                scope_has_errors
+                or (
+                    terminal_reason in (BACKLOG_TERMINAL_REASONS | HARD_FAILURE_TERMINAL_REASONS)
+                    and overlap == 0
+                )
+            )
+            state_terminal_reason = (
+                "intermediate_fetch_error"
+                if scope_has_errors and terminal_reason in SUCCESS_TERMINAL_REASONS
+                else terminal_reason
             )
             state_row = connection.execute(
                 """
@@ -2728,7 +2770,7 @@ def _update_sync_states_postgres_once(
                 """,
                 (app_id, country, source),
             ).fetchone()["high_water"]
-            if terminal_reason in SUCCESS_TERMINAL_REASONS:
+            if terminal_reason in SUCCESS_TERMINAL_REASONS and not backlogged:
                 high_water = int(current_high_water or 0)
                 last_successful_run_id = run_id
                 last_successful_at = completed_at
@@ -2800,7 +2842,7 @@ def _update_sync_states_postgres_once(
                     completed_at,
                     run_id,
                     last_successful_run_id,
-                    terminal_reason,
+                    state_terminal_reason,
                     len(pages),
                     len(reviews),
                     overlap,
@@ -2817,7 +2859,7 @@ def _update_sync_states_postgres_once(
                     "sort_by": scope_sort,
                     "high_water": high_water,
                     "backlogged": backlogged,
-                    "terminal_reason": terminal_reason,
+                    "terminal_reason": state_terminal_reason,
                     "pages": len(pages),
                     "reviews": len(reviews),
                     "overlap_review_count": overlap,

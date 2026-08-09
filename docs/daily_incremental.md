@@ -99,7 +99,7 @@ Current defaults:
 - pre-run HTTP 429 cooldown: disabled for routine daily incremental
 - current-run HTTP 429 circuit breaker: enabled
 
-Normal scheduled runs still start every app at page 1. A controlled manual recovery can add `--resume-backlogged-scopes`; it considers only recent incomplete attempts after the last successful catch-up, chooses the attempt that reached the oldest review frontier, and revisits 25 pages before that checkpoint. This mode is explicit so routine incremental runs continue to capture the newest page-one reviews.
+Normal scheduled runs still start every app at page 1. A controlled manual recovery can add `--resume-backlogged-scopes`; it considers only recent incomplete attempts after the last successful catch-up, chooses the attempt that reached the oldest review frontier, and revisits 25 pages before that checkpoint. When an attempt reached overlap but had an intermediate failed page, the scope remains untrusted and the rewind starts before the first failed page, not merely before the deepest page. This mode is explicit so routine incremental runs continue to capture the newest page-one reviews.
 
 The daily path is intentionally different from backfill. The backfill workflow is manually disabled. If historical depth becomes necessary, it must be explicitly re-enabled and requires the confirmation string `I_UNDERSTAND_BACKFILL_PRESSURE`, one runner, an explicit numeric start page, 1-5 apps, and 1-25 pages per scope. Automatic continuation has been removed.
 

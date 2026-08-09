@@ -21,6 +21,7 @@ DEFAULT_MONITORING_MARKDOWN = Path("data/reports/monitoring/current_run_health.m
 DEFAULT_MONITORING_JSON = Path("data/reports/monitoring/current_run_health.json")
 BACKLOG_TERMINAL_REASONS = {
     "fetch_error",
+    "intermediate_fetch_error",
     "page_cap",
     "time_budget_exceeded",
     "scope_time_budget_exceeded",

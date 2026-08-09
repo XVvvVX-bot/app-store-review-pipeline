@@ -16,6 +16,7 @@ from app_store_review_pipeline.runner_supervisor import (
     SupervisorConfig,
     execution_complete,
     execution_monitor_verified,
+    execution_recovered,
     prepare_supervisor_runtime,
     reset_supervisor_recovery_state,
     target_offset_for_app,
@@ -496,6 +497,77 @@ def test_completed_recovery_uses_database_monitor_verification(monkeypatch, tmp_
     assert state.get("manual_attention_reason") is None
 
 
+def test_full_recovery_queues_hard_failure_scope_for_targeted_retry(monkeypatch, tmp_path):
+    current = datetime(2026, 8, 9, 20, 0, tzinfo=timezone.utc)
+    supervisor = RunnerSupervisor(SupervisorConfig(repo_path=tmp_path), state_path=tmp_path / "state.json")
+    monkeypatch.setattr(
+        supervisor,
+        "gh_json",
+        lambda *args, **kwargs: {"status": "completed", "conclusion": "failure", "url": "fixture"},
+    )
+    monkeypatch.setattr(
+        "app_store_review_pipeline.runner_supervisor.outage_recovery_status_postgres",
+        lambda *args, **kwargs: {
+            "backlogged_scopes": [],
+            "hard_failure_scopes": [{"app_id": "544007664", "app_name": "YouTube"}],
+            "execution": {
+                "status": "failing",
+                "intended_scope_count": 200,
+                "completed_scope_count": 200,
+                "backlogged_scope_count": 0,
+                "hard_failure_scope_count": 1,
+            },
+        },
+    )
+    monkeypatch.setattr(supervisor, "nonstale_active_daily_runs", lambda now: [{"databaseId": 88}])
+    state = {"phase": "recovery_full", "current_run_id": "9008"}
+
+    supervisor.advance_recovery(state, current)
+
+    assert state["phase"] == "recovery_backlog"
+    assert state["backlog_queue"] == ["544007664"]
+    assert state["forced_recovery_apps"] == ["544007664"]
+    assert state.get("manual_attention_reason") is None
+
+
+def test_targeted_hard_failure_is_cleared_only_by_successful_execution(monkeypatch, tmp_path):
+    current = datetime(2026, 8, 9, 20, 0, tzinfo=timezone.utc)
+    supervisor = RunnerSupervisor(SupervisorConfig(repo_path=tmp_path), state_path=tmp_path / "state.json")
+    monkeypatch.setattr(
+        "app_store_review_pipeline.runner_supervisor.outage_recovery_status_postgres",
+        lambda *args, **kwargs: {
+            "backlogged_scopes": [],
+            "execution": {
+                "intended_scope_count": 1,
+                "completed_scope_count": 1,
+                "backlogged_scope_count": 0,
+                "hard_failure_scope_count": 0,
+            },
+        },
+    )
+    verification = []
+    monkeypatch.setattr(
+        supervisor,
+        "start_full_recovery",
+        lambda state, now, *, phase: verification.append(phase),
+    )
+    state = {
+        "phase": "recovery_backlog",
+        "backlog_queue": ["544007664"],
+        "forced_recovery_apps": ["544007664"],
+        "current_backlog_app": "544007664",
+        "current_run_id": None,
+        "current_run": {"status": "completed", "conclusion": "success"},
+        "last_completed_run_id": "9010",
+    }
+
+    supervisor.advance_backlog(state, current)
+
+    assert state["backlog_queue"] == []
+    assert state["forced_recovery_apps"] == []
+    assert verification == ["verify"]
+
+
 def test_failing_database_monitor_status_blocks_recovery_resolution(monkeypatch, tmp_path):
     current = datetime(2026, 8, 9, 20, 0, tzinfo=timezone.utc)
     supervisor = RunnerSupervisor(SupervisorConfig(repo_path=tmp_path), state_path=tmp_path / "state.json")
@@ -640,7 +712,10 @@ def test_recovery_helpers_preserve_scope_safety(tmp_path):
     assert target_offset_for_app(targets, "222") == 1
     assert unique_backlog_apps([{"app_id": "222"}, {"app_id": "222"}, {"app_id": "111"}]) == ["222", "111"]
     assert execution_complete({"intended_scope_count": 200, "completed_scope_count": 200, "hard_failure_scope_count": 0})
+    assert execution_complete({"intended_scope_count": 200, "completed_scope_count": 200, "hard_failure_scope_count": 1})
     assert not execution_complete({"intended_scope_count": 200, "completed_scope_count": 199, "hard_failure_scope_count": 0})
+    assert execution_recovered({"intended_scope_count": 1, "completed_scope_count": 1, "backlogged_scope_count": 0, "hard_failure_scope_count": 0})
+    assert not execution_recovered({"intended_scope_count": 1, "completed_scope_count": 1, "backlogged_scope_count": 0, "hard_failure_scope_count": 1})
     assert execution_monitor_verified({"status": "healthy"})
     assert execution_monitor_verified({"status": "degraded"})
     assert not execution_monitor_verified({"status": "failing"})

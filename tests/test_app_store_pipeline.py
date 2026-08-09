@@ -319,6 +319,77 @@ def test_sync_state_typed_timestamp_placeholders_are_aligned(monkeypatch):
     assert result["scopes"][0]["high_water"] == 123
 
 
+def test_sync_state_does_not_trust_overlap_after_intermediate_fetch_error(monkeypatch):
+    class FakeResult:
+        def __init__(self, row=None):
+            self.row = row
+
+        def fetchone(self):
+            return self.row
+
+    class FakeConnection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def execute(self, query, params=None):
+            if "SELECT complete_through_updated_epoch_seconds" in query:
+                return FakeResult(
+                    {
+                        "complete_through_updated_epoch_seconds": 50,
+                        "last_successful_run_id": "trusted-run",
+                        "last_successful_at": "2026-07-15T12:00:00Z",
+                        "backlog_started_at": None,
+                        "consecutive_incomplete_runs": 0,
+                        "backlogged": 0,
+                    }
+                )
+            if "SELECT COALESCE(MAX(updated_epoch_seconds)" in query:
+                return FakeResult({"high_water": 999})
+            return FakeResult()
+
+        def commit(self):
+            return None
+
+    monkeypatch.setattr(postgres_database, "connect_postgres", lambda database_url: FakeConnection())
+    result = postgres_database._update_sync_states_postgres_once(
+        "postgresql:///fixture",
+        {
+            ("544007664", "us", "recent"): [
+                {
+                    "app_id": "544007664",
+                    "country": "us",
+                    "sort_by": "recent",
+                    "status": "error",
+                    "status_code": 404,
+                    "error_message": "HTTP 404",
+                },
+                {
+                    "app_id": "544007664",
+                    "country": "us",
+                    "sort_by": "recent",
+                    "status": "ok",
+                    "status_code": 200,
+                    "terminal_reason": "caught_up_to_existing_reviews",
+                    "overlap_review_count": 12,
+                },
+            ]
+        },
+        {("544007664", "us", "recent"): []},
+        run_id="youtube-run",
+        sort_by="recent",
+        started_at="2026-07-16T12:00:00Z",
+        completed_at="2026-07-16T12:20:00Z",
+        source=WEB_CATALOG_SOURCE,
+    )
+
+    assert result["scopes"][0]["backlogged"] is True
+    assert result["scopes"][0]["high_water"] == 50
+    assert result["scopes"][0]["terminal_reason"] == "intermediate_fetch_error"
+
+
 def test_scope_outcome_and_review_change_fields_are_explicit():
     assert scope_outcome(terminal_reason="caught_up_to_existing_reviews", page_count=1, fetch_errors=0, other_non_200_pages=0) == "caught_up"
     assert scope_outcome(terminal_reason="page_cap", page_count=2, fetch_errors=0, other_non_200_pages=0) == "backlogged"
@@ -589,6 +660,39 @@ def test_backlogged_resume_start_pages_use_recent_deepest_checkpoint(monkeypatch
     assert "s.backlogged = 1" in queries[0][0]
     assert "r.loaded_at_ts > s.last_successful_at" in queries[0][0]
     assert "oldest_updated_epoch_seconds ASC" in queries[0][0]
+
+
+def test_backlogged_resume_rewinds_before_first_error_page(monkeypatch):
+    class FakeResult:
+        def fetchone(self):
+            return {
+                "run_id": "youtube-run",
+                "max_ok_page": 61,
+                "first_error_page": 31,
+                "oldest_updated_epoch_seconds": 1_700_000_000,
+                "loaded_at": "2026-08-09T23:16:22Z",
+            }
+
+    class FakeConnection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def execute(self, query, params=None):
+            return FakeResult()
+
+    monkeypatch.setattr(postgres_database, "initialize_postgres", lambda database_url: None)
+    monkeypatch.setattr(postgres_database, "connect_postgres", lambda database_url: FakeConnection())
+
+    result = postgres_database.backlogged_resume_start_pages_by_scope(
+        "postgresql:///fixture",
+        [("544007664", "us", "recent")],
+        overlap_pages=25,
+    )
+
+    assert result == {("544007664", "us", "recent"): 7}
 
 
 def test_check_web_429_circuit_breaker_command_returns_two_when_tripped(monkeypatch, capsys):

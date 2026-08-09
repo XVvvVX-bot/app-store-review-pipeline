@@ -259,6 +259,7 @@ class RunnerSupervisor:
             if run.get("status") != "completed":
                 return
             state["current_run_id"] = None
+            state["last_completed_run_id"] = run_id
 
         phase = str(state.get("phase") or "")
         if phase in {"recovery_full", "recovery_verify"}:
@@ -278,30 +279,34 @@ class RunnerSupervisor:
                 self.manual_attention(state, "full_recovery_did_not_complete_intended_scope", current)
                 return
             backlog_apps = unique_backlog_apps(status.get("backlogged_scopes") or [])
+            hard_failure_apps = unique_backlog_apps(status.get("hard_failure_scopes") or [])
+            recovery_apps = list(dict.fromkeys([*backlog_apps, *hard_failure_apps]))
             if phase == "recovery_verify":
-                if backlog_apps:
-                    self.manual_attention(state, "verification_left_backlogged_scopes", current)
+                if recovery_apps:
+                    self.manual_attention(state, "verification_left_unresolved_scopes", current)
                     return
                 if not execution_monitor_verified(execution):
                     self.manual_attention(state, "verification_monitor_not_verified", current)
                     return
                 self.resolve_recovery(state, current)
                 return
-            if not backlog_apps:
+            if not recovery_apps:
                 if not execution_monitor_verified(execution):
                     self.manual_attention(state, "full_recovery_monitor_not_verified", current)
                     return
                 self.resolve_recovery(state, current)
                 return
-            if len(backlog_apps) > self.config.max_backlog_apps:
-                self.manual_attention(state, "backlog_app_limit_exceeded", current)
+            if len(recovery_apps) > self.config.max_backlog_apps:
+                self.manual_attention(state, "recovery_scope_limit_exceeded", current)
                 return
             state.update(
                 phase="recovery_backlog",
-                backlog_queue=backlog_apps,
+                backlog_queue=recovery_apps,
+                forced_recovery_apps=hard_failure_apps,
                 backlog_attempts={},
                 current_run=None,
                 current_run_id=None,
+                last_completed_run_id=None,
             )
 
         if state.get("phase") == "recovery_backlog":
@@ -332,16 +337,24 @@ class RunnerSupervisor:
 
     def advance_backlog(self, state: dict[str, Any], current: datetime) -> None:
         queue = list(state.get("backlog_queue") or [])
+        forced_recovery_apps = set(state.get("forced_recovery_apps") or [])
         current_app = str(state.get("current_backlog_app") or "")
         if current_app and not state.get("current_run_id") and state.get("current_run"):
-            status = outage_recovery_status_postgres(
-                self.config.database_url,
-                source=WEB_CATALOG_SOURCE,
-                initialize_schema=False,
+            completed_run_id = str(state.get("last_completed_run_id") or "")
+            status = (
+                outage_recovery_status_postgres(
+                    self.config.database_url,
+                    source=WEB_CATALOG_SOURCE,
+                    github_run_id=completed_run_id,
+                    initialize_schema=False,
+                )
+                if completed_run_id
+                else {"execution": None}
             )
-            remaining = {str(row.get("app_id")) for row in status.get("backlogged_scopes") or []}
-            if current_app not in remaining:
+            execution = status.get("execution") or {}
+            if execution_recovered(execution):
                 queue = [app_id for app_id in queue if app_id != current_app]
+                forced_recovery_apps.discard(current_app)
                 state["current_backlog_app"] = None
                 state["not_before"] = None
             else:
@@ -352,7 +365,9 @@ class RunnerSupervisor:
                     return
                 state["not_before"] = isoformat(current + timedelta(minutes=self.config.backlog_retry_minutes))
             state["backlog_queue"] = queue
+            state["forced_recovery_apps"] = list(forced_recovery_apps)
             state["current_run"] = None
+            state["last_completed_run_id"] = None
 
         if queue and not state.get("current_run_id") and not state.get("current_run"):
             status = outage_recovery_status_postgres(
@@ -360,7 +375,10 @@ class RunnerSupervisor:
                 source=WEB_CATALOG_SOURCE,
                 initialize_schema=False,
             )
-            remaining = {str(row.get("app_id")) for row in status.get("backlogged_scopes") or []}
+            remaining = {
+                str(row.get("app_id"))
+                for row in status.get("backlogged_scopes") or []
+            } | forced_recovery_apps
             queue = [app_id for app_id in queue if app_id in remaining]
             state["backlog_queue"] = queue
             if current_app and current_app not in remaining:
@@ -395,6 +413,7 @@ class RunnerSupervisor:
             current_run_id=str(run_id),
             current_dispatch_token=token,
             current_run_started_at=isoformat(current),
+            last_completed_run_id=None,
             not_before=None,
         )
 
@@ -544,6 +563,8 @@ class RunnerSupervisor:
             current_run_id=None,
             current_backlog_app=None,
             backlog_queue=[],
+            forced_recovery_apps=[],
+            last_completed_run_id=None,
             not_before=None,
         )
 
@@ -596,6 +617,13 @@ def execution_complete(execution: dict[str, Any]) -> bool:
     return (
         intended > 0
         and int(execution.get("completed_scope_count") or 0) == intended
+    )
+
+
+def execution_recovered(execution: dict[str, Any]) -> bool:
+    return (
+        execution_complete(execution)
+        and int(execution.get("backlogged_scope_count") or 0) == 0
         and int(execution.get("hard_failure_scope_count") or 0) == 0
     )
 
@@ -823,11 +851,23 @@ def parse_bool(value: str) -> bool:
 
 def load_state(path: Path) -> dict[str, Any]:
     if not path.exists():
-        return {"phase": "idle", "restart_attempts": 0, "backlog_queue": [], "backlog_attempts": {}}
+        return {
+            "phase": "idle",
+            "restart_attempts": 0,
+            "backlog_queue": [],
+            "forced_recovery_apps": [],
+            "backlog_attempts": {},
+        }
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return {"phase": "idle", "restart_attempts": 0, "backlog_queue": [], "backlog_attempts": {}}
+        return {
+            "phase": "idle",
+            "restart_attempts": 0,
+            "backlog_queue": [],
+            "forced_recovery_apps": [],
+            "backlog_attempts": {},
+        }
 
 
 def reset_supervisor_recovery_state(
@@ -854,7 +894,9 @@ def reset_supervisor_recovery_state(
         current_dispatch_token=None,
         current_backlog_app=None,
         backlog_queue=[],
+        forced_recovery_apps=[],
         backlog_attempts={},
+        last_completed_run_id=None,
         not_before=None,
         full_recovery_attempts=0,
         verify_recovery_attempts=0,
