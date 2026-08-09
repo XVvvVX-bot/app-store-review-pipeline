@@ -17,6 +17,7 @@ from app_store_review_pipeline.runner_supervisor import (
     execution_complete,
     execution_monitor_verified,
     execution_recovered,
+    forced_recovery_window_complete,
     prepare_supervisor_runtime,
     reset_supervisor_recovery_state,
     target_offset_for_app,
@@ -514,6 +515,7 @@ def test_full_recovery_queues_hard_failure_scope_for_targeted_retry(monkeypatch,
                     "app_id": "544007664",
                     "app_name": "YouTube",
                     "recovery_start_page": 7,
+                    "recovery_required_page": 31,
                 }
             ],
             "execution": {
@@ -534,6 +536,7 @@ def test_full_recovery_queues_hard_failure_scope_for_targeted_retry(monkeypatch,
     assert state["backlog_queue"] == ["544007664"]
     assert state["forced_recovery_apps"] == ["544007664"]
     assert state["forced_recovery_start_pages"] == {"544007664": 7}
+    assert state["forced_recovery_required_pages"] == {"544007664": 31}
     assert state.get("manual_attention_reason") is None
 
 
@@ -544,6 +547,14 @@ def test_targeted_hard_failure_is_cleared_only_by_successful_execution(monkeypat
         "app_store_review_pipeline.runner_supervisor.outage_recovery_status_postgres",
         lambda *args, **kwargs: {
             "backlogged_scopes": [],
+            "execution_scopes": [
+                {
+                    "app_id": "544007664",
+                    "max_page": 31,
+                    "fetch_errors": 0,
+                    "other_non_200_pages": 0,
+                }
+            ],
             "execution": {
                 "intended_scope_count": 1,
                 "completed_scope_count": 1,
@@ -563,6 +574,7 @@ def test_targeted_hard_failure_is_cleared_only_by_successful_execution(monkeypat
         "backlog_queue": ["544007664"],
         "forced_recovery_apps": ["544007664"],
         "forced_recovery_start_pages": {"544007664": 7},
+        "forced_recovery_required_pages": {"544007664": 31},
         "current_backlog_app": "544007664",
         "current_run_id": None,
         "current_run": {"status": "completed", "conclusion": "success"},
@@ -574,6 +586,7 @@ def test_targeted_hard_failure_is_cleared_only_by_successful_execution(monkeypat
     assert state["backlog_queue"] == []
     assert state["forced_recovery_apps"] == []
     assert state["forced_recovery_start_pages"] == {}
+    assert state["forced_recovery_required_pages"] == {}
     assert verification == ["verify"]
 
 
@@ -594,6 +607,7 @@ def test_hard_failure_retry_starts_before_failed_page_without_backlog_resume(mon
         "backlog_queue": ["544007664"],
         "forced_recovery_apps": ["544007664"],
         "forced_recovery_start_pages": {"544007664": 7},
+        "forced_recovery_required_pages": {"544007664": 31},
         "backlog_attempts": {},
     }
 
@@ -602,6 +616,8 @@ def test_hard_failure_retry_starts_before_failed_page_without_backlog_resume(mon
     assert dispatched[0]["target_offset"] == 64
     assert dispatched[0]["start_page"] == 7
     assert dispatched[0]["resume_backlog"] is False
+    assert dispatched[0]["max_pages"] == 25
+    assert dispatched[0]["disable_overlap_stop"] is True
 
 
 def test_failing_database_monitor_status_blocks_recovery_resolution(monkeypatch, tmp_path):
@@ -752,6 +768,25 @@ def test_recovery_helpers_preserve_scope_safety(tmp_path):
     assert not execution_complete({"intended_scope_count": 200, "completed_scope_count": 199, "hard_failure_scope_count": 0})
     assert execution_recovered({"intended_scope_count": 1, "completed_scope_count": 1, "backlogged_scope_count": 0, "hard_failure_scope_count": 0})
     assert not execution_recovered({"intended_scope_count": 1, "completed_scope_count": 1, "backlogged_scope_count": 0, "hard_failure_scope_count": 1})
+    assert not forced_recovery_window_complete(
+        {
+            "execution": {
+                "intended_scope_count": 1,
+                "completed_scope_count": 1,
+                "hard_failure_scope_count": 0,
+            },
+            "execution_scopes": [
+                {
+                    "app_id": "544007664",
+                    "max_page": 7,
+                    "fetch_errors": 0,
+                    "other_non_200_pages": 0,
+                }
+            ],
+        },
+        app_id="544007664",
+        required_page=31,
+    )
     assert execution_monitor_verified({"status": "healthy"})
     assert execution_monitor_verified({"status": "degraded"})
     assert not execution_monitor_verified({"status": "failing"})

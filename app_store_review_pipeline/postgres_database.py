@@ -589,6 +589,7 @@ def outage_recovery_status_postgres(
         ).fetchone()
         execution = None
         hard_failure_rows = []
+        execution_scope_rows = []
         if github_run_id:
             execution = connection.execute(
                 """
@@ -642,7 +643,29 @@ def outage_recovery_status_postgres(
                         1,
                         min(max_ok_page, first_error_page) - 25 + 1,
                     )
+                    row["recovery_required_page"] = first_error_page
                     hard_failure_rows.append(row)
+                execution_scope_rows = connection.execute(
+                    """
+                    SELECT scope.app_id, scope.app_name, scope.country, scope.sort_by,
+                        scope.outcome, scope.terminal_reason, scope.page_count,
+                        scope.fetch_errors, scope.other_non_200_pages,
+                        MIN(page.page_number)::integer AS min_page,
+                        MAX(page.page_number)::integer AS max_page
+                    FROM app_store_run_scopes scope
+                    LEFT JOIN app_store_review_pages page
+                      ON page.run_id = scope.run_id
+                     AND page.app_id = scope.app_id
+                     AND page.country = scope.country
+                     AND page.sort_by = scope.sort_by
+                    WHERE scope.execution_id = %s
+                    GROUP BY scope.app_id, scope.app_name, scope.country, scope.sort_by,
+                        scope.outcome, scope.terminal_reason, scope.page_count,
+                        scope.fetch_errors, scope.other_non_200_pages
+                    ORDER BY scope.app_id, scope.country, scope.sort_by
+                    """,
+                    (execution["execution_id"],),
+                ).fetchall()
         backlog_rows = connection.execute(
             """
             SELECT state.app_id, target.app_name, state.country, state.sort_by,
@@ -665,6 +688,7 @@ def outage_recovery_status_postgres(
         "scope_count": int(freshness["scope_count"] or 0),
         "backlogged_scopes": [dict(row) for row in backlog_rows],
         "hard_failure_scopes": [dict(row) for row in hard_failure_rows],
+        "execution_scopes": [dict(row) for row in execution_scope_rows],
         "execution": dict(execution) if execution else None,
     }
 
