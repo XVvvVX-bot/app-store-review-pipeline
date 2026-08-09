@@ -590,6 +590,52 @@ def test_targeted_hard_failure_is_cleared_only_by_successful_execution(monkeypat
     assert verification == ["verify"]
 
 
+def test_forced_repair_does_not_fall_back_to_generic_execution_success(monkeypatch, tmp_path):
+    current = datetime(2026, 8, 9, 20, 0, tzinfo=timezone.utc)
+    supervisor = RunnerSupervisor(
+        SupervisorConfig(repo_path=tmp_path, backlog_retry_minutes=30),
+        state_path=tmp_path / "state.json",
+    )
+    monkeypatch.setattr(
+        "app_store_review_pipeline.runner_supervisor.outage_recovery_status_postgres",
+        lambda *args, **kwargs: {
+            "backlogged_scopes": [],
+            "execution_scopes": [
+                {
+                    "app_id": "544007664",
+                    "max_page": 7,
+                    "fetch_errors": 0,
+                    "other_non_200_pages": 0,
+                }
+            ],
+            "execution": {
+                "intended_scope_count": 1,
+                "completed_scope_count": 1,
+                "backlogged_scope_count": 0,
+                "hard_failure_scope_count": 0,
+            },
+        },
+    )
+    state = {
+        "phase": "recovery_backlog",
+        "backlog_queue": ["544007664"],
+        "forced_recovery_apps": ["544007664"],
+        "forced_recovery_start_pages": {"544007664": 7},
+        "forced_recovery_required_pages": {"544007664": 31},
+        "backlog_attempts": {"544007664": 1},
+        "current_backlog_app": "544007664",
+        "current_run_id": None,
+        "current_run": {"status": "completed", "conclusion": "success"},
+        "last_completed_run_id": "9012",
+    }
+
+    supervisor.advance_backlog(state, current)
+
+    assert state["backlog_queue"] == ["544007664"]
+    assert state["forced_recovery_apps"] == ["544007664"]
+    assert state["not_before"] == "2026-08-09T20:30:00Z"
+
+
 def test_hard_failure_retry_starts_before_failed_page_without_backlog_resume(monkeypatch, tmp_path):
     current = datetime(2026, 8, 9, 20, 0, tzinfo=timezone.utc)
     supervisor = RunnerSupervisor(SupervisorConfig(repo_path=tmp_path), state_path=tmp_path / "state.json")

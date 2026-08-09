@@ -367,15 +367,17 @@ class RunnerSupervisor:
                 else {"execution": None}
             )
             execution = status.get("execution") or {}
-            forced_repair_complete = (
-                current_app in forced_recovery_apps
-                and forced_recovery_window_complete(
+            forced_recovery = current_app in forced_recovery_apps
+            recovered = (
+                forced_recovery_window_complete(
                     status,
                     app_id=current_app,
                     required_page=int(forced_recovery_required_pages.get(current_app) or 1),
                 )
+                if forced_recovery
+                else execution_recovered(execution)
             )
-            if forced_repair_complete or execution_recovered(execution):
+            if recovered:
                 queue = [app_id for app_id in queue if app_id != current_app]
                 forced_recovery_apps.discard(current_app)
                 forced_recovery_start_pages.pop(current_app, None)
