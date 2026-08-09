@@ -149,7 +149,7 @@ The GitHub-hosted runner gate rejects a run before self-hosted jobs are queued w
   --repo-path "$PWD"
 ```
 
-The generated local config is `~/.config/app-store-review-pipeline/runner-supervisor.env`; it is mode `600` and is not committed.
+The generated local config is `~/.config/app-store-review-pipeline/runner-supervisor.env`; it is mode `600` and is not committed. The installer deploys a dedicated runtime under `~/.local/share/app-store-review-pipeline-supervisor` so launchd is not blocked by macOS Documents-folder privacy controls.
 
 ## Reports And Docs
 

@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import os
 import plistlib
+import pwd
+import shutil
 import subprocess
 import time
 from dataclasses import dataclass
@@ -25,6 +27,7 @@ DEFAULT_SUPERVISOR_STATE = Path.home() / ".local/state/app-store-review-pipeline
 DEFAULT_SUPERVISOR_CONFIG = Path.home() / ".config/app-store-review-pipeline/runner-supervisor.env"
 DEFAULT_SUPERVISOR_LOG = Path.home() / "Library/Logs/app-store-runner-supervisor.log"
 DEFAULT_LAUNCH_AGENT = Path.home() / "Library/LaunchAgents/com.sciencia.app-store-runner-supervisor.plist"
+DEFAULT_SUPERVISOR_RUNTIME = Path.home() / ".local/share/app-store-review-pipeline-supervisor"
 RUNNER_PLIST_GLOB = "actions.runner.XVvvVX-bot-app-store-review-pipeline*.plist"
 RECOVERY_WORKFLOW = "app-store-daily-pipeline.yml"
 RECOVERY_PRESSURE_MODE = "fixed"
@@ -36,6 +39,7 @@ class SupervisorConfig:
     repo_path: Path = Path.home() / "Documents/Sciencia AI/app-store-review-pipeline"
     database_url: str = DEFAULT_DATABASE_URL
     heartbeat_url: str = ""
+    github_token: str = ""
     branch: str = "main"
     min_online_runners: int = 4
     outage_seconds: int = 600
@@ -55,6 +59,7 @@ class SupervisorConfig:
             repo_path=Path(values.get("APP_STORE_REPO_PATH", str(cls.repo_path))).expanduser(),
             database_url=values.get("DATABASE_URL", cls.database_url),
             heartbeat_url=values.get("APP_STORE_HEARTBEAT_URL", ""),
+            github_token=values.get("GH_TOKEN", ""),
             branch=values.get("GITHUB_BRANCH", cls.branch),
             min_online_runners=int(values.get("MIN_ONLINE_RUNNERS", cls.min_online_runners)),
             outage_seconds=int(values.get("OUTAGE_SECONDS", cls.outage_seconds)),
@@ -528,7 +533,16 @@ class RunnerSupervisor:
         return json.loads(result.stdout or "null")
 
     def run_command(self, args: list[str]) -> subprocess.CompletedProcess[str]:
-        return self.command_runner(args, capture_output=True, text=True, cwd=self.config.repo_path)
+        env = None
+        if args and args[0] == "gh" and self.config.github_token:
+            env = {**os.environ, "GH_TOKEN": self.config.github_token}
+        return self.command_runner(
+            args,
+            capture_output=True,
+            text=True,
+            cwd=self.config.repo_path,
+            env=env,
+        )
 
 
 def execution_complete(execution: dict[str, Any]) -> bool:
@@ -562,20 +576,29 @@ def install_runner_supervisor(
     config_path: Path = DEFAULT_SUPERVISOR_CONFIG,
     launch_agent_path: Path = DEFAULT_LAUNCH_AGENT,
     python_path: Path | None = None,
+    runtime_path: Path = DEFAULT_SUPERVISOR_RUNTIME,
 ) -> dict[str, Any]:
     repo_path = repo_path.expanduser().resolve()
-    python_path = (python_path or repo_path / ".venv/bin/python").expanduser().resolve()
-    if not python_path.exists():
-        raise FileNotFoundError(f"Supervisor Python does not exist: {python_path}")
+    source_python = (python_path or repo_path / ".venv/bin/python").expanduser().absolute()
+    if not source_python.exists():
+        raise FileNotFoundError(f"Supervisor Python does not exist: {source_python}")
+    runtime = prepare_supervisor_runtime(
+        repo_path=repo_path,
+        source_python=source_python,
+        runtime_path=runtime_path,
+    )
+    runtime_path = Path(runtime["runtime_path"])
+    runtime_python = Path(runtime["python_path"])
     config_path.parent.mkdir(parents=True, exist_ok=True)
     if not config_path.exists():
         config_path.write_text(
             "\n".join(
                 [
                     "GITHUB_REPOSITORY=XVvvVX-bot/app-store-review-pipeline",
-                    f"APP_STORE_REPO_PATH={repo_path}",
+                    f"APP_STORE_REPO_PATH={runtime_path}",
                     "DATABASE_URL=postgresql:///app_store_reviews",
                     "APP_STORE_HEARTBEAT_URL=",
+                    "GH_TOKEN=",
                     "GITHUB_BRANCH=main",
                     "MIN_ONLINE_RUNNERS=4",
                     "OUTAGE_SECONDS=600",
@@ -591,24 +614,45 @@ def install_runner_supervisor(
             ),
             encoding="utf-8",
         )
+    else:
+        update_env_value(config_path, "APP_STORE_REPO_PATH", str(runtime_path))
+    config_values = read_env_file(config_path)
+    if not config_values.get("GH_TOKEN"):
+        token_result = subprocess.run(
+            ["gh", "auth", "token"],
+            capture_output=True,
+            text=True,
+        )
+        token = token_result.stdout.strip() if token_result.returncode == 0 else ""
+        if not token:
+            raise RuntimeError(
+                "A GitHub token is required for the launchd supervisor; run gh auth login or set GH_TOKEN in the local config."
+            )
+        update_env_value(config_path, "GH_TOKEN", token)
     config_path.chmod(0o600)
     DEFAULT_SUPERVISOR_LOG.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "Label": "com.sciencia.app-store-runner-supervisor",
         "ProgramArguments": [
-            str(python_path),
-            str(repo_path / "app_store_pipeline.py"),
+            str(runtime_python),
+            str(runtime_path / "app_store_pipeline.py"),
             "runner-supervisor",
             "--config",
             str(config_path),
             "--state",
             str(DEFAULT_SUPERVISOR_STATE),
         ],
-        "WorkingDirectory": str(repo_path),
+        "WorkingDirectory": str(runtime_path),
+        "EnvironmentVariables": {
+            "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+            "PYTHONUNBUFFERED": "1",
+        },
         "RunAtLoad": True,
         "StartInterval": 60,
         "ThrottleInterval": 30,
-        "ProcessType": "Background",
+        "ProcessType": "Interactive",
+        "SessionCreate": True,
+        "UserName": pwd.getpwuid(os.getuid()).pw_name,
         "StandardOutPath": str(DEFAULT_SUPERVISOR_LOG),
         "StandardErrorPath": str(DEFAULT_SUPERVISOR_LOG),
     }
@@ -625,7 +669,6 @@ def install_runner_supervisor(
     )
     if bootstrap.returncode != 0:
         raise RuntimeError(bootstrap.stderr.strip() or "launchctl bootstrap failed")
-    subprocess.run(["launchctl", "kickstart", "-k", f"{domain}/{label}"], check=True)
     return {
         "installed": True,
         "label": label,
@@ -633,6 +676,68 @@ def install_runner_supervisor(
         "launch_agent_path": str(launch_agent_path),
         "state_path": str(DEFAULT_SUPERVISOR_STATE),
         "log_path": str(DEFAULT_SUPERVISOR_LOG),
+        **runtime,
+    }
+
+
+def prepare_supervisor_runtime(
+    *,
+    repo_path: Path,
+    source_python: Path,
+    runtime_path: Path = DEFAULT_SUPERVISOR_RUNTIME,
+) -> dict[str, str]:
+    runtime_path = runtime_path.expanduser().absolute()
+    required = [
+        repo_path / "app_store_pipeline.py",
+        repo_path / "requirements.lock",
+        repo_path / "app_store_review_pipeline",
+        repo_path / DEFAULT_TARGETS,
+    ]
+    missing = [str(path) for path in required if not path.exists()]
+    if missing:
+        raise FileNotFoundError(f"Supervisor runtime sources are missing: {', '.join(missing)}")
+
+    runtime_path.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(repo_path / "app_store_pipeline.py", runtime_path / "app_store_pipeline.py")
+    shutil.copy2(repo_path / "requirements.lock", runtime_path / "requirements.lock")
+    shutil.copytree(
+        repo_path / "app_store_review_pipeline",
+        runtime_path / "app_store_review_pipeline",
+        dirs_exist_ok=True,
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store"),
+    )
+    runtime_targets = runtime_path / DEFAULT_TARGETS
+    runtime_targets.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(repo_path / DEFAULT_TARGETS, runtime_targets)
+
+    runtime_python = runtime_path / ".venv/bin/python"
+    if not runtime_python.exists():
+        created = subprocess.run(
+            [str(source_python), "-m", "venv", str(runtime_path / ".venv")],
+            capture_output=True,
+            text=True,
+        )
+        if created.returncode != 0:
+            raise RuntimeError(created.stderr.strip() or "Supervisor virtualenv creation failed")
+    installed = subprocess.run(
+        [
+            str(runtime_python),
+            "-m",
+            "pip",
+            "install",
+            "--disable-pip-version-check",
+            "-r",
+            str(runtime_path / "requirements.lock"),
+        ],
+        capture_output=True,
+        text=True,
+        env={**os.environ, "PIP_CONFIG_FILE": "/dev/null", "PIP_USER": "false"},
+    )
+    if installed.returncode != 0:
+        raise RuntimeError(installed.stderr.strip() or "Supervisor dependency installation failed")
+    return {
+        "runtime_path": str(runtime_path),
+        "python_path": str(runtime_python),
     }
 
 
@@ -647,6 +752,22 @@ def read_env_file(path: Path) -> dict[str, str]:
         key, value = line.split("=", 1)
         values[key.strip()] = value.strip().strip('"').strip("'")
     return values
+
+
+def update_env_value(path: Path, key: str, value: str) -> None:
+    lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+    replacement = f"{key}={value}"
+    updated = []
+    replaced = False
+    for line in lines:
+        if line.strip().startswith(f"{key}="):
+            updated.append(replacement)
+            replaced = True
+        else:
+            updated.append(line)
+    if not replaced:
+        updated.append(replacement)
+    path.write_text("\n".join(updated) + "\n", encoding="utf-8")
 
 
 def parse_bool(value: str) -> bool:

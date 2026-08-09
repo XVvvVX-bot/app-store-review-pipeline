@@ -23,11 +23,12 @@ The outage path has four independent controls:
 This creates:
 
 - `~/.config/app-store-review-pipeline/runner-supervisor.env` with mode `600`;
+- `~/.local/share/app-store-review-pipeline-supervisor/`, an unprotected runtime copy with its own virtualenv so launchd does not depend on macOS Documents-folder permissions;
 - `~/.local/state/app-store-review-pipeline/runner-supervisor.json`;
 - `~/Library/LaunchAgents/com.sciencia.app-store-runner-supervisor.plist`;
 - `~/Library/Logs/app-store-runner-supervisor.log`.
 
-Put the existing Healthchecks base ping URL in `APP_STORE_HEARTBEAT_URL` in the local env file. Do not commit it. Reload after editing:
+The installer copies the active `gh` token into `GH_TOKEN` in this mode-`600` local file because a background launchd process cannot reliably read the interactive macOS keychain. Prefer a fine-grained token limited to this repository with Actions read/write and metadata access. Put the existing Healthchecks base ping URL in `APP_STORE_HEARTBEAT_URL`. Do not commit either value. Reload after editing:
 
 ```bash
 launchctl kickstart -k "gui/$(id -u)/com.sciencia.app-store-runner-supervisor"

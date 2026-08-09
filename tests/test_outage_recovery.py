@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -15,8 +16,10 @@ from app_store_review_pipeline.runner_supervisor import (
     SupervisorConfig,
     execution_complete,
     execution_monitor_verified,
+    prepare_supervisor_runtime,
     target_offset_for_app,
     unique_backlog_apps,
+    update_env_value,
 )
 
 
@@ -588,6 +591,55 @@ def test_recovery_helpers_preserve_scope_safety(tmp_path):
     assert execution_monitor_verified({"status": "healthy"})
     assert execution_monitor_verified({"status": "degraded"})
     assert not execution_monitor_verified({"status": "failing"})
+
+
+def test_supervisor_runtime_is_deployed_outside_source_repo(monkeypatch, tmp_path):
+    repo = tmp_path / "repo"
+    runtime = tmp_path / "runtime"
+    source_python = repo / ".venv/bin/python"
+    (repo / "app_store_review_pipeline").mkdir(parents=True)
+    (repo / "data/targets").mkdir(parents=True)
+    source_python.parent.mkdir(parents=True)
+    source_python.write_text("fixture", encoding="utf-8")
+    (repo / "app_store_pipeline.py").write_text("print('fixture')\n", encoding="utf-8")
+    (repo / "requirements.lock").write_text("requests==2.32.5\n", encoding="utf-8")
+    (repo / "app_store_review_pipeline/__init__.py").write_text("", encoding="utf-8")
+    (repo / "data/targets/apple_apps.csv").write_text("app_name,apple_app_id\n", encoding="utf-8")
+
+    def fake_run(args, **kwargs):
+        if args[1:3] == ["-m", "venv"]:
+            python = Path(args[3]) / "bin/python"
+            python.parent.mkdir(parents=True)
+            python.write_text("fixture", encoding="utf-8")
+        return subprocess.CompletedProcess(args, 0, "", "")
+
+    monkeypatch.setattr("app_store_review_pipeline.runner_supervisor.subprocess.run", fake_run)
+
+    result = prepare_supervisor_runtime(
+        repo_path=repo,
+        source_python=source_python,
+        runtime_path=runtime,
+    )
+
+    assert result["runtime_path"] == str(runtime)
+    assert result["python_path"] == str(runtime / ".venv/bin/python")
+    assert (runtime / "app_store_review_pipeline/__init__.py").exists()
+    assert (runtime / "data/targets/apple_apps.csv").exists()
+
+
+def test_supervisor_config_update_preserves_secrets(tmp_path):
+    config = tmp_path / "supervisor.env"
+    config.write_text(
+        "APP_STORE_REPO_PATH=/old/path\nAPP_STORE_HEARTBEAT_URL=https://example.invalid/secret\n",
+        encoding="utf-8",
+    )
+
+    update_env_value(config, "APP_STORE_REPO_PATH", "/new/runtime")
+
+    assert config.read_text(encoding="utf-8") == (
+        "APP_STORE_REPO_PATH=/new/runtime\n"
+        "APP_STORE_HEARTBEAT_URL=https://example.invalid/secret\n"
+    )
 
 
 def test_workflow_keeps_recovery_within_dispatch_input_limit():
