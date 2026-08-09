@@ -401,6 +401,7 @@ def test_supervisor_waits_for_stability_before_dispatch(monkeypatch, tmp_path):
     assert third["state"]["phase"] == "recovery_full"
     assert third["state"]["current_run_id"] == "9001"
     assert len(dispatched) == 1
+    assert dispatched[0]["token"].endswith(":full:attempt-1")
 
 
 def test_supervisor_marks_outage_once_after_threshold(monkeypatch, tmp_path):
@@ -424,7 +425,11 @@ def test_supervisor_marks_outage_once_after_threshold(monkeypatch, tmp_path):
 
 
 def test_recovery_dispatch_uses_valid_fixed_pressure_mode(monkeypatch, tmp_path):
-    supervisor = RunnerSupervisor(SupervisorConfig(repo_path=tmp_path), state_path=tmp_path / "state.json")
+    supervisor = RunnerSupervisor(
+        SupervisorConfig(repo_path=tmp_path),
+        state_path=tmp_path / "state.json",
+        now=lambda: datetime(2026, 8, 9, 20, 0, tzinfo=timezone.utc),
+    )
     calls = []
 
     def fake_gh_json(args, *, expect_json=True):
@@ -432,6 +437,12 @@ def test_recovery_dispatch_uses_valid_fixed_pressure_mode(monkeypatch, tmp_path)
         if args[:2] == ["workflow", "run"]:
             return None
         return [
+            {
+                "databaseId": 8003,
+                "displayTitle": "Outage recovery outage:fixture:full",
+                "status": "completed",
+                "createdAt": "2026-08-09T18:00:00Z",
+            },
             {
                 "databaseId": 9003,
                 "displayTitle": "Outage recovery outage:fixture:full",

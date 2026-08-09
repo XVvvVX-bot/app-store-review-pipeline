@@ -241,7 +241,7 @@ class RunnerSupervisor:
         self.cancel_stale_daily_runs(current)
         state["last_reconciliation"] = reconcile
         state["incident_id"] = state.get("incident_id") or incident_id(current)
-        token = f"outage:{state['incident_id']}:{phase}"
+        token = f"outage:{state['incident_id']}:{phase}:attempt-{attempt}"
         run_id = self.dispatch_recovery(token=token, max_parallel=4)
         state.update(
             phase="recovery_full" if phase == "full" else "recovery_verify",
@@ -432,6 +432,7 @@ class RunnerSupervisor:
             "web_429_circuit_breaker_max_rate": "0.5",
             "outage_recovery": "true",
         }
+        dispatched_at = self.now().astimezone(timezone.utc)
         args = ["workflow", "run", RECOVERY_WORKFLOW, "--repo", self.config.repository, "--ref", self.config.branch]
         for key, value in fields.items():
             args.extend(["-f", f"{key}={value}"])
@@ -454,7 +455,16 @@ class RunnerSupervisor:
                     "databaseId,displayTitle,status,createdAt",
                 ]
             )
-            match = next((row for row in payload if row.get("displayTitle") == expected_title), None)
+            match = next(
+                (
+                    row
+                    for row in payload
+                    if row.get("displayTitle") == expected_title
+                    and (parse_time(row.get("createdAt")) or datetime.min.replace(tzinfo=timezone.utc))
+                    >= dispatched_at - timedelta(minutes=1)
+                ),
+                None,
+            )
             if match:
                 return str(match["databaseId"])
             time.sleep(2)
