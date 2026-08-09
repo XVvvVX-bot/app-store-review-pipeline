@@ -392,20 +392,38 @@ def upsert_execution_postgres(
     config_signature: str = "",
     intended_target_count: int = 0,
     intended_scope_count: int = 0,
+    recovery_of_execution_id: str = "",
+    incident_key: str = "",
     initialize_schema: bool = True,
 ) -> dict[str, Any]:
     if initialize_schema:
         initialize_postgres(database_url)
     with connect_postgres(database_url) as connection:
+        if incident_key and not recovery_of_execution_id:
+            recovered = connection.execute(
+                """
+                SELECT execution_id
+                FROM app_store_executions
+                WHERE source = %s
+                  AND status = 'cancelled'
+                  AND termination_reason = 'runner_outage_superseded'
+                ORDER BY completed_at DESC NULLS LAST, started_at DESC
+                LIMIT 1
+                """,
+                (source,),
+            ).fetchone()
+            recovery_of_execution_id = str(recovered["execution_id"]) if recovered else ""
         connection.execute(
             """
             INSERT INTO app_store_executions (
                 execution_id, github_run_id, github_run_attempt, workflow_name,
                 event_name, git_sha, source, scope_signature, config_signature,
-                intended_target_count, intended_scope_count, started_at
+                intended_target_count, intended_scope_count, started_at,
+                recovery_of_execution_id, incident_key
             )
             VALUES (%s, NULLIF(%s, ''), %s, NULLIF(%s, ''), NULLIF(%s, ''),
-                    NULLIF(%s, ''), %s, NULLIF(%s, ''), NULLIF(%s, ''), %s, %s, %s)
+                    NULLIF(%s, ''), %s, NULLIF(%s, ''), NULLIF(%s, ''), %s, %s, %s,
+                    NULLIF(%s, ''), NULLIF(%s, ''))
             ON CONFLICT (execution_id) DO UPDATE
             SET github_run_id = COALESCE(EXCLUDED.github_run_id, app_store_executions.github_run_id),
                 github_run_attempt = EXCLUDED.github_run_attempt,
@@ -422,6 +440,11 @@ def upsert_execution_postgres(
                     app_store_executions.intended_scope_count,
                     EXCLUDED.intended_scope_count
                 ),
+                recovery_of_execution_id = COALESCE(
+                    EXCLUDED.recovery_of_execution_id,
+                    app_store_executions.recovery_of_execution_id
+                ),
+                incident_key = COALESCE(EXCLUDED.incident_key, app_store_executions.incident_key),
                 updated_at = CURRENT_TIMESTAMP
             """,
             (
@@ -437,6 +460,8 @@ def upsert_execution_postgres(
                 max(0, int(intended_target_count or 0)),
                 max(0, int(intended_scope_count or 0)),
                 started_at,
+                recovery_of_execution_id,
+                incident_key,
             ),
         )
         connection.commit()
@@ -446,6 +471,8 @@ def upsert_execution_postgres(
         "github_run_attempt": max(1, int(github_run_attempt or 1)),
         "intended_target_count": max(0, int(intended_target_count or 0)),
         "intended_scope_count": max(0, int(intended_scope_count or 0)),
+        "recovery_of_execution_id": recovery_of_execution_id,
+        "incident_key": incident_key,
     }
 
 
@@ -455,6 +482,7 @@ def finalize_execution_postgres(
     execution_id: str,
     status: str,
     completed_at: str | None = None,
+    termination_reason: str = "",
     initialize_schema: bool = True,
 ) -> dict[str, Any]:
     if status not in {"healthy", "degraded", "failing", "cancelled"}:
@@ -469,16 +497,133 @@ def finalize_execution_postgres(
             UPDATE app_store_executions
             SET status = %s,
                 completed_at = %s,
+                termination_reason = COALESCE(NULLIF(%s, ''), termination_reason),
                 updated_at = CURRENT_TIMESTAMP
             WHERE execution_id = %s
             RETURNING execution_id
             """,
-            (status, completed_at, execution_id),
+            (status, completed_at, termination_reason, execution_id),
         ).fetchone()
         connection.commit()
     if not updated:
         raise ValueError(f"Unknown execution_id: {execution_id}")
-    return {"execution_id": execution_id, "status": status, "completed_at": completed_at, **counts}
+    return {
+        "execution_id": execution_id,
+        "status": status,
+        "completed_at": completed_at,
+        "termination_reason": termination_reason,
+        **counts,
+    }
+
+
+def reconcile_stale_executions_postgres(
+    database_url: str,
+    *,
+    source: str = WEB_CATALOG_SOURCE,
+    stale_hours: float = 6,
+    termination_reason: str = "runner_outage_superseded",
+    initialize_schema: bool = True,
+) -> dict[str, Any]:
+    if stale_hours <= 0:
+        raise ValueError("stale_hours must be greater than zero")
+    if initialize_schema:
+        initialize_postgres(database_url)
+    completed_at = utc_timestamp()
+    with connect_postgres(database_url) as connection:
+        rows = connection.execute(
+            """
+            UPDATE app_store_executions
+            SET status = 'cancelled',
+                completed_at = COALESCE(completed_at, %s::timestamptz),
+                termination_reason = %s,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE source = %s
+              AND status = 'running'
+              AND started_at < now() - (%s * INTERVAL '1 hour')
+            RETURNING execution_id, github_run_id, started_at,
+                completed_scope_count, backlogged_scope_count, hard_failure_scope_count
+            """,
+            (completed_at, termination_reason, source, float(stale_hours)),
+        ).fetchall()
+        connection.commit()
+    executions = [dict(row) for row in rows]
+    return {
+        "source": source,
+        "stale_hours": float(stale_hours),
+        "termination_reason": termination_reason,
+        "reconciled_count": len(executions),
+        "executions": executions,
+    }
+
+
+def outage_recovery_status_postgres(
+    database_url: str,
+    *,
+    source: str = WEB_CATALOG_SOURCE,
+    github_run_id: str = "",
+    initialize_schema: bool = True,
+) -> dict[str, Any]:
+    if initialize_schema:
+        initialize_postgres(database_url)
+    with connect_postgres(database_url) as connection:
+        freshness = connection.execute(
+            """
+            SELECT
+                COUNT(*) FILTER (
+                    WHERE last_completed_at_ts IS NULL
+                       OR last_completed_at_ts < now() - INTERVAL '24 hours'
+                )::integer AS stale_24h,
+                COUNT(*) FILTER (
+                    WHERE last_completed_at_ts IS NULL
+                       OR last_completed_at_ts < now() - INTERVAL '36 hours'
+                )::integer AS stale_36h,
+                COUNT(*) FILTER (WHERE backlogged = 1)::integer AS backlogged_scope_count,
+                COUNT(*)::integer AS scope_count
+            FROM app_store_sync_state state
+            JOIN app_store_targets target ON target.app_id = state.app_id
+            WHERE state.source = %s
+              AND target.active = 1
+            """,
+            (source,),
+        ).fetchone()
+        execution = None
+        if github_run_id:
+            execution = connection.execute(
+                """
+                SELECT execution_id, github_run_id, status, intended_target_count,
+                    intended_scope_count, completed_scope_count, caught_up_scope_count,
+                    backlogged_scope_count, hard_failure_scope_count, started_at,
+                    completed_at, termination_reason, recovery_of_execution_id, incident_key
+                FROM app_store_executions
+                WHERE source = %s AND github_run_id = %s
+                ORDER BY github_run_attempt DESC
+                LIMIT 1
+                """,
+                (source, str(github_run_id)),
+            ).fetchone()
+        backlog_rows = connection.execute(
+            """
+            SELECT state.app_id, target.app_name, state.country, state.sort_by,
+                state.backlog_started_at, state.consecutive_incomplete_runs,
+                state.last_terminal_reason
+            FROM app_store_sync_state state
+            JOIN app_store_targets target ON target.app_id = state.app_id
+            WHERE state.source = %s
+              AND state.backlogged = 1
+              AND target.active = 1
+            ORDER BY state.backlog_started_at NULLS FIRST, state.app_id, state.country
+            """,
+            (source,),
+        ).fetchall()
+    return {
+        "source": source,
+        "stale_24h": int(freshness["stale_24h"] or 0),
+        "stale_36h": int(freshness["stale_36h"] or 0),
+        "backlogged_scope_count": int(freshness["backlogged_scope_count"] or 0),
+        "scope_count": int(freshness["scope_count"] or 0),
+        "backlogged_scopes": [dict(row) for row in backlog_rows],
+        "execution": dict(execution) if execution else None,
+    }
 
 
 def record_monitor_snapshot_postgres(

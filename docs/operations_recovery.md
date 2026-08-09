@@ -2,6 +2,77 @@
 
 This runbook covers schema deployment, production validation, alert recovery, and guarded backfill handling.
 
+## Availability Contract
+
+The current Mac and local Postgres remain one physical failure domain. The pipeline cannot ingest while the Mac is powered off, offline, or logged out of the runner-owning user session. The recovery contract is therefore automatic restart and safe incremental catch-up after the host returns, not continuous high availability.
+
+The outage path has four independent controls:
+
+1. GitHub-hosted `runner-gate` rejects a schedule immediately when the requested runner capacity is unavailable.
+2. Healthchecks.io remains the external dead-man signal when a schedule never completes.
+3. The launchd supervisor restarts local runner services and waits for a five-minute stable window.
+4. A bounded recovery state machine supersedes stale runs, catches up current reviews, resumes small long-tail backlogs, and verifies all scopes.
+
+## Install The Runner Supervisor
+
+```bash
+.venv/bin/python app_store_pipeline.py install-runner-supervisor \
+  --repo-path "$PWD"
+```
+
+This creates:
+
+- `~/.config/app-store-review-pipeline/runner-supervisor.env` with mode `600`;
+- `~/.local/state/app-store-review-pipeline/runner-supervisor.json`;
+- `~/Library/LaunchAgents/com.sciencia.app-store-runner-supervisor.plist`;
+- `~/Library/Logs/app-store-runner-supervisor.log`.
+
+Put the existing Healthchecks base ping URL in `APP_STORE_HEARTBEAT_URL` in the local env file. Do not commit it. Reload after editing:
+
+```bash
+launchctl kickstart -k "gui/$(id -u)/com.sciencia.app-store-runner-supervisor"
+```
+
+Inspect one tick without waiting for launchd:
+
+```bash
+.venv/bin/python app_store_pipeline.py runner-supervisor
+```
+
+Healthy means Postgres responds, GitHub is reachable, at least four eligible runners are online, and at least four launchd runner services are loaded.
+
+## Automatic Outage Recovery
+
+The supervisor uses these fixed limits:
+
+- health check every 60 seconds;
+- outage declaration after 10 unhealthy minutes;
+- at most three runner restart attempts;
+- five healthy minutes before dispatch;
+- execution/workflow stale boundary of six hours;
+- full-scope recovery at `max_parallel=4`, page 1, uncapped trusted-overlap stop, and 3600-second scope budget;
+- at most 10 backlogged apps, processed serially with 7200-second scope budget;
+- 25-page checkpoint overlap, four recent incomplete attempts, and 36-hour checkpoint age;
+- at most three checkpoint passes per app, 30 minutes apart.
+
+Each automatic dispatch sets `outage_recovery=true`. This is the only mode that enables `cancel-in-progress`, so it supersedes stale scheduled work without changing ordinary twice-daily concurrency behavior. The recovery token is carried in `experiment_group` for traceability but is not interpreted as an operating-model target group.
+
+The first full-scope run starts every app at page 1. Existing review keys and trusted overlap make partial writes from interrupted runs safe to revisit. If no app remains backlogged, this run resolves the incident. Otherwise the supervisor runs targeted checkpoint recovery, then one final 200-scope verification. More than 10 backlog apps, an incomplete execution, a final monitor status that cannot be verified, source-pressure failure, or three unsuccessful passes moves the supervisor to `manual_attention` and stops automatic dispatch. A GitHub workflow may be red during an intermediate backlog pass; the state machine uses persisted scope outcomes and the final Postgres monitor status instead of treating that expected intermediate signal as data loss.
+
+Use these commands to inspect or repair lineage:
+
+```bash
+.venv/bin/python app_store_pipeline.py outage-recovery-status \
+  --database-url postgresql:///app_store_reviews
+
+.venv/bin/python app_store_pipeline.py reconcile-stale-executions \
+  --database-url postgresql:///app_store_reviews \
+  --stale-hours 6 \
+  --termination-reason runner_outage_superseded
+```
+
+Reconciliation marks stale execution metadata `cancelled`; it never deletes pages, reviews, changes, or successful scope outcomes.
+
 ## Normal Deployment
 
 1. Keep `.github/workflows/app-store-web-catalog-backfill.yml` disabled.
@@ -73,6 +144,19 @@ The scheduled workflow sends `/start`, base success, or `/fail` lifecycle pings.
 2. inspect whether `notify` ran;
 3. verify `APP_STORE_HEARTBEAT_URL` still points to the service's base ping URL;
 4. use GitHub logs as evidence, because the external service is only the dead-man signal.
+
+For a runner incident, Healthchecks owns the one failure/one recovery email pair. GitHub keeps the detailed `pipeline-incident` Issue and suppresses duplicate SMTP for subsequent schedules. A targeted backlog pass sends `/fail`; only a complete full-scope verification sends the success ping.
+
+## Controlled Outage Drill
+
+1. Start a full-scope manual run and wait for approximately 20 persisted scope outcomes.
+2. Stop all app-store runner launchd services while leaving the Mac and network available.
+3. Confirm the capacity gate or interrupted-run fallback opens one GitHub incident and Healthchecks sends one failure alert.
+4. Restore the services, or let the supervisor kickstart them.
+5. Confirm the supervisor waits five stable minutes and dispatches one `Outage recovery ... full` run.
+6. Confirm stale execution rows become `cancelled` with `runner_outage_superseded` and partial review facts remain present.
+7. Confirm any checkpoint passes are serial and bounded, followed by a 200-scope verification.
+8. Confirm the Issue closes, Healthchecks returns up, and exactly one recovery alert is received.
 
 ## Backfill Safety
 

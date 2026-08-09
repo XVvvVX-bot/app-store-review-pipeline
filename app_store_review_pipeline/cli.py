@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 
 from app_store_review_pipeline.config import (
@@ -17,6 +18,7 @@ from app_store_review_pipeline.config import (
 )
 from app_store_review_pipeline.eda import DEFAULT_EDA_HTML, DEFAULT_EDA_JSON, DEFAULT_EDA_MARKDOWN, generate_eda_report
 from app_store_review_pipeline.files import write_json, write_jsonl
+from app_store_review_pipeline.incidents import coordinate_monitoring_incident, write_incident_result
 from app_store_review_pipeline.monitoring import (
     DEFAULT_MONITORING_JSON,
     DEFAULT_MONITORING_MARKDOWN,
@@ -45,8 +47,10 @@ from app_store_review_pipeline.postgres_database import (
     initialize_postgres,
     load_pipeline_run_postgres,
     mask_database_url,
+    outage_recovery_status_postgres,
     record_run_scopes_postgres,
     record_web_catalog_pressure_result,
+    reconcile_stale_executions_postgres,
     review_counts_by_scope,
     sync_targets_postgres,
     trusted_existing_review_ids_by_scope,
@@ -56,6 +60,14 @@ from app_store_review_pipeline.postgres_database import (
     web_catalog_429_circuit_breaker_status,
     web_catalog_429_cooldown_status,
     web_catalog_pressure_status,
+)
+from app_store_review_pipeline.runner_supervisor import (
+    DEFAULT_LAUNCH_AGENT,
+    DEFAULT_SUPERVISOR_CONFIG,
+    DEFAULT_SUPERVISOR_STATE,
+    RunnerSupervisor,
+    SupervisorConfig,
+    install_runner_supervisor,
 )
 from app_store_review_pipeline.targets import active_targets, load_targets
 from app_store_review_pipeline.utils import make_run_id, utc_timestamp
@@ -105,7 +117,27 @@ def build_parser() -> argparse.ArgumentParser:
     finalize_execution.add_argument("--execution-id", required=True)
     finalize_execution.add_argument("--status", choices=["healthy", "degraded", "failing", "cancelled"], required=True)
     finalize_execution.add_argument("--completed-at")
+    finalize_execution.add_argument("--termination-reason", default="")
     finalize_execution.set_defaults(func=command_finalize_execution)
+
+    reconcile_executions = subparsers.add_parser(
+        "reconcile-stale-executions",
+        help="Cancel execution rows left running beyond the outage-recovery age limit.",
+    )
+    reconcile_executions.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
+    reconcile_executions.add_argument("--source", default=WEB_CATALOG_SOURCE)
+    reconcile_executions.add_argument("--stale-hours", type=float, default=6)
+    reconcile_executions.add_argument("--termination-reason", default="runner_outage_superseded")
+    reconcile_executions.set_defaults(func=command_reconcile_stale_executions)
+
+    recovery_status = subparsers.add_parser(
+        "outage-recovery-status",
+        help="Report freshness, backlog, and optional GitHub execution state for outage recovery.",
+    )
+    recovery_status.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
+    recovery_status.add_argument("--source", default=WEB_CATALOG_SOURCE)
+    recovery_status.add_argument("--github-run-id", default="")
+    recovery_status.set_defaults(func=command_outage_recovery_status)
 
     web_429_breaker = subparsers.add_parser(
         "check-web-429-circuit-breaker",
@@ -241,6 +273,7 @@ def build_parser() -> argparse.ArgumentParser:
     monitor_email.add_argument("--report-json", type=Path, required=True)
     monitor_email.add_argument("--result-json", type=Path, default=DEFAULT_NOTIFICATION_RESULT)
     monitor_email.add_argument("--preview-output", type=Path, default=DEFAULT_NOTIFICATION_PREVIEW)
+    monitor_email.add_argument("--incident-json", type=Path)
     monitor_email.add_argument("--dry-run", action="store_true")
     monitor_email.add_argument("--force", action="store_true")
     monitor_email.set_defaults(func=command_send_monitoring_email)
@@ -258,6 +291,37 @@ def build_parser() -> argparse.ArgumentParser:
     fallback_monitor.add_argument("--github-run-attempt", type=int, default=1)
     fallback_monitor.add_argument("--workflow-result", default="failure")
     fallback_monitor.set_defaults(func=command_fallback_monitoring_report)
+
+    incident = subparsers.add_parser(
+        "coordinate-monitoring-incident",
+        help="Open, update, or resolve the durable GitHub issue for a production incident.",
+    )
+    incident.add_argument("--report-json", type=Path, required=True)
+    incident.add_argument("--result-json", type=Path, required=True)
+    incident.add_argument("--repository", default=os.environ.get("GITHUB_REPOSITORY", ""))
+    incident.add_argument("--token", default=os.environ.get("GH_TOKEN", ""))
+    incident.add_argument("--outage-recovery", action="store_true")
+    incident.add_argument("--recovery-incident-id", default="")
+    incident.add_argument("--recovery-phase", default="")
+    incident.set_defaults(func=command_coordinate_monitoring_incident)
+
+    supervisor = subparsers.add_parser(
+        "runner-supervisor",
+        help="Run one self-hosted runner health and outage-recovery state-machine tick.",
+    )
+    supervisor.add_argument("--config", type=Path, default=DEFAULT_SUPERVISOR_CONFIG)
+    supervisor.add_argument("--state", type=Path, default=DEFAULT_SUPERVISOR_STATE)
+    supervisor.set_defaults(func=command_runner_supervisor)
+
+    install_supervisor = subparsers.add_parser(
+        "install-runner-supervisor",
+        help="Install or update the macOS launchd runner supervisor.",
+    )
+    install_supervisor.add_argument("--repo-path", type=Path, default=Path.cwd())
+    install_supervisor.add_argument("--config", type=Path, default=DEFAULT_SUPERVISOR_CONFIG)
+    install_supervisor.add_argument("--launch-agent", type=Path, default=DEFAULT_LAUNCH_AGENT)
+    install_supervisor.add_argument("--python", type=Path)
+    install_supervisor.set_defaults(func=command_install_runner_supervisor)
 
     daily_web_catalog = subparsers.add_parser(
         "daily-web-catalog",
@@ -323,6 +387,8 @@ def add_execution_arguments(parser: argparse.ArgumentParser, *, require_executio
     parser.add_argument("--config-signature", default="")
     parser.add_argument("--intended-target-count", type=int, default=0)
     parser.add_argument("--intended-scope-count", type=int, default=0)
+    parser.add_argument("--recovery-of-execution-id", default="")
+    parser.add_argument("--incident-key", default="")
 
 
 def add_web_catalog_fetch_arguments(parser: argparse.ArgumentParser) -> None:
@@ -548,6 +614,8 @@ def command_start_execution(args: argparse.Namespace) -> int:
         config_signature=args.config_signature,
         intended_target_count=args.intended_target_count,
         intended_scope_count=args.intended_scope_count,
+        recovery_of_execution_id=getattr(args, "recovery_of_execution_id", ""),
+        incident_key=getattr(args, "incident_key", ""),
     )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
@@ -559,8 +627,30 @@ def command_finalize_execution(args: argparse.Namespace) -> int:
         execution_id=args.execution_id,
         status=args.status,
         completed_at=args.completed_at,
+        termination_reason=getattr(args, "termination_reason", ""),
     )
     print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
+def command_reconcile_stale_executions(args: argparse.Namespace) -> int:
+    result = reconcile_stale_executions_postgres(
+        args.database_url,
+        source=args.source,
+        stale_hours=args.stale_hours,
+        termination_reason=args.termination_reason,
+    )
+    print(json.dumps(result, indent=2, sort_keys=True, default=str))
+    return 0
+
+
+def command_outage_recovery_status(args: argparse.Namespace) -> int:
+    result = outage_recovery_status_postgres(
+        args.database_url,
+        source=args.source,
+        github_run_id=args.github_run_id,
+    )
+    print(json.dumps(result, indent=2, sort_keys=True, default=str))
     return 0
 
 
@@ -730,6 +820,7 @@ def command_send_monitoring_email(args: argparse.Namespace) -> int:
             args.report_json,
             result_path=args.result_json,
             preview_path=args.preview_output,
+            incident_path=getattr(args, "incident_json", None),
             dry_run=args.dry_run,
             force=args.force,
         )
@@ -751,6 +842,39 @@ def command_send_monitoring_email(args: argparse.Namespace) -> int:
         print("::error title=monitoring_email_not_configured::Failing email was eligible but SMTP secrets are missing.")
         print(json.dumps(result, indent=2, sort_keys=True))
         return 1
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
+def command_coordinate_monitoring_incident(args: argparse.Namespace) -> int:
+    summary = json.loads(args.report_json.read_text(encoding="utf-8"))
+    result = coordinate_monitoring_incident(
+        summary,
+        repository=args.repository,
+        token=args.token,
+        outage_recovery=args.outage_recovery,
+        recovery_incident_id=args.recovery_incident_id,
+        recovery_phase=args.recovery_phase,
+    )
+    write_incident_result(args.result_json, result)
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
+def command_runner_supervisor(args: argparse.Namespace) -> int:
+    config = SupervisorConfig.from_file(args.config)
+    result = RunnerSupervisor(config, state_path=args.state).run_once()
+    print(json.dumps(result, indent=2, sort_keys=True, default=str))
+    return 0 if result["health"]["healthy"] else 1
+
+
+def command_install_runner_supervisor(args: argparse.Namespace) -> int:
+    result = install_runner_supervisor(
+        repo_path=args.repo_path,
+        config_path=args.config,
+        launch_agent_path=args.launch_agent,
+        python_path=args.python,
+    )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
 

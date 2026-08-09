@@ -35,7 +35,7 @@ Key fields are app name, analyst category, Apple slug, countries, active flag, n
 
 One row per GitHub workflow run attempt or local execution. Primary key: `execution_id`.
 
-It stores GitHub run/attempt/workflow/event/SHA lineage, source, scope/config signatures, intended target/scope counts, completed outcome counts, health status, and start/completion timestamps. This is the unit monitored by `monitoring-report`.
+It stores GitHub run/attempt/workflow/event/SHA lineage, source, scope/config signatures, intended target/scope counts, completed outcome counts, health status, and start/completion timestamps. Outage recovery also records `termination_reason`, `recovery_of_execution_id`, and `incident_key`, so a stale execution and the run that superseded it remain directly traceable. This is the unit monitored by `monitoring-report`.
 
 ### `app_store_runs`
 

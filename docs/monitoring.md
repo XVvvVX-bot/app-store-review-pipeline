@@ -7,11 +7,13 @@ This document defines the production monitoring contract for Apple App Store dai
 GitHub remains the complete operational evidence surface, while Postgres remains the ingestion source of truth.
 
 1. `prepare-matrix` selects the intended targets and app-country scopes, computes stable scope/config signatures, and assigns an execution ID based on the GitHub run and attempt.
-2. `preflight` creates the `app_store_executions` row before any app worker starts.
-3. Every matrix worker attaches its `app_store_runs`, pages, reviews, changes, and `app_store_run_scopes` outcome to that execution.
-4. `monitor` queries the exact execution ID, rather than an approximate time window, writes Markdown/JSON artifacts, persists one `app_store_monitor_snapshots` row, and finalizes the execution health status.
-5. The independent GitHub-hosted `notify` job runs with `if: always()`. It downloads the primary report or creates a minimal failing fallback report when the self-hosted monitor never produced one.
-6. Email is sent only for an eligible failing scheduled run. Healthy and degraded evidence stays in GitHub.
+2. A GitHub-hosted `runner-gate` requires enough online self-hosted runners before any Mac job is queued. Capacity failure is classified as `runner_unavailable` immediately.
+3. `preflight` creates the `app_store_executions` row before any app worker starts.
+4. Every matrix worker attaches its `app_store_runs`, pages, reviews, changes, and `app_store_run_scopes` outcome to that execution.
+5. `monitor` queries the exact execution ID, rather than an approximate time window, writes Markdown/JSON artifacts, persists one `app_store_monitor_snapshots` row, and finalizes the execution health status.
+6. The independent GitHub-hosted `notify` job runs with `if: always()`. It downloads the primary report or creates a minimal failing fallback report when the self-hosted monitor never produced one.
+7. `notify` coordinates a durable GitHub Issue labeled `pipeline-incident`. The first failure opens it, repeated failures append evidence, and only a complete full-scope verification closes it.
+8. External notification is transition-based: one failure and one recovery per incident. Healthy and degraded evidence stays in GitHub.
 
 The monitor never changes review facts or page outcomes. It does update monitoring metadata: the execution status/counts and the execution's monitor snapshot.
 
@@ -101,15 +103,17 @@ Each report contains:
 
 ## Email Behavior
 
-Email is a short failing alert, not the evidence archive. It includes the primary reason, affected scopes, key metrics, and the GitHub Actions run link.
+Email is a short incident-transition alert, not the evidence archive. It includes the primary reason, affected scopes, key metrics, and GitHub Actions/incident links.
 
-Automatic email requires all of the following:
+The first non-runner production failure sends SMTP only when all of the following hold:
 
 - report status is `failing`;
 - event is `schedule`;
 - GitHub run attempt is `1`.
 
-Healthy and degraded runs do not send email. Manual runs and reruns do not send unless an operator deliberately supplies `--force`.
+Repeated runs for the same open incident update the Issue but suppress SMTP. A subsequent full-scope healthy or degraded run sends one recovery email only when completed scopes equal intended scopes and backlog, missing, and hard-failure counts are all zero. Manual runs and reruns do not participate unless they are explicit outage-recovery dispatches.
+
+Runner availability incidents use Healthchecks.io as the failure/recovery email owner. Direct SMTP is suppressed for `runner_unavailable` and `runner_interrupted`, preventing duplicate messages from the two channels. If GitHub Issue coordination itself fails, notification fails open and sends SMTP rather than silently losing the alert.
 
 The `notify` job runs on GitHub-hosted Ubuntu and is independent of the self-hosted ingestion runners. If the primary report is missing, it creates a fallback `monitor_report_unavailable` or `workflow_failure` report and still attempts notification. For an eligible failing scheduled report, missing or invalid SMTP configuration fails the notify job; silently losing the only external alert is not treated as success.
 
@@ -140,11 +144,13 @@ The test does not run ingestion or mutate Postgres. Its summary and seven-day ar
 
 Set the `APP_STORE_HEARTBEAT_URL` repository secret to the base ping URL of a service that supports start/success/fail lifecycle pings.
 
-For scheduled runs the workflow calls:
+For scheduled runs and explicit outage-recovery dispatches the workflow calls:
 
 - `${APP_STORE_HEARTBEAT_URL}/start` after matrix preparation;
-- `${APP_STORE_HEARTBEAT_URL}` after a healthy or degraded completion;
+- `${APP_STORE_HEARTBEAT_URL}` only after a complete production run or complete full-scope outage recovery;
 - `${APP_STORE_HEARTBEAT_URL}/fail` after a failing completion.
+
+A targeted checkpoint pass remains in failed heartbeat state until a final full-scope verification proves every intended scope is complete.
 
 Configure the external check for a 12-hour expected interval and an initial 6-hour grace period. This detects a workflow that never starts, a workflow that starts but never reaches notification, and an explicitly failing monitor. The heartbeat is best-effort and never blocks ingestion; email remains the direct failing-status alert.
 
@@ -160,6 +166,8 @@ Automated tests cover:
 - unchanged source frontiers and change-ledger mismatches;
 - monitor-job exclusion from ingestion failure counts;
 - fallback reports, dry-run email, fake SMTP delivery, and missing configuration behavior;
+- incident opening, repeated-failure suppression, full-scope resolution, and recovery email behavior;
+- supervisor outage/stability thresholds and workflow dispatch-input limits;
 - Markdown and JSON rendering.
 
 ## Runbook

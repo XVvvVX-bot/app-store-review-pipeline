@@ -12,6 +12,7 @@ The production path uses Apple's public App Store web catalog review JSON, norma
 - Current target shape: `app_name`, `category`, `apple_app_id`, `apple_slug`, `countries`, `active`, `notes`
 - Current target mode: all 200 tracked apps are active for full-scope daily incremental testing.
 - Historical backfill is manually disabled. Routine collection uses twice-daily incremental ingestion.
+- A local launchd runner supervisor detects Mac runner/Postgres outages, restarts services, and dispatches bounded incremental catch-up after the host is stable again.
 
 ## Architecture
 
@@ -140,6 +141,15 @@ Active workflows:
 - `App Store Web Catalog Backfill`: manually disabled and guarded; not part of routine operations.
 
 Research-era workflows have been moved to `docs/archive/workflows/` so they remain auditable but no longer appear as active runnable Actions.
+
+The GitHub-hosted runner gate rejects a run before self-hosted jobs are queued when fewer than the requested runner count are online. On the Mac, install the recovery supervisor with:
+
+```bash
+.venv/bin/python app_store_pipeline.py install-runner-supervisor \
+  --repo-path "$PWD"
+```
+
+The generated local config is `~/.config/app-store-review-pipeline/runner-supervisor.env`; it is mode `600` and is not committed.
 
 ## Reports And Docs
 

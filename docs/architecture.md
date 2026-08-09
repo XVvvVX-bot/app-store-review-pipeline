@@ -64,7 +64,7 @@ Weaker stop reasons include `page_cap`, `caught_up_to_existing_reviews`, `time_b
 
 ## Operations
 
-GitHub Actions uses self-hosted Mac runners because local Postgres is the development store. The active operational workflows are CI, scheduled/dispatchable daily ingestion with integrated monitoring/notification, and a controlled email test. The web-catalog backfill workflow is retained but manually disabled. The former GitHub-scheduled watchdog was removed because the same delayed scheduler cannot reliably detect its own missed runs; optional external heartbeat monitoring covers that failure mode.
+GitHub Actions uses self-hosted Mac runners because local Postgres is the development store. A GitHub-hosted capacity gate prevents a missing Mac runner pool from creating a 200-job queue, while a local launchd supervisor restarts Postgres/runner services and dispatches a bounded full-scope incremental recovery after the host is stable. The active operational workflows are CI, scheduled/dispatchable daily ingestion with integrated monitoring/notification, and a controlled email test. The web-catalog backfill workflow is retained but manually disabled. The former GitHub-scheduled watchdog was removed because the same delayed scheduler cannot reliably detect its own missed runs; external heartbeat monitoring covers that failure mode.
 
 The daily incremental workflow uses:
 

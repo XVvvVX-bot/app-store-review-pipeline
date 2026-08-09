@@ -1,4 +1,5 @@
 name: App Store Review Pipeline
+run-name: ${{ github.event_name == 'workflow_dispatch' && inputs.outage_recovery && format('Outage recovery {0}', inputs.experiment_group) || github.workflow }}
 
 on:
   # GitHub cron is UTC. These map to 20:07 and 08:07 America/Los_Angeles during PDT.
@@ -130,14 +131,20 @@ on:
         required: false
         default: "0.5"
         type: string
+      outage_recovery:
+        description: "Supersede stale runs and participate in the automatic outage-recovery incident lifecycle"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
   actions: read
+  issues: write
 
 concurrency:
   group: app-store-postgres-writer
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' && inputs.outage_recovery }}
 
 jobs:
   prepare-matrix:
@@ -151,6 +158,9 @@ jobs:
       execution_id: ${{ steps.build-matrix.outputs.execution_id }}
       scope_signature: ${{ steps.build-matrix.outputs.scope_signature }}
       config_signature: ${{ steps.build-matrix.outputs.config_signature }}
+      runner_capacity_ok: ${{ steps.runner-capacity.outputs.capacity_ok }}
+      online_runner_count: ${{ steps.runner-capacity.outputs.online_count }}
+      required_runner_count: ${{ steps.runner-capacity.outputs.required_count }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -178,6 +188,7 @@ jobs:
           INPUT_PRESSURE_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.pressure_ramp_mode || 'fixed' }}
           INPUT_PRESSURE_LOOKBACK: ${{ github.event_name == 'workflow_dispatch' && inputs.pressure_ramp_lookback_minutes || '720' }}
           INPUT_PRESSURE_MAX_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.pressure_ramp_max_pages || '25' }}
+          INPUT_OUTAGE_RECOVERY: ${{ github.event_name == 'workflow_dispatch' && inputs.outage_recovery || 'false' }}
         run: |
           set -euo pipefail
           echo "run_started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
@@ -194,12 +205,13 @@ jobs:
           offset_raw = os.environ["INPUT_TARGET_OFFSET"].strip().lower()
           start_offset = 0 if offset_raw == "auto" else max(0, int(offset_raw))
           experiment_group = os.environ["INPUT_EXPERIMENT_GROUP"].strip()
+          outage_recovery = os.environ["INPUT_OUTAGE_RECOVERY"].lower() == "true"
           max_parallel = max(1, int(os.environ["INPUT_MAX_PARALLEL"]))
           rows = build_daily_matrix_rows(
               Path("data/targets/apple_apps.csv"),
               limit=limit,
               target_offset=start_offset,
-              experiment_group=experiment_group,
+              experiment_group="" if outage_recovery else experiment_group,
           )
           matrix = {"include": rows}
           selected_ids = {row["app_id"] for row in rows}
@@ -227,6 +239,8 @@ jobs:
               "pressure_mode": os.environ["INPUT_PRESSURE_MODE"],
               "pressure_lookback": os.environ["INPUT_PRESSURE_LOOKBACK"],
               "pressure_max_pages": os.environ["INPUT_PRESSURE_MAX_PAGES"],
+              "outage_recovery": outage_recovery,
+              "recovery_token": experiment_group if outage_recovery else "",
           }
           signature = lambda value: hashlib.sha256(
               json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -240,8 +254,32 @@ jobs:
           print(f"execution_id=github:{os.environ['GITHUB_RUN_ID']}:{os.environ['GITHUB_RUN_ATTEMPT']}:apple-web-catalog")
           PY
 
+      - name: Check self-hosted runner capacity
+        id: runner-capacity
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SELECTED_COUNT: ${{ steps.build-matrix.outputs.selected_count }}
+          MAX_PARALLEL: ${{ steps.build-matrix.outputs.max_parallel }}
+        run: |
+          set -euo pipefail
+          required_count="$MAX_PARALLEL"
+          if [ "$SELECTED_COUNT" -lt "$required_count" ]; then
+            required_count="$SELECTED_COUNT"
+          fi
+          online_count="$(gh api "repos/$GITHUB_REPOSITORY/actions/runners?per_page=100" \
+            --jq '[.runners[] | select(.status == "online") | select(any(.labels[]; .name == "app-store-review-pipeline"))] | length' \
+            2>/dev/null || printf '0')"
+          capacity_ok=false
+          if [ "$required_count" -eq 0 ] || [ "$online_count" -ge "$required_count" ]; then
+            capacity_ok=true
+          fi
+          echo "required_count=$required_count" >> "$GITHUB_OUTPUT"
+          echo "online_count=$online_count" >> "$GITHUB_OUTPUT"
+          echo "capacity_ok=$capacity_ok" >> "$GITHUB_OUTPUT"
+          echo "Runner capacity: online=$online_count required=$required_count capacity_ok=$capacity_ok"
+
       - name: Send external schedule heartbeat
-        if: ${{ github.event_name == 'schedule' }}
+        if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.outage_recovery) }}
         continue-on-error: true
         env:
           APP_STORE_HEARTBEAT_URL: ${{ secrets.APP_STORE_HEARTBEAT_URL }}
@@ -258,8 +296,26 @@ jobs:
             "${APP_STORE_HEARTBEAT_URL%/}/start" \
             >/dev/null
 
-  preflight:
+  runner-gate:
     needs: prepare-matrix
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require self-hosted runner capacity
+        env:
+          CAPACITY_OK: ${{ needs.prepare-matrix.outputs.runner_capacity_ok }}
+          ONLINE_RUNNERS: ${{ needs.prepare-matrix.outputs.online_runner_count }}
+          REQUIRED_RUNNERS: ${{ needs.prepare-matrix.outputs.required_runner_count }}
+        run: |
+          set -euo pipefail
+          if [ "$CAPACITY_OK" != "true" ]; then
+            echo "::error title=runner_unavailable::Only $ONLINE_RUNNERS eligible self-hosted runners are online; $REQUIRED_RUNNERS are required."
+            exit 1
+          fi
+
+  preflight:
+    needs:
+      - prepare-matrix
+      - runner-gate
     runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 30
     env:
@@ -275,8 +331,26 @@ jobs:
       INTENDED_SCOPE_COUNT: ${{ needs.prepare-matrix.outputs.intended_scope_count }}
       SCOPE_SIGNATURE: ${{ needs.prepare-matrix.outputs.scope_signature }}
       CONFIG_SIGNATURE: ${{ needs.prepare-matrix.outputs.config_signature }}
+      OUTAGE_RECOVERY: ${{ github.event_name == 'workflow_dispatch' && inputs.outage_recovery || 'false' }}
+      RECOVERY_TOKEN: ${{ github.event_name == 'workflow_dispatch' && inputs.experiment_group || '' }}
 
     steps:
+      - name: Reject stale queued execution
+        env:
+          RUN_STARTED_AT: ${{ needs.prepare-matrix.outputs.run_started_at }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          from datetime import datetime, timezone
+
+          started = datetime.fromisoformat(os.environ["RUN_STARTED_AT"].replace("Z", "+00:00"))
+          age_hours = (datetime.now(timezone.utc) - started).total_seconds() / 3600
+          if age_hours >= 6:
+              raise SystemExit(f"Queued workflow is stale ({age_hours:.2f} hours); refusing ingestion.")
+          print(f"Queued workflow age is {age_hours:.2f} hours.")
+          PY
+
       - name: Check out repository
         uses: actions/checkout@v6
 
@@ -296,6 +370,19 @@ jobs:
           database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
           .venv/bin/python app_store_pipeline.py init-postgres --database-url "$database_url"
 
+      - name: Reconcile stale outage executions
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.outage_recovery }}
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          .venv/bin/python app_store_pipeline.py reconcile-stale-executions \
+            --database-url "$database_url" \
+            --source apple_app_store_web_catalog_reviews \
+            --stale-hours 6 \
+            --termination-reason runner_outage_superseded
+
       - name: Start ingestion execution
         env:
           DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
@@ -314,7 +401,8 @@ jobs:
             --scope-signature "$SCOPE_SIGNATURE" \
             --config-signature "$CONFIG_SIGNATURE" \
             --intended-target-count "$SELECTED_COUNT" \
-            --intended-scope-count "$INTENDED_SCOPE_COUNT"
+            --intended-scope-count "$INTENDED_SCOPE_COUNT" \
+            --incident-key "$RECOVERY_TOKEN"
 
       - name: Sync targets to Postgres
         env:
@@ -396,6 +484,22 @@ jobs:
       CONFIG_SIGNATURE: ${{ needs.prepare-matrix.outputs.config_signature }}
 
     steps:
+      - name: Reject stale queued app job
+        env:
+          RUN_STARTED_AT: ${{ needs.prepare-matrix.outputs.run_started_at }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          from datetime import datetime, timezone
+
+          started = datetime.fromisoformat(os.environ["RUN_STARTED_AT"].replace("Z", "+00:00"))
+          age_hours = (datetime.now(timezone.utc) - started).total_seconds() / 3600
+          if age_hours >= 6:
+              raise SystemExit(f"Queued app job is stale ({age_hours:.2f} hours); refusing ingestion.")
+          print(f"Queued app job age is {age_hours:.2f} hours.")
+          PY
+
       - name: Check out repository
         uses: actions/checkout@v6
 
@@ -545,9 +649,10 @@ jobs:
   monitor:
     needs:
       - prepare-matrix
+      - runner-gate
       - preflight
       - daily
-    if: ${{ always() && !cancelled() }}
+    if: ${{ always() && !cancelled() && needs.runner-gate.result == 'success' }}
     runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 30
     env:
@@ -716,6 +821,7 @@ jobs:
   notify:
     needs:
       - prepare-matrix
+      - runner-gate
       - preflight
       - daily
       - monitor
@@ -726,9 +832,12 @@ jobs:
       PIP_CONFIG_FILE: /dev/null
       PIP_USER: "false"
       PREPARE_RESULT: ${{ needs.prepare-matrix.result }}
+      RUNNER_GATE_RESULT: ${{ needs.runner-gate.result }}
       PREFLIGHT_RESULT: ${{ needs.preflight.result }}
       DAILY_RESULT: ${{ needs.daily.result }}
       MONITOR_RESULT: ${{ needs.monitor.result }}
+      OUTAGE_RECOVERY: ${{ github.event_name == 'workflow_dispatch' && inputs.outage_recovery || 'false' }}
+      RECOVERY_TOKEN: ${{ github.event_name == 'workflow_dispatch' && inputs.experiment_group || '' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -757,12 +866,21 @@ jobs:
           fi
           failure_code="monitor_report_unavailable"
           failure_message="The primary self-hosted monitor did not produce a health report."
+          if [ "$RUNNER_GATE_RESULT" != "success" ]; then
+            failure_code="runner_unavailable"
+            failure_message="The GitHub-hosted capacity gate found too few eligible self-hosted runners online."
+          elif [ "$PREFLIGHT_RESULT" != "success" ] || [ "$DAILY_RESULT" != "success" ]; then
+            failure_code="runner_interrupted"
+            failure_message="Self-hosted ingestion did not complete and no primary monitor report was produced."
+          fi
           for result in "$PREPARE_RESULT" "$PREFLIGHT_RESULT" "$DAILY_RESULT"; do
             case "$result" in
               success|skipped) ;;
               *)
-                failure_code="workflow_failure"
-                failure_message="A required ingestion job failed or did not run, and the primary monitor report is unavailable."
+                if [ "$failure_code" = "monitor_report_unavailable" ]; then
+                  failure_code="workflow_failure"
+                  failure_message="A required ingestion job failed or did not run, and the primary monitor report is unavailable."
+                fi
                 ;;
             esac
           done
@@ -775,7 +893,22 @@ jobs:
             --github-event-name "$GITHUB_EVENT_NAME" \
             --github-run-attempt "$GITHUB_RUN_ATTEMPT"
 
-      - name: Send email for failing scheduled status only
+      - name: Coordinate durable pipeline incident
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          recovery_args=()
+          if [ "$OUTAGE_RECOVERY" = "true" ]; then
+            recovery_args+=(--outage-recovery --recovery-incident-id "$RECOVERY_TOKEN" --recovery-phase "$RECOVERY_TOKEN")
+          fi
+          .venv/bin/python app_store_pipeline.py coordinate-monitoring-incident \
+            --report-json data/reports/monitoring/current_run_health.json \
+            --result-json data/reports/monitoring/incident_result.json \
+            --repository "$GITHUB_REPOSITORY" \
+            "${recovery_args[@]}"
+
+      - name: Send incident transition email
         env:
           APP_STORE_ALERT_SMTP_HOST: ${{ vars.APP_STORE_ALERT_SMTP_HOST }}
           APP_STORE_ALERT_SMTP_PORT: ${{ vars.APP_STORE_ALERT_SMTP_PORT }}
@@ -787,10 +920,11 @@ jobs:
           set -euo pipefail
           .venv/bin/python app_store_pipeline.py send-monitoring-email \
             --report-json data/reports/monitoring/current_run_health.json \
+            --incident-json data/reports/monitoring/incident_result.json \
             --result-json data/reports/monitoring/notification_result.json
 
       - name: Complete external schedule heartbeat
-        if: ${{ always() && github.event_name == 'schedule' }}
+        if: ${{ always() && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.outage_recovery)) }}
         continue-on-error: true
         env:
           APP_STORE_HEARTBEAT_URL: ${{ secrets.APP_STORE_HEARTBEAT_URL }}
@@ -808,6 +942,19 @@ jobs:
           print(report.get("status") or "failing")
           PY
           )"
+          if [ "$OUTAGE_RECOVERY" = "true" ]; then
+            recovery_complete="$(.venv/bin/python - <<'PY'
+          import json
+          from pathlib import Path
+
+          incident = json.loads(Path("data/reports/monitoring/incident_result.json").read_text(encoding="utf-8"))
+          print("true" if incident.get("recovery_complete") else "false")
+          PY
+            )"
+            if [ "$recovery_complete" != "true" ]; then
+              status="failing"
+            fi
+          fi
           heartbeat_url="${APP_STORE_HEARTBEAT_URL%/}"
           if [ "$status" = "failing" ]; then
             heartbeat_url="$heartbeat_url/fail"
@@ -829,4 +976,5 @@ jobs:
           if-no-files-found: warn
           path: |
             data/reports/monitoring/current_run_health.json
+            data/reports/monitoring/incident_result.json
             data/reports/monitoring/notification_result.json

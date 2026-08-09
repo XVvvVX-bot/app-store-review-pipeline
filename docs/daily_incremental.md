@@ -140,9 +140,9 @@ For each scheduled run, the monitor checks:
 - App-country freshness from `app_store_sync_state`.
 - Database row counts and table sizes.
 
-The monitor appends a Markdown health summary to the GitHub Actions run summary and uploads Markdown/JSON artifacts. It queries the exact `execution_id`, classifies the run as `healthy`, `degraded`, or `failing`, reconciles review changes, stores a monitor snapshot, and finalizes execution status. Only an eligible first-attempt scheduled `failing` status sends external email. The independent GitHub-hosted notify job creates a fallback failing report when the self-hosted monitor is unavailable. Healthy and degraded results remain in GitHub.
+The monitor appends a Markdown health summary to the GitHub Actions run summary and uploads Markdown/JSON artifacts. It queries the exact `execution_id`, classifies the run as `healthy`, `degraded`, or `failing`, reconciles review changes, stores a monitor snapshot, and finalizes execution status. The independent GitHub-hosted notify job creates a fallback failing report when the self-hosted monitor is unavailable. A durable `pipeline-incident` GitHub Issue suppresses repeated alerts for the same outage and closes only after a complete full-scope verification. Runner outages use Healthchecks for one failure/recovery pair; other production failures use one SMTP failure/recovery pair. Healthy and degraded evidence remains in GitHub.
 
-The optional external heartbeat receives `/start`, success, or `/fail` lifecycle pings. It detects a scheduled workflow that never starts or never completes, which an in-workflow monitor cannot observe.
+The optional external heartbeat receives `/start`, success, or `/fail` lifecycle pings. It detects a scheduled workflow that never starts or never completes, which an in-workflow monitor cannot observe. An explicit outage-recovery run remains failed externally through targeted checkpoint passes and returns to success only when all intended scopes are complete with no backlog, missing scope, or hard failure.
 
 Manual SQL checks remain useful for investigation:
 

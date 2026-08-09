@@ -225,6 +225,7 @@ def send_monitoring_email(
     *,
     result_path: Path = DEFAULT_NOTIFICATION_RESULT,
     preview_path: Path = DEFAULT_NOTIFICATION_PREVIEW,
+    incident_path: Path | None = None,
     dry_run: bool = False,
     force: bool = False,
     environ: dict[str, str] | None = None,
@@ -232,6 +233,20 @@ def send_monitoring_email(
 ) -> dict[str, Any]:
     summary = json.loads(report_path.read_text(encoding="utf-8"))
     notification = summary.get("notification") or build_monitoring_notification(summary)
+    incident = None
+    if incident_path is not None and incident_path.exists():
+        incident = json.loads(incident_path.read_text(encoding="utf-8"))
+        if incident.get("email_action") == "none":
+            result = {
+                "status": "skipped",
+                "reason": incident.get("reason") or "incident_email_suppressed",
+                "fingerprint": notification.get("fingerprint"),
+                "recipient_count": 0,
+                "subject": notification.get("subject"),
+            }
+            return write_notification_result(result_path, result)
+        notification = incident.get("email_notification") or notification
+    notification_kind = str(notification.get("kind") or "failure")
     result = {
         "status": "skipped",
         "reason": notification.get("reason"),
@@ -241,8 +256,11 @@ def send_monitoring_email(
     }
     if not notification.get("eligible") and not force:
         return write_notification_result(result_path, result)
-    if summary.get("status") != "failing":
+    if notification_kind == "failure" and summary.get("status") != "failing":
         result["reason"] = "force_requires_failing_report"
+        return write_notification_result(result_path, result)
+    if notification_kind not in {"failure", "recovery"}:
+        result["reason"] = "unsupported_notification_kind"
         return write_notification_result(result_path, result)
 
     env = dict(os.environ if environ is None else environ)
@@ -280,7 +298,7 @@ def send_monitoring_email(
         result.update(status="failed", reason="smtp_delivery_failed", error_type=type(exc).__name__)
         write_notification_result(result_path, result)
         raise
-    result.update(status="sent", reason="failing_alert_delivered")
+    result.update(status="sent", reason=f"{notification_kind}_alert_delivered")
     return write_notification_result(result_path, result)
 
 
