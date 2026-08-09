@@ -395,6 +395,7 @@ class RunnerSupervisor:
             "web_429_circuit_breaker_lookback_minutes": "720",
             "web_429_circuit_breaker_min_pages": "4",
             "web_429_circuit_breaker_max_rate": "0.5",
+            "outage_recovery": "true",
         }
         args = ["workflow", "run", RECOVERY_WORKFLOW, "--repo", self.config.repository, "--ref", self.config.branch]
         for key, value in fields.items():

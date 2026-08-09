@@ -447,6 +447,7 @@ def test_recovery_dispatch_uses_valid_fixed_pressure_mode(monkeypatch, tmp_path)
     fields = [dispatch_args[index + 1] for index, value in enumerate(dispatch_args) if value == "-f"]
     assert run_id == "9003"
     assert "pressure_ramp_mode=fixed" in fields
+    assert "outage_recovery=true" in fields
     assert all("pressure_ramp_mode=outage_recovery" != field for field in fields)
 
 
