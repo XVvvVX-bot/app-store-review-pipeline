@@ -13,6 +13,8 @@ The outage path has four independent controls:
 3. The launchd supervisor restarts local runner services and waits for a five-minute stable window.
 4. A bounded recovery state machine supersedes stale runs, catches up current reviews, resumes small long-tail backlogs, and verifies all scopes.
 
+The GitHub-hosted capacity gate uses the encrypted repository secret `APP_STORE_RUNNER_MONITOR_TOKEN`. GitHub's default workflow token cannot list repository runners. Use a fine-grained token limited to this repository with Actions read access; without it, the gate fails closed before ingestion.
+
 ## Install The Runner Supervisor
 
 ```bash
@@ -49,6 +51,7 @@ The supervisor uses these fixed limits:
 - health check every 60 seconds;
 - outage declaration after 10 unhealthy minutes;
 - at most three runner restart attempts;
+- at most three full/verification recovery attempts when no monitor-verifiable execution was created;
 - five healthy minutes before dispatch;
 - execution/workflow stale boundary of six hours;
 - full-scope recovery at `max_parallel=4`, page 1, uncapped trusted-overlap stop, and 3600-second scope budget;
@@ -58,7 +61,7 @@ The supervisor uses these fixed limits:
 
 Each automatic dispatch sets `outage_recovery=true`. This is the only mode that enables `cancel-in-progress`, so it supersedes stale scheduled work without changing ordinary twice-daily concurrency behavior. The recovery token is carried in `experiment_group` for traceability but is not interpreted as an operating-model target group.
 
-The first full-scope run starts every app at page 1. Existing review keys and trusted overlap make partial writes from interrupted runs safe to revisit. If no app remains backlogged, this run resolves the incident. Otherwise the supervisor runs targeted checkpoint recovery, then one final 200-scope verification. More than 10 backlog apps, an incomplete execution, a final monitor status that cannot be verified, source-pressure failure, or three unsuccessful passes moves the supervisor to `manual_attention` and stops automatic dispatch. A GitHub workflow may be red during an intermediate backlog pass; the state machine uses persisted scope outcomes and the final Postgres monitor status instead of treating that expected intermediate signal as data loss.
+The first full-scope run starts every app at page 1. Existing review keys and trusted overlap make partial writes from interrupted runs safe to revisit. If no app remains backlogged, this run resolves the incident. Otherwise the supervisor runs targeted checkpoint recovery, then one final 200-scope verification. An infrastructure run that creates no execution, or leaves one `running`/`cancelled`, gets a fresh five-minute stability window and at most three attempts. More than 10 backlog apps, a monitor-confirmed incomplete execution, a final monitor status that cannot be verified, source-pressure failure, or exhausted retries moves the supervisor to `manual_attention` and stops automatic dispatch. A GitHub workflow may be red during an intermediate backlog pass; the state machine uses persisted scope outcomes and the final Postgres monitor status instead of treating that expected intermediate signal as data loss.
 
 Use these commands to inspect or repair lineage:
 

@@ -7,7 +7,7 @@ This document defines the production monitoring contract for Apple App Store dai
 GitHub remains the complete operational evidence surface, while Postgres remains the ingestion source of truth.
 
 1. `prepare-matrix` selects the intended targets and app-country scopes, computes stable scope/config signatures, and assigns an execution ID based on the GitHub run and attempt.
-2. A GitHub-hosted `runner-gate` requires enough online self-hosted runners before any Mac job is queued. Capacity failure is classified as `runner_unavailable` immediately.
+2. A GitHub-hosted `runner-gate` requires enough online self-hosted runners before any Mac job is queued. It uses the encrypted `APP_STORE_RUNNER_MONITOR_TOKEN` secret because the default workflow token cannot list repository runners. Capacity or permission failure is classified as `runner_unavailable` immediately.
 3. `preflight` creates the `app_store_executions` row before any app worker starts.
 4. Every matrix worker attaches its `app_store_runs`, pages, reviews, changes, and `app_store_run_scopes` outcome to that execution.
 5. `monitor` queries the exact execution ID, rather than an approximate time window, writes Markdown/JSON artifacts, persists one `app_store_monitor_snapshots` row, and finalizes the execution health status.

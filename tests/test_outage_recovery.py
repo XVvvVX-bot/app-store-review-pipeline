@@ -512,6 +512,46 @@ def test_failing_database_monitor_status_blocks_recovery_resolution(monkeypatch,
     assert state["manual_attention_reason"] == "full_recovery_monitor_not_verified"
 
 
+def test_infrastructure_recovery_failure_gets_bounded_stability_retry(monkeypatch, tmp_path):
+    current = datetime(2026, 8, 9, 20, 0, tzinfo=timezone.utc)
+    supervisor = RunnerSupervisor(SupervisorConfig(repo_path=tmp_path), state_path=tmp_path / "state.json")
+    monkeypatch.setattr(
+        supervisor,
+        "gh_json",
+        lambda *args, **kwargs: {"status": "completed", "conclusion": "failure", "url": "fixture"},
+    )
+    monkeypatch.setattr(
+        "app_store_review_pipeline.runner_supervisor.outage_recovery_status_postgres",
+        lambda *args, **kwargs: {"backlogged_scopes": [], "execution": None},
+    )
+    state = {
+        "phase": "recovery_full",
+        "current_run_id": "9007",
+        "full_recovery_attempts": 1,
+    }
+
+    supervisor.advance_recovery(state, current)
+
+    assert state["phase"] == "stabilizing"
+    assert state["pending_recovery_phase"] == "full"
+    assert state["healthy_since"] == "2026-08-09T20:00:00Z"
+    assert state["current_run_id"] is None
+
+
+def test_infrastructure_recovery_stops_after_attempt_limit(monkeypatch, tmp_path):
+    current = datetime(2026, 8, 9, 20, 0, tzinfo=timezone.utc)
+    supervisor = RunnerSupervisor(
+        SupervisorConfig(repo_path=tmp_path, max_recovery_attempts=1),
+        state_path=tmp_path / "state.json",
+    )
+    state = {"phase": "recovery_full", "full_recovery_attempts": 1}
+
+    supervisor.retry_infrastructure_recovery(state, current, phase="recovery_full")
+
+    assert state["phase"] == "manual_attention"
+    assert state["manual_attention_reason"] == "full_recovery_attempt_limit"
+
+
 def test_backlog_retry_deadline_is_not_moved_on_every_tick(monkeypatch, tmp_path):
     current = datetime(2026, 8, 9, 20, 0, tzinfo=timezone.utc)
     config = SupervisorConfig(repo_path=tmp_path, backlog_retry_minutes=30)
@@ -662,4 +702,6 @@ def test_workflow_keeps_recovery_within_dispatch_input_limit():
     assert "outage_recovery" in names
     assert "runner-gate:" in text
     assert "runner_unavailable" in text
+    assert "secrets.APP_STORE_RUNNER_MONITOR_TOKEN || github.token" in text
+    assert "runner_capacity_api_failed" in text
     assert "cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' && inputs.outage_recovery }}" in text

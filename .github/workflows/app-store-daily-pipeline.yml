@@ -257,7 +257,7 @@ jobs:
       - name: Check self-hosted runner capacity
         id: runner-capacity
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.APP_STORE_RUNNER_MONITOR_TOKEN || github.token }}
           SELECTED_COUNT: ${{ steps.build-matrix.outputs.selected_count }}
           MAX_PARALLEL: ${{ steps.build-matrix.outputs.max_parallel }}
         run: |
@@ -266,9 +266,18 @@ jobs:
           if [ "$SELECTED_COUNT" -lt "$required_count" ]; then
             required_count="$SELECTED_COUNT"
           fi
+          runner_error="$(mktemp)"
+          set +e
           online_count="$(gh api "repos/$GITHUB_REPOSITORY/actions/runners?per_page=100" \
             --jq '[.runners[] | select(.status == "online") | select(any(.labels[]; .name == "app-store-review-pipeline"))] | length' \
-            2>/dev/null || printf '0')"
+            2>"$runner_error")"
+          api_code=$?
+          set -e
+          if [ "$api_code" -ne 0 ]; then
+            echo "::error title=runner_capacity_api_failed::The runner-capacity token could not list repository runners. Configure APP_STORE_RUNNER_MONITOR_TOKEN with repository Actions read access."
+            sed 's/^/runner API: /' "$runner_error"
+            online_count=0
+          fi
           capacity_ok=false
           if [ "$required_count" -eq 0 ] || [ "$online_count" -ge "$required_count" ]; then
             capacity_ok=true

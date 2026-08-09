@@ -46,6 +46,7 @@ class SupervisorConfig:
     stable_seconds: int = 300
     stale_execution_hours: float = 6
     max_restart_attempts: int = 3
+    max_recovery_attempts: int = 3
     max_backlog_apps: int = 10
     max_backlog_attempts: int = 3
     backlog_retry_minutes: int = 30
@@ -66,6 +67,7 @@ class SupervisorConfig:
             stable_seconds=int(values.get("STABLE_SECONDS", cls.stable_seconds)),
             stale_execution_hours=float(values.get("STALE_EXECUTION_HOURS", cls.stale_execution_hours)),
             max_restart_attempts=int(values.get("MAX_RESTART_ATTEMPTS", cls.max_restart_attempts)),
+            max_recovery_attempts=int(values.get("MAX_RECOVERY_ATTEMPTS", cls.max_recovery_attempts)),
             max_backlog_apps=int(values.get("MAX_BACKLOG_APPS", cls.max_backlog_apps)),
             max_backlog_attempts=int(values.get("MAX_BACKLOG_ATTEMPTS", cls.max_backlog_attempts)),
             backlog_retry_minutes=int(values.get("BACKLOG_RETRY_MINUTES", cls.backlog_retry_minutes)),
@@ -220,9 +222,16 @@ class RunnerSupervisor:
         if self.nonstale_active_daily_runs(current):
             state["phase"] = "waiting_for_active_run"
             return
-        self.start_full_recovery(state, current, phase="full")
+        pending_phase = str(state.pop("pending_recovery_phase", "") or "full")
+        self.start_full_recovery(state, current, phase=pending_phase)
 
     def start_full_recovery(self, state: dict[str, Any], current: datetime, *, phase: str) -> None:
+        attempt_key = f"{phase}_recovery_attempts"
+        attempt = int(state.get(attempt_key) or 0) + 1
+        if attempt > self.config.max_recovery_attempts:
+            self.manual_attention(state, f"{phase}_recovery_attempt_limit", current)
+            return
+        state[attempt_key] = attempt
         reconcile = reconcile_stale_executions_postgres(
             self.config.database_url,
             source=WEB_CATALOG_SOURCE,
@@ -263,6 +272,9 @@ class RunnerSupervisor:
             state["last_recovery_status"] = status
             execution = status.get("execution") or {}
             if not execution_complete(execution):
+                if not execution or str(execution.get("status") or "") in {"running", "cancelled"}:
+                    self.retry_infrastructure_recovery(state, current, phase=phase)
+                    return
                 self.manual_attention(state, "full_recovery_did_not_complete_intended_scope", current)
                 return
             backlog_apps = unique_backlog_apps(status.get("backlogged_scopes") or [])
@@ -294,6 +306,29 @@ class RunnerSupervisor:
 
         if state.get("phase") == "recovery_backlog":
             self.advance_backlog(state, current)
+
+    def retry_infrastructure_recovery(
+        self,
+        state: dict[str, Any],
+        current: datetime,
+        *,
+        phase: str,
+    ) -> None:
+        recovery_phase = "verify" if phase == "recovery_verify" else "full"
+        attempt_key = f"{recovery_phase}_recovery_attempts"
+        attempts = int(state.get(attempt_key) or 1)
+        state[attempt_key] = attempts
+        if attempts >= self.config.max_recovery_attempts:
+            self.manual_attention(state, f"{recovery_phase}_recovery_attempt_limit", current)
+            return
+        state.update(
+            phase="stabilizing",
+            pending_recovery_phase=recovery_phase,
+            healthy_since=isoformat(current),
+            current_run_id=None,
+            current_run=None,
+            current_dispatch_token=None,
+        )
 
     def advance_backlog(self, state: dict[str, Any], current: datetime) -> None:
         queue = list(state.get("backlog_queue") or [])
@@ -606,6 +641,7 @@ def install_runner_supervisor(
                     "STABLE_SECONDS=300",
                     "STALE_EXECUTION_HOURS=6",
                     "MAX_RESTART_ATTEMPTS=3",
+                    "MAX_RECOVERY_ATTEMPTS=3",
                     "MAX_BACKLOG_APPS=10",
                     "MAX_BACKLOG_ATTEMPTS=3",
                     "BACKLOG_RETRY_MINUTES=30",
