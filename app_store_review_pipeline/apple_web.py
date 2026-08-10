@@ -13,7 +13,14 @@ from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
 import requests
 
-from app_store_review_pipeline.config import PLATFORM, WEB_CATALOG_SOURCE
+from app_store_review_pipeline.config import (
+    DEFAULT_WEB_CONNECTION_BACKOFF_MULTIPLIER,
+    DEFAULT_WEB_CONNECTION_RETRIES,
+    DEFAULT_WEB_CONNECTION_RETRY_JITTER_SECONDS,
+    DEFAULT_WEB_CONNECTION_RETRY_SECONDS,
+    PLATFORM,
+    WEB_CATALOG_SOURCE,
+)
 from app_store_review_pipeline.files import write_json
 from app_store_review_pipeline.models import AppReview, AppTarget, make_review_key
 from app_store_review_pipeline.utils import clean_text, iso_to_epoch_seconds, utc_timestamp
@@ -23,6 +30,13 @@ WEB_USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125 Safari/537.36"
 )
+
+
+class ConnectionRetriesExhausted(requests.ConnectionError):
+    def __init__(self, error: requests.RequestException, attempts: list[dict[str, Any]]) -> None:
+        super().__init__(str(error))
+        self.original_error = error
+        self.attempts = attempts
 
 
 def app_store_reviews_page_url(target: AppTarget, country: str) -> str:
@@ -714,15 +728,47 @@ def get_with_429_retries(
     web_429_backoff_multiplier: float,
     sleep_fn: Callable[[float], None],
     web_429_retry_jitter_seconds: float = 0.0,
+    web_connection_retries: int = DEFAULT_WEB_CONNECTION_RETRIES,
+    web_connection_retry_seconds: float = DEFAULT_WEB_CONNECTION_RETRY_SECONDS,
+    web_connection_backoff_multiplier: float = DEFAULT_WEB_CONNECTION_BACKOFF_MULTIPLIER,
+    web_connection_retry_jitter_seconds: float = DEFAULT_WEB_CONNECTION_RETRY_JITTER_SECONDS,
     deadline_monotonic: float | None = None,
     monotonic_fn: Callable[[], float] = time.monotonic,
     random_fn: Callable[[], float] = random.random,
 ) -> tuple[requests.Response, list[dict[str, Any]]]:
     attempts: list[dict[str, Any]] = []
-    max_attempts = max(1, web_429_retries + 1)
-    response = None
-    for attempt_number in range(1, max_attempts + 1):
-        response = session.get(url, headers=headers, timeout=timeout_seconds)
+    http_429_attempts = 0
+    connection_retries = 0
+    while True:
+        attempt_number = len(attempts) + 1
+        try:
+            response = session.get(url, headers=headers, timeout=timeout_seconds)
+        except (requests.ConnectionError, requests.Timeout) as exc:
+            attempt = {
+                "attempt_number": attempt_number,
+                "status_code": None,
+                "response_bytes": 0,
+                "response_headers": {},
+                "error_type": type(exc).__name__,
+                "error_message": str(exc),
+                "retry_kind": "connection",
+            }
+            attempts.append(attempt)
+            if connection_retries >= max(0, int(web_connection_retries)):
+                raise ConnectionRetriesExhausted(exc, attempts) from exc
+            connection_retries += 1
+            delay_seconds = jittered_delay_seconds(
+                max(0.0, float(web_connection_retry_seconds))
+                * (max(1.0, float(web_connection_backoff_multiplier)) ** (connection_retries - 1)),
+                web_connection_retry_jitter_seconds,
+                random_fn=random_fn,
+            )
+            attempt["retry_delay_seconds"] = delay_seconds
+            if not can_sleep_before_deadline(delay_seconds, deadline_monotonic, monotonic_fn):
+                attempt["retry_skipped_reason"] = "time_budget_exceeded"
+                raise ConnectionRetriesExhausted(exc, attempts) from exc
+            sleep_fn(delay_seconds)
+            continue
         attempts.append(
             {
                 "attempt_number": attempt_number,
@@ -731,11 +777,14 @@ def get_with_429_retries(
                 "response_headers": selected_response_headers(response),
             }
         )
-        if response.status_code != 429 or attempt_number >= max_attempts:
-            break
+        if response.status_code != 429:
+            return response, attempts
+        http_429_attempts += 1
+        if http_429_attempts > max(0, int(web_429_retries)):
+            return response, attempts
         delay_seconds = retry_delay_seconds(
             response,
-            attempt_number,
+            http_429_attempts,
             web_429_retry_seconds,
             web_429_backoff_multiplier,
             jitter_seconds=web_429_retry_jitter_seconds,
@@ -744,11 +793,8 @@ def get_with_429_retries(
         attempts[-1]["retry_delay_seconds"] = delay_seconds
         if not can_sleep_before_deadline(delay_seconds, deadline_monotonic, monotonic_fn):
             attempts[-1]["retry_skipped_reason"] = "time_budget_exceeded"
-            break
+            return response, attempts
         sleep_fn(delay_seconds)
-    if response is None:
-        raise RuntimeError("unreachable web request state")
-    return response, attempts
 
 
 def deadline_exceeded(deadline_monotonic: float | None, monotonic_fn: Callable[[], float]) -> bool:

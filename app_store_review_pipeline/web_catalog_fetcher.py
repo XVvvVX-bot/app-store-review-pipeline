@@ -10,6 +10,7 @@ from typing import Any, Callable
 import requests
 
 from app_store_review_pipeline.apple_web import (
+    ConnectionRetriesExhausted,
     WEB_USER_AGENT,
     app_store_reviews_page_url,
     app_store_web_catalog_next_url,
@@ -23,7 +24,15 @@ from app_store_review_pipeline.apple_web import (
     parse_web_catalog_review_rows,
     sleep_with_deadline,
 )
-from app_store_review_pipeline.config import PLATFORM, WEB_CATALOG_SORT_BY, WEB_CATALOG_SOURCE
+from app_store_review_pipeline.config import (
+    DEFAULT_WEB_CONNECTION_BACKOFF_MULTIPLIER,
+    DEFAULT_WEB_CONNECTION_RETRIES,
+    DEFAULT_WEB_CONNECTION_RETRY_JITTER_SECONDS,
+    DEFAULT_WEB_CONNECTION_RETRY_SECONDS,
+    PLATFORM,
+    WEB_CATALOG_SORT_BY,
+    WEB_CATALOG_SOURCE,
+)
 from app_store_review_pipeline.files import write_json
 from app_store_review_pipeline.models import AppReview, AppTarget, ReviewPage, make_page_key
 from app_store_review_pipeline.utils import safe_name, utc_timestamp
@@ -48,6 +57,10 @@ def fetch_web_catalog_targets(
     web_429_retry_jitter_seconds: float = 0.0,
     web_soft_retries: int = 2,
     web_soft_retry_seconds: float = 5.0,
+    web_connection_retries: int = DEFAULT_WEB_CONNECTION_RETRIES,
+    web_connection_retry_seconds: float = DEFAULT_WEB_CONNECTION_RETRY_SECONDS,
+    web_connection_backoff_multiplier: float = DEFAULT_WEB_CONNECTION_BACKOFF_MULTIPLIER,
+    web_connection_retry_jitter_seconds: float = DEFAULT_WEB_CONNECTION_RETRY_JITTER_SECONDS,
     max_consecutive_sparse_fetch_errors: int = 3,
     time_budget_seconds: float = 0.0,
     scope_time_budget_seconds: float = 0.0,
@@ -197,6 +210,9 @@ def fetch_web_catalog_targets(
                             timeout_seconds=timeout_seconds,
                             web_soft_retries=web_soft_retries,
                             web_soft_retry_seconds=web_soft_retry_seconds,
+                            web_connection_retries=web_connection_retries,
+                            web_connection_retry_seconds=web_connection_retry_seconds,
+                            web_connection_retry_jitter_seconds=web_connection_retry_jitter_seconds,
                             web_429_retries=web_429_retries,
                             web_429_retry_seconds=web_429_retry_seconds,
                             web_429_retry_jitter_seconds=web_429_retry_jitter_seconds,
@@ -243,6 +259,10 @@ def fetch_web_catalog_targets(
                         web_429_retry_jitter_seconds=web_429_retry_jitter_seconds,
                         web_soft_retries=web_soft_retries,
                         web_soft_retry_seconds=web_soft_retry_seconds,
+                        web_connection_retries=web_connection_retries,
+                        web_connection_retry_seconds=web_connection_retry_seconds,
+                        web_connection_backoff_multiplier=web_connection_backoff_multiplier,
+                        web_connection_retry_jitter_seconds=web_connection_retry_jitter_seconds,
                         deadline_monotonic=effective_deadline,
                         monotonic_fn=monotonic_fn,
                         sleep_fn=sleep_fn,
@@ -350,6 +370,10 @@ def fetch_web_catalog_targets(
         "web_429_retries": web_429_retries,
         "web_429_retry_seconds": web_429_retry_seconds,
         "web_429_retry_jitter_seconds": web_429_retry_jitter_seconds,
+        "web_connection_retries": web_connection_retries,
+        "web_connection_retry_seconds": web_connection_retry_seconds,
+        "web_connection_backoff_multiplier": web_connection_backoff_multiplier,
+        "web_connection_retry_jitter_seconds": web_connection_retry_jitter_seconds,
         "time_budget_seconds": time_budget_seconds,
         "scope_time_budget_seconds": scope_time_budget_seconds,
         "max_consecutive_sparse_fetch_errors": max_consecutive_sparse_fetch_errors,
@@ -433,6 +457,9 @@ def minimum_request_retry_budget_seconds(
     timeout_seconds: float,
     web_soft_retries: int,
     web_soft_retry_seconds: float,
+    web_connection_retries: int = 0,
+    web_connection_retry_seconds: float = 0.0,
+    web_connection_retry_jitter_seconds: float = 0.0,
     web_429_retries: int = 0,
     web_429_retry_seconds: float = 0.0,
     web_429_retry_jitter_seconds: float = 0.0,
@@ -442,6 +469,12 @@ def minimum_request_retry_budget_seconds(
     if web_soft_retries > 0:
         retry_windows.append(
             (2 * request_timeout) + max(0.0, float(web_soft_retry_seconds))
+        )
+    if web_connection_retries > 0:
+        retry_windows.append(
+            (2 * request_timeout)
+            + max(0.0, float(web_connection_retry_seconds))
+            + max(0.0, float(web_connection_retry_jitter_seconds))
         )
     if web_429_retries > 0:
         retry_windows.append(
@@ -467,6 +500,17 @@ def request_retry_budget_stop_reason(
     return None
 
 
+def completed_connection_retry_count(attempts: list[dict[str, Any]]) -> int:
+    return sum(
+        int(
+            attempt.get("retry_kind") == "connection"
+            and "retry_delay_seconds" in attempt
+            and not attempt.get("retry_skipped_reason")
+        )
+        for attempt in attempts
+    )
+
+
 def fetch_web_catalog_page(
     target: AppTarget,
     raw_dir: Path,
@@ -486,6 +530,10 @@ def fetch_web_catalog_page(
     web_429_retry_jitter_seconds: float,
     web_soft_retries: int,
     web_soft_retry_seconds: float,
+    web_connection_retries: int,
+    web_connection_retry_seconds: float,
+    web_connection_backoff_multiplier: float,
+    web_connection_retry_jitter_seconds: float,
     deadline_monotonic: float | None,
     monotonic_fn: Callable[[], float],
     sleep_fn: Callable[[float], None],
@@ -522,6 +570,7 @@ def fetch_web_catalog_page(
     max_soft_attempts = max(1, int(web_soft_retries) + 1)
     soft_retry_delay = max(0.0, float(web_soft_retry_seconds))
     soft_attempts_made = 0
+    connection_retry_count = 0
 
     for soft_attempt_number in range(1, max_soft_attempts + 1):
         soft_attempts_made = soft_attempt_number
@@ -535,6 +584,10 @@ def fetch_web_catalog_page(
                 web_429_retry_seconds=web_429_retry_seconds,
                 web_429_backoff_multiplier=web_429_backoff_multiplier,
                 web_429_retry_jitter_seconds=web_429_retry_jitter_seconds,
+                web_connection_retries=web_connection_retries,
+                web_connection_retry_seconds=web_connection_retry_seconds,
+                web_connection_backoff_multiplier=web_connection_backoff_multiplier,
+                web_connection_retry_jitter_seconds=web_connection_retry_jitter_seconds,
                 deadline_monotonic=deadline_monotonic,
                 monotonic_fn=monotonic_fn,
                 sleep_fn=sleep_fn,
@@ -543,6 +596,7 @@ def fetch_web_catalog_page(
             for attempt in current_attempts:
                 attempt["soft_attempt_number"] = soft_attempt_number
             attempts.extend(current_attempts)
+            connection_retry_count += completed_connection_retry_count(current_attempts)
             last_status_code = response.status_code
             last_response_bytes = len(response.content or b"")
             last_body_preview = response.text[:160] if response.text else ""
@@ -550,6 +604,17 @@ def fetch_web_catalog_page(
             if not isinstance(payload_candidate, dict):
                 raise ValueError("web catalog response JSON was not an object")
             payload = payload_candidate
+            break
+        except ConnectionRetriesExhausted as exc:
+            for attempt in exc.attempts:
+                attempt["soft_attempt_number"] = soft_attempt_number
+            attempts.extend(exc.attempts)
+            connection_retry_count += completed_connection_retry_count(exc.attempts)
+            response = None
+            last_error = exc.original_error
+            last_status_code = None
+            last_response_bytes = 0
+            last_body_preview = ""
             break
         except requests.exceptions.JSONDecodeError as exc:
             last_error = exc
@@ -605,7 +670,7 @@ def fetch_web_catalog_page(
             http_429_attempt_count=sum(
                 int(attempt.get("status_code") == 429) for attempt in attempts
             ),
-            soft_retry_count=max(0, soft_attempts_made - 1),
+            soft_retry_count=max(0, soft_attempts_made - 1) + connection_retry_count,
         ), [], None
 
     write_json(raw_json_path, payload)
@@ -653,7 +718,7 @@ def fetch_web_catalog_page(
         http_429_attempt_count=sum(
             int(attempt.get("status_code") == 429) for attempt in attempts
         ),
-        soft_retry_count=max(0, soft_attempts_made - 1),
+        soft_retry_count=max(0, soft_attempts_made - 1) + connection_retry_count,
     )
     if final_attempt_stopped_for_time_budget([{"attempts": attempts}]):
         page = replace(page, terminal_reason="time_budget_retry_window_exceeded")

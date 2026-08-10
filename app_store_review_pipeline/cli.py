@@ -16,6 +16,10 @@ from app_store_review_pipeline.config import (
     DEFAULT_DATABASE_URL,
     DEFAULT_TARGETS,
     DEFAULT_TIMEOUT_SECONDS,
+    DEFAULT_WEB_CONNECTION_BACKOFF_MULTIPLIER,
+    DEFAULT_WEB_CONNECTION_RETRIES,
+    DEFAULT_WEB_CONNECTION_RETRY_JITTER_SECONDS,
+    DEFAULT_WEB_CONNECTION_RETRY_SECONDS,
     DEFAULT_WEB_CATALOG_RAW_ROOT,
     DEFAULT_WEB_CATALOG_REPORTS_ROOT,
     SOURCE,
@@ -474,6 +478,30 @@ def add_web_catalog_fetch_arguments(parser: argparse.ArgumentParser) -> None:
         help="Delay between transient web catalog soft-error retries.",
     )
     parser.add_argument(
+        "--web-connection-retries",
+        type=int,
+        default=DEFAULT_WEB_CONNECTION_RETRIES,
+        help="Retries for transient DNS, connection, and timeout failures.",
+    )
+    parser.add_argument(
+        "--web-connection-retry-seconds",
+        type=float,
+        default=DEFAULT_WEB_CONNECTION_RETRY_SECONDS,
+        help="Initial delay before retrying a transient connection failure.",
+    )
+    parser.add_argument(
+        "--web-connection-backoff-multiplier",
+        type=float,
+        default=DEFAULT_WEB_CONNECTION_BACKOFF_MULTIPLIER,
+        help="Exponential backoff multiplier for connection retries.",
+    )
+    parser.add_argument(
+        "--web-connection-retry-jitter-seconds",
+        type=float,
+        default=DEFAULT_WEB_CONNECTION_RETRY_JITTER_SECONDS,
+        help="Positive random jitter added to each connection retry sleep.",
+    )
+    parser.add_argument(
         "--web-time-budget-seconds",
         type=float,
         default=0.0,
@@ -539,6 +567,22 @@ def command_fetch_web_catalog(args: argparse.Namespace) -> int:
         web_429_retry_jitter_seconds=getattr(args, "web_429_retry_jitter_seconds", 0.0),
         web_soft_retries=args.web_soft_retries,
         web_soft_retry_seconds=args.web_soft_retry_seconds,
+        web_connection_retries=getattr(args, "web_connection_retries", DEFAULT_WEB_CONNECTION_RETRIES),
+        web_connection_retry_seconds=getattr(
+            args,
+            "web_connection_retry_seconds",
+            DEFAULT_WEB_CONNECTION_RETRY_SECONDS,
+        ),
+        web_connection_backoff_multiplier=getattr(
+            args,
+            "web_connection_backoff_multiplier",
+            DEFAULT_WEB_CONNECTION_BACKOFF_MULTIPLIER,
+        ),
+        web_connection_retry_jitter_seconds=getattr(
+            args,
+            "web_connection_retry_jitter_seconds",
+            DEFAULT_WEB_CONNECTION_RETRY_JITTER_SECONDS,
+        ),
         time_budget_seconds=args.web_time_budget_seconds,
         scope_time_budget_seconds=args.web_scope_time_budget_seconds,
         known_review_ids_by_scope={},
@@ -1021,6 +1065,26 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
                 "review_limit": args.review_limit,
                 "request_delay": args.request_delay_seconds,
                 "request_jitter": getattr(args, "request_delay_jitter_seconds", 0.0),
+                "connection_retries": getattr(
+                    args,
+                    "web_connection_retries",
+                    DEFAULT_WEB_CONNECTION_RETRIES,
+                ),
+                "connection_retry_seconds": getattr(
+                    args,
+                    "web_connection_retry_seconds",
+                    DEFAULT_WEB_CONNECTION_RETRY_SECONDS,
+                ),
+                "connection_backoff_multiplier": getattr(
+                    args,
+                    "web_connection_backoff_multiplier",
+                    DEFAULT_WEB_CONNECTION_BACKOFF_MULTIPLIER,
+                ),
+                "connection_retry_jitter": getattr(
+                    args,
+                    "web_connection_retry_jitter_seconds",
+                    DEFAULT_WEB_CONNECTION_RETRY_JITTER_SECONDS,
+                ),
                 "scope_time_budget": args.web_scope_time_budget_seconds,
                 "overlap_stop": not getattr(args, "disable_overlap_stop", False),
                 "resume_backlogged_scopes": bool(getattr(args, "resume_backlogged_scopes", False)),
@@ -1101,6 +1165,22 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         web_429_retry_jitter_seconds=getattr(args, "web_429_retry_jitter_seconds", 0.0),
         web_soft_retries=args.web_soft_retries,
         web_soft_retry_seconds=args.web_soft_retry_seconds,
+        web_connection_retries=getattr(args, "web_connection_retries", DEFAULT_WEB_CONNECTION_RETRIES),
+        web_connection_retry_seconds=getattr(
+            args,
+            "web_connection_retry_seconds",
+            DEFAULT_WEB_CONNECTION_RETRY_SECONDS,
+        ),
+        web_connection_backoff_multiplier=getattr(
+            args,
+            "web_connection_backoff_multiplier",
+            DEFAULT_WEB_CONNECTION_BACKOFF_MULTIPLIER,
+        ),
+        web_connection_retry_jitter_seconds=getattr(
+            args,
+            "web_connection_retry_jitter_seconds",
+            DEFAULT_WEB_CONNECTION_RETRY_JITTER_SECONDS,
+        ),
         time_budget_seconds=args.web_time_budget_seconds,
         scope_time_budget_seconds=args.web_scope_time_budget_seconds,
         known_review_ids_by_scope=known_ids,
@@ -1179,6 +1259,22 @@ def command_daily_web_catalog(args: argparse.Namespace) -> int:
         "web_429_retries": args.web_429_retries,
         "web_429_retry_seconds": args.web_429_retry_seconds,
         "web_429_retry_jitter_seconds": getattr(args, "web_429_retry_jitter_seconds", 0.0),
+        "web_connection_retries": getattr(args, "web_connection_retries", DEFAULT_WEB_CONNECTION_RETRIES),
+        "web_connection_retry_seconds": getattr(
+            args,
+            "web_connection_retry_seconds",
+            DEFAULT_WEB_CONNECTION_RETRY_SECONDS,
+        ),
+        "web_connection_backoff_multiplier": getattr(
+            args,
+            "web_connection_backoff_multiplier",
+            DEFAULT_WEB_CONNECTION_BACKOFF_MULTIPLIER,
+        ),
+        "web_connection_retry_jitter_seconds": getattr(
+            args,
+            "web_connection_retry_jitter_seconds",
+            DEFAULT_WEB_CONNECTION_RETRY_JITTER_SECONDS,
+        ),
         "web_time_budget_seconds": args.web_time_budget_seconds,
         "web_scope_time_budget_seconds": args.web_scope_time_budget_seconds,
         "overlap_stop_enabled": use_overlap_stop,

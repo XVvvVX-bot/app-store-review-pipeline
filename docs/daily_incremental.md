@@ -94,12 +94,17 @@ Current defaults:
 - HTTP 429 retries: 2
 - HTTP 429 retry delay: 300 seconds
 - HTTP 429 retry jitter: up to 60 seconds
+- DNS/connection/timeout retries: 3
+- connection retry delay: 15 seconds, doubled after each failure
+- connection retry jitter: up to 5 seconds
 - per-app time budget: 3,600 seconds
 - per-scope time budget: 3,600 seconds
 - pre-run HTTP 429 cooldown: disabled for routine daily incremental
 - current-run HTTP 429 circuit breaker: enabled
 
 Normal scheduled runs still start every app at page 1. A controlled manual recovery can add `--resume-backlogged-scopes`; it considers only recent incomplete attempts after the last successful catch-up, chooses the attempt that reached the oldest review frontier, and revisits 25 pages before that checkpoint. When an attempt reached overlap but had an intermediate failed page, the scope remains untrusted. Automatic outage recovery scans a bounded repair window from 25 pages before the error through the failed page with overlap stop disabled, then requires an ordinary full-scope overlap verification. This mode is explicit so routine incremental runs continue to capture the newest page-one reviews.
+
+Connection-level failures use a separate retry budget from HTTP 429. DNS resolution, connect, and timeout failures wait with exponential backoff (`15s`, `30s`, `60s`) plus independent positive jitter before becoming a fetch error. This covers short host-network interruptions without turning them into Apple-pressure cooldowns. HTTP 429 keeps its source-specific five-minute policy. Completed connection retries are included in `soft_retry_count`, while final status and error text preserve the terminal outcome.
 
 The daily path is intentionally different from backfill. The backfill workflow is manually disabled. If historical depth becomes necessary, it must be explicitly re-enabled and requires the confirmation string `I_UNDERSTAND_BACKFILL_PRESSURE`, one runner, an explicit numeric start page, 1-5 apps, and 1-25 pages per scope. Automatic continuation has been removed.
 

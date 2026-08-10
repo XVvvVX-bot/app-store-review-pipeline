@@ -82,6 +82,10 @@ Fetch and load a full-scope daily incremental window:
   --web-429-retries 2 \
   --web-429-retry-seconds 300 \
   --web-429-retry-jitter-seconds 60 \
+  --web-connection-retries 3 \
+  --web-connection-retry-seconds 15 \
+  --web-connection-backoff-multiplier 2 \
+  --web-connection-retry-jitter-seconds 5 \
   --web-time-budget-seconds 3600 \
   --web-scope-time-budget-seconds 3600
 ```
@@ -188,5 +192,5 @@ The generated local config is `~/.config/app-store-review-pipeline/runner-superv
 - The public web catalog path is public Apple-hosted structured catalog data, not a contractual App Store Connect API.
 - Historical completeness is proven per app-country scope only when the crawler reaches `no_next_href`.
 - Incremental catch-up is proven when a daily run reaches trusted historical review overlap. This avoids stopping on reviews inserted by an earlier incomplete daily run.
-- Deep historical backfill can trigger Apple pressure signals and is disabled by default. Daily ingestion records both final HTTP status and recovered 429 attempts, with a 5-minute per-request retry delay plus jitter and a current-run circuit breaker. Recovered attempts warn as degraded; failing 429 thresholds use final unrecovered pages.
+- Deep historical backfill can trigger Apple pressure signals and is disabled by default. Daily ingestion records both final HTTP status and recovered 429 attempts, with a 5-minute per-request retry delay plus jitter and a current-run circuit breaker. DNS, connection, and timeout errors use a separate bounded exponential retry window. Recovered attempts warn as degraded; failing 429 thresholds use final unrecovered pages.
 - Local Postgres is the current development store. Managed Postgres can be evaluated later if the project moves toward production hosting.

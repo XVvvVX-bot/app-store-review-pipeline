@@ -61,7 +61,7 @@ Each report contains:
 - required GitHub job outcomes, excluding `monitor` and `notify` from ingestion-job failure counts;
 - fetched pages/rows, inserted and updated reviews, skipped duplicates, and change-ledger reconciliation;
 - final HTTP status counts and attempt-level pressure signals;
-- final 429 pages, all 429 attempts including recovered attempts, soft retries, retried pages, and maximum attempts;
+- final 429 pages, all 429 attempts including recovered attempts, soft retries (including completed connection retries), retried pages, and maximum attempts;
 - terminal reasons and exact per-scope outcomes;
 - page-one frontier movement compared with the previous fetch for each scope;
 - active app-country data freshness based on the most recent completed page-fetch attempt, with successful catch-up age and backlog shown separately;
@@ -69,6 +69,8 @@ Each report contains:
 - high-volume, high-pressure, and long-tail app scopes.
 
 `http_429_pages` counts pages whose final response remained 429. `http_429_attempts` counts every 429 inside the retry chain, including a page that later recovered to 200. `final_http_429_rate` is the failing-threshold rate; the attempt rate remains visible as source-pressure evidence and produces a degraded warning when all affected pages recover.
+
+Connection failures are not interpreted as Apple source pressure. DNS, connect, and timeout errors have their own bounded exponential retry schedule; completed retries contribute to `soft_retry_count`, and an exhausted chain remains a normal fetch error with the original exception text. This keeps 429 alerts about Apple capacity while still surfacing host-network instability through retry and fetch-error metrics.
 
 ## Health And Alert Logic
 

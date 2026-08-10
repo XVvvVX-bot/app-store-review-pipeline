@@ -2247,7 +2247,7 @@ class FakeWebResponse:
 
 
 class FakeWebSession:
-    def __init__(self, responses: list[FakeWebResponse]):
+    def __init__(self, responses: list[FakeWebResponse | BaseException]):
         self.responses = list(responses)
         self.calls = []
 
@@ -2255,7 +2255,10 @@ class FakeWebSession:
         self.calls.append(url)
         if not self.responses:
             raise AssertionError("No fake web responses remaining")
-        return self.responses.pop(0)
+        response = self.responses.pop(0)
+        if isinstance(response, BaseException):
+            raise response
+        return response
 
 
 class RequestsJsonDecodeWebResponse(FakeWebResponse):
@@ -2639,6 +2642,80 @@ def test_fetch_web_catalog_targets_retries_malformed_json_soft_error(tmp_path):
     assert report["page_reports"][0]["soft_retry_count"] == 1
     assert report["page_reports"][0]["http_429_attempt_count"] == 0
     assert len(session.calls) == 2
+
+
+def test_fetch_web_catalog_targets_recovers_from_transient_connection_failure(tmp_path):
+    session = FakeWebSession(
+        [
+            requests.ConnectionError("temporary DNS failure"),
+            requests.ConnectionError("temporary DNS failure"),
+            FakeWebResponse(200, payload=web_catalog_payload(start=1, count=2, has_next=False)),
+        ]
+    )
+    sleeps = []
+
+    report = fetch_web_catalog_targets(
+        [fixture_target()],
+        tmp_path,
+        "run",
+        max_pages_per_app_country=1,
+        review_limit=2,
+        request_delay_seconds=0,
+        web_429_retries=0,
+        web_soft_retries=0,
+        web_connection_retries=3,
+        web_connection_retry_seconds=15,
+        web_connection_backoff_multiplier=2,
+        web_connection_retry_jitter_seconds=5,
+        session=session,
+        sleep_fn=sleeps.append,
+        random_fn=lambda: 0.5,
+    )
+
+    page = report["page_reports"][0]
+    assert report["fetch_errors"] == 0
+    assert report["fetched_pages"] == 1
+    assert page["attempt_count"] == 3
+    assert page["soft_retry_count"] == 2
+    assert page["http_429_attempt_count"] == 0
+    assert sleeps == [17.5, 32.5]
+
+
+def test_fetch_web_catalog_targets_stops_connection_retry_at_time_budget(tmp_path):
+    session = FakeWebSession(
+        [
+            requests.ConnectionError("temporary DNS failure"),
+            FakeWebResponse(200, payload=web_catalog_payload(start=1, count=2, has_next=False)),
+        ]
+    )
+    sleeps = []
+
+    report = fetch_web_catalog_targets(
+        [fixture_target()],
+        tmp_path,
+        "run",
+        max_pages_per_app_country=1,
+        review_limit=2,
+        timeout_seconds=1,
+        request_delay_seconds=0,
+        web_429_retries=0,
+        web_soft_retries=0,
+        web_connection_retries=3,
+        web_connection_retry_seconds=15,
+        web_connection_retry_jitter_seconds=0,
+        time_budget_seconds=10,
+        monotonic_fn=lambda: 0.0,
+        session=session,
+        sleep_fn=sleeps.append,
+    )
+
+    page = report["page_reports"][0]
+    assert report["fetch_errors"] == 1
+    assert page["attempt_count"] == 1
+    assert page["soft_retry_count"] == 0
+    assert page["terminal_reason"] == "time_budget_retry_window_exceeded"
+    assert len(session.calls) == 1
+    assert sleeps == []
 
 
 def test_fetch_web_catalog_targets_records_recovered_429_attempt(tmp_path):
@@ -3768,6 +3845,35 @@ def test_web_429_retry_adds_positive_jitter_to_retry_sleep():
     assert [attempt["status_code"] for attempt in attempts] == [429, 429, 200]
     assert [attempt.get("retry_delay_seconds") for attempt in attempts[:2]] == [11.0, 8.0]
     assert sleeps == [11.0, 8.0]
+
+
+def test_connection_and_429_retry_budgets_are_independent():
+    sleeps = []
+    response, attempts = get_with_429_retries(
+        FakeWebSession(
+            [
+                requests.ConnectionError("temporary DNS failure"),
+                FakeWebResponse(429),
+                FakeWebResponse(200),
+            ]
+        ),
+        "https://apps.apple.com/api/apps/v1/catalog/us/apps/123/reviews",
+        headers={},
+        timeout_seconds=1,
+        web_429_retries=1,
+        web_429_retry_seconds=10,
+        web_429_backoff_multiplier=2,
+        web_connection_retries=1,
+        web_connection_retry_seconds=15,
+        web_connection_backoff_multiplier=2,
+        web_connection_retry_jitter_seconds=0,
+        sleep_fn=sleeps.append,
+    )
+
+    assert response.status_code == 200
+    assert [attempt["status_code"] for attempt in attempts] == [None, 429, 200]
+    assert attempts[0]["retry_kind"] == "connection"
+    assert sleeps == [15.0, 10.0]
 
 
 def test_web_429_retry_stops_when_time_budget_cannot_fit_next_sleep():

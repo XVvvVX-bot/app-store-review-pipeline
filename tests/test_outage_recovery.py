@@ -498,6 +498,61 @@ def test_completed_recovery_uses_database_monitor_verification(monkeypatch, tmp_
     assert state.get("manual_attention_reason") is None
 
 
+def test_resolved_recovery_clears_incident_budget_before_next_incident(monkeypatch, tmp_path):
+    current = datetime(2026, 8, 9, 20, 0, tzinfo=timezone.utc)
+    supervisor = RunnerSupervisor(SupervisorConfig(repo_path=tmp_path), state_path=tmp_path / "state.json")
+    state = {
+        "phase": "recovery_verify",
+        "incident_id": "20260809T120000Z",
+        "incident_opened_at": "2026-08-09T12:00:00Z",
+        "full_recovery_attempts": 3,
+        "verify_recovery_attempts": 1,
+        "backlog_attempts": {"123": 2},
+        "pending_recovery_phase": "verify",
+        "current_run": {"status": "completed"},
+        "current_dispatch_token": "old-token",
+        "current_run_started_at": "2026-08-09T19:00:00Z",
+        "manual_attention_reason": "old-reason",
+        "manual_attention_at": "2026-08-09T18:00:00Z",
+    }
+
+    supervisor.resolve_recovery(state, current)
+
+    assert state["phase"] == "idle"
+    assert state["incident_id"] is None
+    assert state["full_recovery_attempts"] == 0
+    assert state["verify_recovery_attempts"] == 0
+    assert state["backlog_attempts"] == {}
+    assert state["current_run"] is None
+    assert state["current_dispatch_token"] is None
+    assert state["manual_attention_reason"] is None
+    assert state["last_resolved_recovery"] == {
+        "incident_id": "20260809T120000Z",
+        "resolved_at": "2026-08-09T20:00:00Z",
+        "full_recovery_attempts": 3,
+        "verify_recovery_attempts": 1,
+        "backlog_attempts": {"123": 2},
+    }
+
+    monkeypatch.setattr(
+        "app_store_review_pipeline.runner_supervisor.reconcile_stale_executions_postgres",
+        lambda *args, **kwargs: {},
+    )
+    monkeypatch.setattr(supervisor, "cancel_stale_daily_runs", lambda now: [])
+    dispatches = []
+    monkeypatch.setattr(
+        supervisor,
+        "dispatch_recovery",
+        lambda **kwargs: dispatches.append(kwargs) or "9010",
+    )
+
+    supervisor.start_full_recovery(state, current + timedelta(hours=1), phase="full")
+
+    assert state["phase"] == "recovery_full"
+    assert state["full_recovery_attempts"] == 1
+    assert dispatches[0]["token"].endswith(":full:attempt-1")
+
+
 def test_full_recovery_queues_hard_failure_scope_for_targeted_retry(monkeypatch, tmp_path):
     current = datetime(2026, 8, 9, 20, 0, tzinfo=timezone.utc)
     supervisor = RunnerSupervisor(SupervisorConfig(repo_path=tmp_path), state_path=tmp_path / "state.json")

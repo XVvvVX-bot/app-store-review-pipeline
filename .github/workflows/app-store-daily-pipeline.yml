@@ -233,6 +233,10 @@ jobs:
               "web_429_retry_seconds": os.environ["INPUT_429_RETRY_SECONDS"],
               "web_429_backoff": os.environ["INPUT_429_BACKOFF"],
               "web_429_retry_jitter": os.environ["INPUT_429_RETRY_JITTER"],
+              "web_connection_retries": "3",
+              "web_connection_retry_seconds": "15",
+              "web_connection_backoff": "2",
+              "web_connection_retry_jitter": "5",
               "time_budget": os.environ["INPUT_TIME_BUDGET"],
               "scope_budget": os.environ["INPUT_SCOPE_BUDGET"],
               "overlap_stop": os.environ["INPUT_DISABLE_OVERLAP"].lower() != "true",
@@ -594,6 +598,10 @@ jobs:
             --web-429-retry-seconds "$INPUT_WEB_429_RETRY_SECONDS" \
             --web-429-backoff-multiplier "$INPUT_WEB_429_BACKOFF_MULTIPLIER" \
             --web-429-retry-jitter-seconds "$INPUT_WEB_429_RETRY_JITTER_SECONDS" \
+            --web-connection-retries 3 \
+            --web-connection-retry-seconds 15 \
+            --web-connection-backoff-multiplier 2 \
+            --web-connection-retry-jitter-seconds 5 \
             --web-time-budget-seconds "$INPUT_WEB_TIME_BUDGET_SECONDS" \
             --web-scope-time-budget-seconds "$INPUT_WEB_SCOPE_TIME_BUDGET_SECONDS" \
             --execution-id "$EXECUTION_ID" \

@@ -594,19 +594,38 @@ class RunnerSupervisor:
         return [row for row in payload if row.get("status") in {"queued", "in_progress", "requested", "waiting"}]
 
     def resolve_recovery(self, state: dict[str, Any], current: datetime) -> None:
+        resolved_at = isoformat(current)
+        state["last_resolved_recovery"] = {
+            "incident_id": state.get("incident_id"),
+            "resolved_at": resolved_at,
+            "full_recovery_attempts": int(state.get("full_recovery_attempts") or 0),
+            "verify_recovery_attempts": int(state.get("verify_recovery_attempts") or 0),
+            "backlog_attempts": dict(state.get("backlog_attempts") or {}),
+        }
         state.update(
             phase="idle",
-            resolved_at=isoformat(current),
+            resolved_at=resolved_at,
             unhealthy_since=None,
-            healthy_since=isoformat(current),
+            healthy_since=resolved_at,
+            incident_id=None,
+            incident_opened_at=None,
+            pending_recovery_phase=None,
             current_run_id=None,
+            current_run=None,
+            current_dispatch_token=None,
+            current_run_started_at=None,
             current_backlog_app=None,
             backlog_queue=[],
             forced_recovery_apps=[],
             forced_recovery_start_pages={},
             forced_recovery_required_pages={},
+            backlog_attempts={},
+            full_recovery_attempts=0,
+            verify_recovery_attempts=0,
             last_completed_run_id=None,
             not_before=None,
+            manual_attention_reason=None,
+            manual_attention_at=None,
         )
 
     def manual_attention(self, state: dict[str, Any], reason: str, current: datetime) -> None:
