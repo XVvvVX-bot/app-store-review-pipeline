@@ -950,6 +950,7 @@ def test_manual_attention_reset_preserves_audit_reason(tmp_path):
                 "phase": "manual_attention",
                 "manual_attention_reason": "runner_capacity_api_failed",
                 "current_run_id": "9008",
+                "current_run_started_at": "2026-08-09T18:00:00Z",
                 "full_recovery_attempts": 3,
             }
         ),
@@ -966,6 +967,7 @@ def test_manual_attention_reset_preserves_audit_reason(tmp_path):
     assert state["phase"] == "stabilizing"
     assert state["pending_recovery_phase"] == "full"
     assert state["current_run_id"] is None
+    assert state["current_run_started_at"] is None
     assert state["full_recovery_attempts"] == 0
     assert state["last_manual_attention_reason"] == "runner_capacity_api_failed"
     assert state["manual_attention_reset_at"] == "2026-08-09T20:00:00Z"

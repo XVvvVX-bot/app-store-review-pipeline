@@ -974,6 +974,7 @@ def reset_supervisor_recovery_state(
         current_run_id=None,
         current_run=None,
         current_dispatch_token=None,
+        current_run_started_at=None,
         current_backlog_app=None,
         backlog_queue=[],
         forced_recovery_apps=[],
