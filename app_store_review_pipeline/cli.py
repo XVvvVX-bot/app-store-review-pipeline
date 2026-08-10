@@ -6,6 +6,12 @@ import json
 import os
 from pathlib import Path
 
+from app_store_review_pipeline.backup_restore import (
+    DEFAULT_BACKUP_DIRECTORY,
+    DEFAULT_BACKUP_RESTORE_JSON,
+    DEFAULT_BACKUP_RESTORE_MARKDOWN,
+    run_backup_restore_drill,
+)
 from app_store_review_pipeline.config import (
     DEFAULT_DATABASE_URL,
     DEFAULT_TARGETS,
@@ -207,6 +213,32 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("--run-id")
     validate.add_argument("--output", type=Path)
     validate.set_defaults(func=command_validate_postgres)
+
+    backup_restore = subparsers.add_parser(
+        "backup-restore-drill",
+        help="Create a consistent Postgres backup, restore it in isolation, and reconcile the result.",
+    )
+    backup_restore.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
+    backup_restore.add_argument("--backup-directory", type=Path, default=DEFAULT_BACKUP_DIRECTORY)
+    backup_restore.add_argument("--restore-database-name", default="")
+    backup_restore.add_argument("--restore-jobs", type=int, default=4)
+    backup_restore.add_argument(
+        "--compression",
+        choices=["zstd:3", "gzip:6", "none"],
+        default="zstd:3",
+    )
+    backup_restore.add_argument("--keep-restore-database", action="store_true")
+    backup_restore.add_argument(
+        "--markdown-output",
+        type=Path,
+        default=DEFAULT_BACKUP_RESTORE_MARKDOWN,
+    )
+    backup_restore.add_argument(
+        "--json-output",
+        type=Path,
+        default=DEFAULT_BACKUP_RESTORE_JSON,
+    )
+    backup_restore.set_defaults(func=command_backup_restore_drill)
 
     eda = subparsers.add_parser("eda-report", help="Generate the App Store review EDA and data-quality report from Postgres.")
     eda.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
@@ -730,6 +762,35 @@ def command_validate_postgres(args: argparse.Namespace) -> int:
         args.output.write_text(output + "\n", encoding="utf-8")
     print(output)
     return 0
+
+
+def command_backup_restore_drill(args: argparse.Namespace) -> int:
+    report = run_backup_restore_drill(
+        args.database_url,
+        backup_directory=args.backup_directory,
+        restore_database_name=args.restore_database_name,
+        keep_restore_database=args.keep_restore_database,
+        restore_jobs=args.restore_jobs,
+        compression=args.compression,
+        markdown_output=args.markdown_output,
+        json_output=args.json_output,
+    )
+    summary = {
+        "status": report.get("status"),
+        "source_database": report.get("source_database"),
+        "backup": report.get("backup"),
+        "restore": report.get("restore"),
+        "comparison": {
+            key: (report.get("comparison") or {}).get(key)
+            for key in ("healthy", "check_count", "passed_check_count", "failed_check_count")
+        },
+        "durations_seconds": report.get("durations_seconds"),
+        "markdown_output": str(args.markdown_output),
+        "json_output": str(args.json_output),
+        "error": report.get("error"),
+    }
+    print(json.dumps(summary, indent=2, sort_keys=True))
+    return 0 if report.get("status") == "healthy" else 1
 
 
 def command_eda_report(args: argparse.Namespace) -> int:

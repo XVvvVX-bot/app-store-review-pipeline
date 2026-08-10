@@ -1,0 +1,84 @@
+name: App Store Postgres Backup Restore Drill
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type VALIDATE_BACKUP_RESTORE to run a production snapshot and isolated restore drill"
+        required: true
+        type: string
+      restore_jobs:
+        description: "Parallel pg_restore jobs"
+        required: false
+        default: "4"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-store-postgres-writer
+  cancel-in-progress: false
+
+jobs:
+  backup-restore-drill:
+    runs-on: [self-hosted, macOS, ARM64, app-store-review-pipeline]
+    timeout-minutes: 240
+    env:
+      PIP_CONFIG_FILE: /dev/null
+      PIP_USER: "false"
+    steps:
+      - name: Validate confirmation
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          if [ "$CONFIRMATION" != "VALIDATE_BACKUP_RESTORE" ]; then
+            echo "::error title=confirmation_required::Type VALIDATE_BACKUP_RESTORE to run the drill."
+            exit 2
+          fi
+
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Create Python virtualenv
+        run: |
+          set -euo pipefail
+          python3 -m venv .venv
+          .venv/bin/python -m pip install -r requirements.lock
+
+      - name: Run snapshot, isolated restore, and reconciliation
+        env:
+          DATABASE_URL: ${{ secrets.APP_STORE_DATABASE_URL }}
+          RESTORE_JOBS: ${{ inputs.restore_jobs }}
+        run: |
+          set -euo pipefail
+          database_url="${DATABASE_URL:-postgresql:///app_store_reviews}"
+          backup_directory="$HOME/.local/share/app-store-review-pipeline/backups"
+          .venv/bin/python app_store_pipeline.py backup-restore-drill \
+            --database-url "$database_url" \
+            --backup-directory "$backup_directory" \
+            --restore-jobs "$RESTORE_JOBS" \
+            --markdown-output data/reports/backup_restore/latest.md \
+            --json-output data/reports/backup_restore/latest.json
+
+      - name: Publish drill summary
+        if: ${{ always() && !cancelled() }}
+        run: |
+          set -euo pipefail
+          if [ -f data/reports/backup_restore/latest.md ]; then
+            cat data/reports/backup_restore/latest.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## Backup Restore Drill" >> "$GITHUB_STEP_SUMMARY"
+            echo >> "$GITHUB_STEP_SUMMARY"
+            echo "No validation report was produced." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload validation evidence
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-store-backup-restore-${{ github.run_id }}
+          retention-days: 30
+          if-no-files-found: warn
+          path: data/reports/backup_restore/

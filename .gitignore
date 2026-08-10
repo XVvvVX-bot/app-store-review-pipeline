@@ -6,4 +6,5 @@ __pycache__/
 .pytest_cache/
 data/reports/
 data/raw/
+data/backups/
 *.pyc

@@ -111,6 +111,17 @@ Validate the database:
   --database-url postgresql:///app_store_reviews
 ```
 
+Create a consistent backup and prove it through an isolated restore:
+
+```bash
+.venv/bin/python app_store_pipeline.py backup-restore-drill \
+  --database-url postgresql:///app_store_reviews \
+  --backup-directory "$HOME/.local/share/app-store-review-pipeline/backups" \
+  --restore-jobs 4 \
+  --markdown-output docs/backup_restore_latest.md \
+  --json-output docs/backup_restore_latest.json
+```
+
 Generate the reproducible EDA/data-quality report:
 
 ```bash
@@ -138,6 +149,7 @@ Active workflows:
 - `CI`: test suite.
 - `App Store Review Pipeline`: scheduled and dispatchable app-level matrix daily incremental profile. It runs at 08:07 and 20:07 America/Los_Angeles during PDT. Routine runs start each app at page 1 and fetch until trusted overlap, no-next, a time budget, or a fetch stop. Explicit safety-overlapped checkpoint recovery is available for a recent long-tail incremental backlog. Exact-execution monitoring and failing-only email are integrated.
 - `App Store Alert Email Test`: manual SMTP/eligibility validation without ingestion.
+- `App Store Postgres Backup Restore Drill`: guarded manual snapshot and isolated restore validation; database archives remain local and only reports are uploaded.
 - `App Store Web Catalog Backfill`: manually disabled and guarded; not part of routine operations.
 
 Research-era workflows have been moved to `docs/archive/workflows/` so they remain auditable but no longer appear as active runnable Actions.
@@ -165,6 +177,8 @@ The generated local config is `~/.config/app-store-review-pipeline/runner-superv
 - Architecture notes: `docs/architecture.md`
 - Storage schema design: `docs/storage_schema.md`
 - Monitoring and email alerts: `docs/monitoring.md`
+- Backup and restore runbook: `docs/backup_restore.md`
+- Latest backup/restore evidence: `docs/backup_restore_latest.md`
 - Operations and recovery runbook: `docs/operations_recovery.md`
 - Source decision notes: `docs/source_decision_notes.md`
 - Research archive: `docs/archive/`
